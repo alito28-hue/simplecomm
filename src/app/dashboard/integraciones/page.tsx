@@ -74,14 +74,6 @@ export default function IntegracionesPage() {
         </div>
       </div>
 
-      <div className={styles.tabs}>
-        {TABS.map((tab, i) => (
-          <button key={tab} className={`${styles.tab} ${i === 0 ? styles.activeTab : ''}`}>
-            {tab}
-          </button>
-        ))}
-      </div>
-
       <div className={styles.grid}>
         {INTEGRACIONES.map((int) => (
           <div key={int.id} className={`card ${styles.intCard}`}>

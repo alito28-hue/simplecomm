@@ -1,5 +1,14 @@
 .page { display: flex; flex-direction: column; gap: 1.5rem; }
 
+/* Coming Soon */
+.comingSoon { display: flex; justify-content: center; align-items: center; min-height: 400px; }
+.comingSoonBox { max-width: 520px; text-align: center; padding: 2.5rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); }
+.comingSoonIcon { font-size: 3rem; margin-bottom: 1rem; }
+.comingSoonTitle { font-size: 1.5rem; font-weight: 700; font-family: var(--font-heading); margin-bottom: 0.75rem; }
+.comingSoonDesc { font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 1.5rem; }
+.features { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.feature { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary); background: var(--surface-low); padding: 0.6rem 0.75rem; border-radius: var(--radius-md); }
+
 .pageHeader { display: flex; align-items: flex-start; justify-content: space-between; }
 .pageTitle { font-size: 1.75rem; font-weight: 700; font-family: var(--font-heading); }
 .pageSubtitle { font-size: 0.875rem; color: var(--text-muted); margin-top: 0.3rem; }

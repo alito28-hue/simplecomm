@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { randomUUID } from 'crypto';
 
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
@@ -26,7 +27,11 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const now = new Date().toISOString();
   const { data, error } = await supabase.from('products').insert({
-    ...body, organizationId: user.id, createdAt: now, updatedAt: now,
+    id: randomUUID(),
+    ...body,
+    organizationId: user.id,
+    createdAt: now,
+    updatedAt: now,
   }).select().single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { randomUUID } from 'crypto';
 
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  // Buscar por id (que usamos como organizationId = user.id)
   const { data } = await supabase.from('organizations')
     .select('*').eq('id', user.id).maybeSingle();
 
-  return NextResponse.json(data ?? {});
+  return NextResponse.json(data ?? null);
 }
 
 export async function PUT(req: NextRequest) {
@@ -20,10 +22,21 @@ export async function PUT(req: NextRequest) {
   const body = await req.json();
   const now = new Date().toISOString();
 
-  const { data, error } = await supabase.from('organizations')
-    .upsert({ ...body, id: user.id, updatedAt: now, createdAt: now })
-    .eq('id', user.id).select().single();
+  // Verificar si ya existe
+  const { data: existing } = await supabase.from('organizations')
+    .select('id').eq('id', user.id).maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+  let result;
+  if (existing) {
+    result = await supabase.from('organizations')
+      .update({ ...body, updatedAt: now })
+      .eq('id', user.id).select().single();
+  } else {
+    result = await supabase.from('organizations')
+      .insert({ ...body, id: user.id, createdAt: now, updatedAt: now })
+      .select().single();
+  }
+
+  if (result.error) return NextResponse.json({ error: result.error.message }, { status: 500 });
+  return NextResponse.json(result.data);
 }

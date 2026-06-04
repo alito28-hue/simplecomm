@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import BackButton from '@/components/BackButton';
 import styles from './empresa.module.css';
 
 const FISCAL = ['RESPONSABLE_INSCRIPTO', 'MONOTRIBUTISTA', 'EXENTO', 'CONSUMIDOR_FINAL', 'NO_CATEGORIZADO'];
@@ -48,6 +49,7 @@ export default function EmpresaPage() {
 
   return (
     <div className={styles.page}>
+      <BackButton href="/dashboard/organizacion" label="← Configuración" />
       <h1 className={styles.pageTitle}>Empresa</h1>
 
       {error && <div className={styles.error}>{error}</div>}
