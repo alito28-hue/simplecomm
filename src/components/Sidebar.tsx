@@ -8,12 +8,14 @@ import { useI18n } from '@/lib/i18n/context';
 import styles from './Sidebar.module.css';
 
 const NAV_KEYS = [
-  { href: '/dashboard',               key: 'dashboard',    icon: '⊞' },
-  { href: '/dashboard/billing',       key: 'billing',      icon: '⚡' },
-  { href: '/dashboard/integraciones', key: 'integrations', icon: '🔗' },
-  { href: '/dashboard/ads',           key: 'ads',          icon: '📈' },
-  { href: '/dashboard/tutoriales',    key: 'tutorials',    icon: '📚' },
-  { href: '/dashboard/organizacion',  key: 'settings',     icon: '⚙' },
+  { href: '/dashboard',                        key: 'dashboard',    icon: '⊞' },
+  { href: '/dashboard/billing',                key: 'billing',      icon: '⚡' },
+  { href: '/dashboard/facturacion/simplificada', key: 'billing',    icon: '🧾', label: 'Facturar' },
+  { href: '/dashboard/cobranzas',              key: 'billing',      icon: '💰', label: 'Cobranzas' },
+  { href: '/dashboard/integraciones',          key: 'integrations', icon: '🔗' },
+  { href: '/dashboard/ads',                    key: 'ads',          icon: '📈' },
+  { href: '/dashboard/tutoriales',             key: 'tutorials',    icon: '📚' },
+  { href: '/dashboard/organizacion',           key: 'settings',     icon: '⚙' },
 ] as const;
 
 interface SidebarProps {
@@ -37,7 +39,7 @@ export default function Sidebar({ orgName = 'Mi Organización', userEmail }: Sid
       <nav className={styles.nav}>
         {NAV_KEYS.map((item) => {
           const active = pathname === item.href || pathname.startsWith(item.href + '/');
-          const label = t.nav[item.key];
+          const label = 'label' in item ? item.label : t.nav[item.key];
           return (
             <Link key={item.href} href={item.href}
               className={`${styles.navItem} ${active ? styles.active : ''}`}>

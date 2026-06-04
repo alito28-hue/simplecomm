@@ -1,0 +1,11 @@
+.page { display: flex; flex-direction: column; gap: 1.5rem; }
+.pageTitle { font-size: 1.75rem; font-weight: 700; font-family: var(--font-heading); }
+.filterCard { padding: 1.25rem; }
+.filters { display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end; }
+.field { display: flex; flex-direction: column; gap: 0.35rem; }
+.field label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.statsRow { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; }
+@media (max-width: 600px) { .statsRow { grid-template-columns: 1fr; } }
+.stat { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.stat span { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.stat strong { font-size: 1.4rem; font-weight: 700; font-family: var(--font-heading); }
