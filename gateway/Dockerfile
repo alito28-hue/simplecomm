@@ -4,13 +4,14 @@ WORKDIR /app
 
 RUN apk add --no-cache openssl
 
-COPY package*.json ./
+# El build context es la raíz del repo — copiamos desde gateway/
+COPY gateway/package*.json ./
 RUN npm install
 
-COPY prisma ./prisma
+COPY gateway/prisma ./prisma
 RUN npx prisma generate
 
-COPY . .
+COPY gateway/ .
 
 EXPOSE 3001
 
