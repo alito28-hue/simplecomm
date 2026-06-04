@@ -1,0 +1,29 @@
+.page { display: flex; flex-direction: column; gap: 2rem; }
+.header { text-align: center; padding: 1rem 0; }
+.title { font-size: 2rem; font-weight: 700; font-family: var(--font-heading); }
+.subtitle { font-size: 0.9rem; color: var(--text-muted); margin-top: 0.5rem; max-width: 500px; margin-left: auto; margin-right: auto; }
+
+.grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.5rem; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+.planCard { padding: 2rem; display: flex; flex-direction: column; gap: 0.75rem; position: relative; }
+.destacado { border: 2px solid var(--blue) !important; box-shadow: 0 0 0 4px rgba(0,122,255,0.08); }
+.badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: var(--blue); color: #fff; font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.75rem; border-radius: var(--radius-full); white-space: nowrap; }
+
+.planIcon { font-size: 2.5rem; font-weight: 800; font-family: var(--font-heading); color: var(--blue); }
+.planName { font-size: 1.2rem; font-weight: 700; font-family: var(--font-heading); }
+.planDesc { font-size: 0.8rem; color: var(--text-muted); }
+
+.priceWrap { display: flex; align-items: baseline; gap: 0.25rem; margin: 0.5rem 0; }
+.price { font-size: 1.75rem; font-weight: 800; font-family: var(--font-heading); }
+.periodo { font-size: 0.8rem; color: var(--text-muted); }
+
+.features { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; flex: 1; }
+.features li { display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary); }
+.check { color: var(--success); font-weight: 700; flex-shrink: 0; }
+
+.ctaBtn { width: 100%; margin-top: 1rem; }
+
+.enterprise { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding: 1.5rem 2rem; flex-wrap: wrap; }
+.enterpriseTitle { font-size: 1rem; font-weight: 700; font-family: var(--font-heading); margin-bottom: 0.3rem; }
+.enterpriseDesc { font-size: 0.85rem; color: var(--text-muted); max-width: 480px; }
