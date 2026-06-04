@@ -1,16 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import { useI18n } from '@/lib/i18n/context';
 import styles from './TopBar.module.css';
 
 interface TopBarProps {
-  title?: string;
   userInitials?: string;
   userName?: string;
 }
 
-export default function TopBar({ title, userInitials = 'U', userName }: TopBarProps) {
+export default function TopBar({ userInitials = 'U', userName }: TopBarProps) {
   const [searchFocused, setSearchFocused] = useState(false);
+  const { t } = useI18n();
 
   return (
     <header className={styles.topbar}>
@@ -18,7 +19,7 @@ export default function TopBar({ title, userInitials = 'U', userName }: TopBarPr
         <span className={styles.searchIcon}>🔍</span>
         <input
           type="text"
-          placeholder="Search invoices or integrations..."
+          placeholder={t.topbar.search}
           className={`${styles.search} ${searchFocused ? styles.focused : ''}`}
           onFocus={() => setSearchFocused(true)}
           onBlur={() => setSearchFocused(false)}
@@ -26,21 +27,15 @@ export default function TopBar({ title, userInitials = 'U', userName }: TopBarPr
       </div>
 
       <div className={styles.actions}>
-        <button className={styles.iconBtn} title="Notifications">
-          🔔
-        </button>
-        <button className={styles.iconBtn} title="Help">
-          ⓘ
-        </button>
+        <button className={styles.iconBtn} title="Notificaciones">🔔</button>
+        <button className={styles.iconBtn} title="Ayuda">ⓘ</button>
         <a href="/dashboard/soporte" className={styles.supportBtn}>
-          Support
+          {t.nav.support}
         </a>
         <button className={`btn btn-primary btn-sm ${styles.campaignBtn}`}>
-          New Campaign
+          {t.topbar.newCampaign}
         </button>
-        <div className={styles.avatar} title={userName}>
-          {userInitials}
-        </div>
+        <div className={styles.avatar} title={userName}>{userInitials}</div>
       </div>
     </header>
   );

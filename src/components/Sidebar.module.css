@@ -91,6 +91,30 @@
   gap: 0.75rem;
 }
 
+.langToggle {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0 0.25rem;
+}
+
+.langBtn {
+  flex: 1;
+  padding: 0.3rem;
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,0.15);
+  background: none;
+  color: rgba(255,255,255,0.45);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  letter-spacing: 0.05em;
+}
+
+.langBtn:hover { color: rgba(255,255,255,0.8); border-color: rgba(255,255,255,0.3); }
+.langActive { background: rgba(0,122,255,0.25) !important; color: var(--blue) !important; border-color: rgba(0,122,255,0.4) !important; }
+
 .upgradeBanner {
   background: rgba(0, 122, 255, 0.12);
   border: 1px solid rgba(0, 122, 255, 0.25);
