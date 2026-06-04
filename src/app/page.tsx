@@ -8,40 +8,34 @@ export default function Home() {
       <nav className={styles.nav}>
         <Logo size="md" />
         <div className={styles.navActions}>
-          <Link href="/login" className="btn btn-ghost">Sign in</Link>
-          <Link href="/register" className="btn btn-primary">Get started free</Link>
+          <Link href="/login" className="btn btn-ghost">Iniciar sesión</Link>
+          <Link href="/register" className="btn btn-primary">Empezar gratis</Link>
         </div>
       </nav>
 
       <section className={styles.hero}>
-        <div className={styles.heroContent}>
-          <div className={styles.heroBadge}>🇦🇷 Built for Argentine e-commerce</div>
-          <h1 className={styles.heroTitle}>
-            Automate your<br />
-            <span className={styles.heroHighlight}>e-commerce invoicing</span>
-          </h1>
-          <p className={styles.heroDesc}>
-            SimpleComm connects your storefronts, automates AFIP/ARCA electronic invoicing,
-            and gives you real-time visibility across all your operations.
-          </p>
-          <div className={styles.heroActions}>
-            <Link href="/register" className="btn btn-primary btn-lg">
-              Start free trial →
-            </Link>
-            <Link href="/login" className="btn btn-ghost btn-lg">
-              Sign in
-            </Link>
-          </div>
-          <p className={styles.heroCta}>15-day free trial · No credit card required</p>
+        <div className={styles.heroBadge}>🇦🇷 Hecho para el e-commerce argentino</div>
+        <h1 className={styles.heroTitle}>
+          Automatizá tu<br />
+          <span className={styles.heroHighlight}>facturación electrónica</span>
+        </h1>
+        <p className={styles.heroDesc}>
+          SimpleComm conecta tus tiendas online, automatiza la facturación electrónica con AFIP/ARCA,
+          y te da visibilidad en tiempo real sobre todas tus operaciones.
+        </p>
+        <div className={styles.heroActions}>
+          <Link href="/register" className="btn btn-primary btn-lg">Empezar prueba gratis →</Link>
+          <Link href="/login" className="btn btn-ghost btn-lg">Iniciar sesión</Link>
         </div>
+        <p className={styles.heroCta}>15 días gratis · Sin tarjeta de crédito</p>
       </section>
 
       <section className={styles.features}>
         {[
-          { icon: '⚡', title: 'Automated Invoicing', desc: 'Issue Factura A, B, C automatically when orders are paid.' },
-          { icon: '🔗', title: 'Multi-platform Sync', desc: 'Connect Mercado Libre, Shopify, Tiendanube and more.' },
-          { icon: '📊', title: 'Real-time Analytics', desc: 'Track revenue, pending syncs, and ROAS across channels.' },
-          { icon: '🔒', title: 'ARCA Compliant', desc: 'Fully compliant with AFIP/ARCA regulations and CAE issuance.' },
+          { icon: '⚡', title: 'Facturación automática',    desc: 'Emití Facturas A, B y C automáticamente cuando se pagan los pedidos.' },
+          { icon: '🔗', title: 'Sincronización multi-plataforma', desc: 'Conectá Mercado Libre, Shopify, Tiendanube y más.' },
+          { icon: '📊', title: 'Analíticas en tiempo real', desc: 'Seguí ingresos, sincronizaciones pendientes y ROAS por canal.' },
+          { icon: '🔒', title: 'Cumplimiento ARCA',         desc: 'Totalmente compatible con la normativa AFIP/ARCA y emisión de CAE.' },
         ].map((f) => (
           <div key={f.title} className={`card ${styles.featureCard}`}>
             <div className={styles.featureIcon}>{f.icon}</div>

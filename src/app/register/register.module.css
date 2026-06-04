@@ -58,6 +58,10 @@
 
 .submitBtn { width: 100%; padding: 0.7rem; font-size: 0.9rem; margin-top: 0.25rem; }
 
+.langRow { display: flex; gap: 0.35rem; justify-content: center; margin-bottom: 1.25rem; }
+.langBtn { padding: 0.2rem 0.65rem; border-radius: var(--radius-full); border: 1px solid var(--border); background: none; font-size: 0.75rem; font-weight: 700; cursor: pointer; color: var(--text-muted); font-family: inherit; letter-spacing: 0.05em; transition: all 0.15s; }
+.langActive { background: var(--navy); color: #fff; border-color: var(--navy); }
+
 .terms {
   margin-top: 1rem;
   text-align: center;

@@ -4,9 +4,11 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { register } from '@/app/auth/actions';
 import Logo from '@/components/Logo';
+import { useI18n } from '@/lib/i18n/context';
 import styles from './register.module.css';
 
 export default function RegisterPage() {
+  const { t, locale, setLocale } = useI18n();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -15,7 +17,7 @@ export default function RegisterPage() {
     setError('');
     const formData = new FormData(e.currentTarget);
     if (formData.get('password') !== formData.get('confirmPassword')) {
-      setError('Passwords do not match.');
+      setError(t.auth.passwordsMatch);
       return;
     }
     setLoading(true);
@@ -26,65 +28,53 @@ export default function RegisterPage() {
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-        <div className={styles.logoWrap}>
-          <Logo size="md" />
+        <div className={styles.logoWrap}><Logo size="md" /></div>
+
+        <div className={styles.langRow}>
+          <button onClick={() => setLocale('es')} className={`${styles.langBtn} ${locale === 'es' ? styles.langActive : ''}`}>ES</button>
+          <button onClick={() => setLocale('en')} className={`${styles.langBtn} ${locale === 'en' ? styles.langActive : ''}`}>EN</button>
         </div>
 
-        <h1 className={styles.title}>Create your account</h1>
-        <p className={styles.subtitle}>Start your 15-day free trial. No credit card required.</p>
+        <h1 className={styles.title}>{t.auth.createAccount}</h1>
+        <p className={styles.subtitle}>{t.auth.trialSubtitle}</p>
 
         {error && <div className={styles.error}>{error}</div>}
 
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.row}>
             <div className={styles.field}>
-              <label htmlFor="firstName">First name</label>
-              <input id="firstName" name="firstName" type="text" required className="input" />
+              <label>{t.auth.firstName}</label>
+              <input name="firstName" type="text" required className="input" />
             </div>
             <div className={styles.field}>
-              <label htmlFor="lastName">Last name</label>
-              <input id="lastName" name="lastName" type="text" required className="input" />
+              <label>{t.auth.lastName}</label>
+              <input name="lastName" type="text" required className="input" />
             </div>
           </div>
-
           <div className={styles.field}>
-            <label htmlFor="orgName">Company / Organization</label>
-            <input id="orgName" name="orgName" type="text" required
-              placeholder="Acme S.A." className="input" />
+            <label>{t.auth.company}</label>
+            <input name="orgName" type="text" required placeholder="Acme S.A." className="input" />
           </div>
-
           <div className={styles.field}>
-            <label htmlFor="email">Work email</label>
-            <input id="email" name="email" type="email" required
-              placeholder="you@company.com" className="input" autoComplete="email" />
+            <label>{t.auth.workEmail}</label>
+            <input name="email" type="email" required placeholder="vos@empresa.com" className="input" autoComplete="email" />
           </div>
-
           <div className={styles.field}>
-            <label htmlFor="password">Password</label>
-            <input id="password" name="password" type="password"
-              required minLength={8} placeholder="Min. 8 characters" className="input" />
+            <label>{t.auth.password}</label>
+            <input name="password" type="password" required minLength={8} placeholder={t.auth.minChars} className="input" />
           </div>
-
           <div className={styles.field}>
-            <label htmlFor="confirmPassword">Confirm password</label>
-            <input id="confirmPassword" name="confirmPassword" type="password"
-              required className="input" />
+            <label>{t.auth.confirmPassword}</label>
+            <input name="confirmPassword" type="password" required className="input" />
           </div>
-
           <button type="submit" className={`btn btn-primary ${styles.submitBtn}`} disabled={loading}>
-            {loading ? 'Creating account...' : 'Create free account'}
+            {loading ? t.auth.creating : t.auth.createBtn}
           </button>
         </form>
 
-        <p className={styles.terms}>
-          By signing up, you agree to our{' '}
-          <Link href="/terms" className={styles.link}>Terms of Service</Link> and{' '}
-          <Link href="/privacy" className={styles.link}>Privacy Policy</Link>.
-        </p>
-
         <p className={styles.footer}>
-          Already have an account?{' '}
-          <Link href="/login" className={styles.link}>Sign in</Link>
+          {t.auth.alreadyHave}{' '}
+          <Link href="/login" className={styles.link}>{t.auth.signInLink}</Link>
         </p>
       </div>
     </div>
