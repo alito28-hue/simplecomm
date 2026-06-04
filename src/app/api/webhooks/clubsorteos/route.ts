@@ -1,99 +1,130 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const GATEWAY_URL    = process.env.GATEWAY_URL    ?? 'https://simplecomm-production.up.railway.app';
+const GATEWAY_URL     = process.env.GATEWAY_URL     ?? 'https://simplecomm-production.up.railway.app';
 const GATEWAY_API_KEY = process.env.GATEWAY_API_KEY ?? '';
 const WEBHOOK_SECRET  = process.env.CLUBSORTEOS_WEBHOOK_SECRET ?? '';
 
+// Tipos exactos del invoicing-connector.ts de ClubSorteos
+interface InvoiceIssuePayload {
+  batchId: string;
+  batchItemId: string;
+  raffle: { id: string; name: string };
+  buyer: {
+    email: string;
+    fullName: string;
+    documentType: string;
+    documentNumber: string;
+    billingMode: 'identified' | 'consumer_final_anonymous';
+  };
+  invoice: {
+    type: 'B';
+    currency: 'ARS';
+    totalAmount: number;
+    purchaseCount: number;
+    firstPurchaseAt: string | null;
+    lastPurchaseAt: string | null;
+  };
+  metadata?: Record<string, unknown>;
+}
+
 /**
- * Webhook de ClubSorteos → SimpleComm → Gateway AFIP
+ * Webhook ClubSorteos → SimpleComm → Gateway AFIP
  *
- * ClubSorteos llama a este endpoint cuando se paga un pedido.
- * SimpleComm lo convierte en una Factura B y la emite via el Gateway.
+ * ClubSorteos llama con:
+ *   POST /api/webhooks/clubsorteos
+ *   Authorization: Bearer <CLUBSORTEOS_WEBHOOK_SECRET>
+ *   Content-Type: application/json
+ *   Body: InvoiceIssuePayload
  *
- * Headers requeridos:
- *   x-webhook-secret: <CLUBSORTEOS_WEBHOOK_SECRET>
- *
- * Body esperado:
- * {
- *   order_id: string,
- *   amount: number,        // monto final con IVA incluido
- *   buyer_name: string,
- *   buyer_email?: string,
- *   buyer_doc_type?: "DNI" | "CUIT" | "CONSUMIDOR_FINAL",
- *   buyer_doc_number?: string,
- *   description?: string
- * }
+ * Devuelve:
+ *   { invoiceNumber, cae, caeDueDate, pdfBase64, rawResponse }
  */
 export async function POST(req: NextRequest) {
-  // Validar webhook secret
-  const secret = req.headers.get('x-webhook-secret');
-  if (WEBHOOK_SECRET && secret !== WEBHOOK_SECRET) {
+  // Autenticación via Bearer token (igual que el connector de ClubSorteos)
+  const authHeader = req.headers.get('authorization') ?? '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+
+  if (WEBHOOK_SECRET && token !== WEBHOOK_SECRET) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let body: {
-    order_id: string;
-    amount: number;
-    buyer_name?: string;
-    buyer_email?: string;
-    buyer_doc_type?: string;
-    buyer_doc_number?: string;
-    description?: string;
-  };
-
+  let body: InvoiceIssuePayload;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  if (!body.order_id || !body.amount) {
-    return NextResponse.json({ error: 'order_id y amount son requeridos' }, { status: 400 });
+  if (!body.batchItemId || !body.invoice?.totalAmount) {
+    return NextResponse.json({ error: 'batchItemId e invoice.totalAmount son requeridos' }, { status: 400 });
   }
 
-  const payload = {
-    idempotency_key: `clubsorteos:order:${body.order_id}`,
+  // Mapear billingMode/documentType al formato del Gateway
+  const isConsumerFinal = body.buyer.billingMode === 'consumer_final_anonymous';
+  const docType = isConsumerFinal
+    ? 'CONSUMIDOR_FINAL'
+    : mapDocType(body.buyer.documentType);
+  const docNumber = isConsumerFinal ? '0' : (body.buyer.documentNumber || '0');
+
+  const gatewayPayload = {
+    idempotency_key: `clubsorteos:batch:${body.batchId}:item:${body.batchItemId}`,
     invoice: {
-      total_amount: body.amount,
-      concept: 1,
-      description: body.description ?? `Orden ClubSorteos #${body.order_id}`,
+      total_amount: body.invoice.totalAmount,
+      concept:      1,
+      description:  `Participación sorteo: ${body.raffle.name}`,
     },
     buyer: {
-      full_name:   body.buyer_name      ?? 'Consumidor Final',
-      doc_type:    body.buyer_doc_type  ?? 'CONSUMIDOR_FINAL',
-      doc_number:  body.buyer_doc_number ?? '0',
-      email:       body.buyer_email,
+      full_name:   body.buyer.fullName,
+      doc_type:    docType,
+      doc_number:  docNumber,
+      email:       body.buyer.email,
     },
-    source_app: 'clubsorteos',
-    external_ref: body.order_id,
+    source_app:   'clubsorteos',
+    external_ref: body.batchItemId,
+    metadata: {
+      batchId:    body.batchId,
+      raffleId:   body.raffle.id,
+      raffleName: body.raffle.name,
+      ...body.metadata,
+    },
   };
 
   const res = await fetch(`${GATEWAY_URL}/v1/invoices/issue`, {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type':  'application/json',
       'Authorization': `Bearer ${GATEWAY_API_KEY}`,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(gatewayPayload),
     signal: AbortSignal.timeout(60_000),
   });
 
   const data = await res.json();
 
   if (!res.ok) {
-    return NextResponse.json({
-      ok: false,
-      error: data.error ?? 'Error en Gateway',
-      order_id: body.order_id,
-    }, { status: 502 });
+    return NextResponse.json(
+      { error: data.error ?? 'Error en Gateway de facturación' },
+      { status: 502 }
+    );
   }
 
+  // Respuesta en el formato exacto que espera el invoicing-connector.ts
   return NextResponse.json({
-    ok: true,
-    order_id:       body.order_id,
-    invoice_number: data.invoice_number,
-    cae:            data.cae,
-    cae_due_date:   data.cae_due_date,
-    status:         data.status,
+    invoiceNumber: data.invoice_number ?? '',
+    cae:           data.cae ?? '',
+    caeDueDate:    data.cae_due_date ?? null,
+    pdfBase64:     data.pdf_base64 ?? null,
+    rawResponse:   data,
   });
+}
+
+function mapDocType(docType: string): string {
+  const map: Record<string, string> = {
+    DNI:       'DNI',
+    CUIT:      'CUIT',
+    CUIL:      'CUIL',
+    CDI:       'CDI',
+    PASAPORTE: 'PASAPORTE',
+  };
+  return map[docType?.toUpperCase()] ?? 'CONSUMIDOR_FINAL';
 }
