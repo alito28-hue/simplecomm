@@ -4,8 +4,8 @@ import type { Tenant } from '@prisma/client';
 
 interface PdfData {
   tenant: Tenant;
-  invoiceNumber: string;
-  invoiceDate: string;    // YYYYMMDD
+  invoiceNumber: string;   // "0004-00000001"
+  invoiceDate: string;     // YYYYMMDD
   buyer: {
     fullName: string;
     docType: string;
@@ -15,7 +15,7 @@ interface PdfData {
   amounts: InvoiceAmounts;
   description?: string;
   cae: string;
-  caeDueDate: string;     // YYYYMMDD
+  caeDueDate: string;      // YYYYMMDD
 }
 
 function formatAfipDate(yyyymmdd: string): string {
@@ -36,151 +36,98 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
     doc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
     doc.on('error', reject);
 
-    const GREEN = '#2e7d32';
-    const GRAY = '#666666';
-    const pageWidth = doc.page.width - 80; // margins
+    const BLACK = '#000000';
+    const GRAY = '#555555';
+    const LIGHT_GRAY = '#f0f0f0';
+    const pageWidth = doc.page.width - 80;
+    const leftCol = 40;
+    const rightColX = doc.page.width - 220;
 
-    // ── Encabezado ─────────────────────────────────────────────────────────
-    doc
-      .rect(40, 40, pageWidth, 70)
-      .fill(GREEN);
+    // ── Recuadro emisor (columna izquierda) ────────────────────────────────
+    doc.rect(leftCol, 40, pageWidth / 2 - 25, 120).stroke(BLACK);
 
-    doc
-      .fillColor('white')
-      .fontSize(22)
-      .font('Helvetica-Bold')
-      .text('FACTURA B', 50, 55);
+    doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(11)
+      .text(data.tenant.name, leftCol + 8, 50, { width: pageWidth / 2 - 40 });
 
-    doc
-      .fontSize(11)
-      .font('Helvetica')
-      .text(`N° ${data.invoiceNumber}`, 50, 82);
+    doc.font('Helvetica').fontSize(9).fillColor(GRAY)
+      .text(`CUIT: ${data.tenant.cuit.replace(/(\d{2})(\d{8})(\d{1})/, '$1-$2-$3')}`, leftCol + 8, 66)
+      .text('IVA Responsable Inscripto', leftCol + 8, 80)
+      .text('Ingresos Brutos', leftCol + 8, 94);
 
-    doc
-      .fillColor('white')
-      .fontSize(10)
-      .text(data.tenant.name, doc.page.width - 280, 55, { width: 230, align: 'right' })
-      .text(`CUIT: ${data.tenant.cuit}`, doc.page.width - 280, 72, { width: 230, align: 'right' });
+    // ── Recuadro letra "B" (centro) ────────────────────────────────────────
+    const letterX = doc.page.width / 2 - 30;
+    doc.rect(letterX, 40, 60, 120).stroke(BLACK);
+    doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(52)
+      .text('B', letterX, 62, { width: 60, align: 'center' });
+    doc.font('Helvetica').fontSize(7).fillColor(GRAY)
+      .text('CÓDIGO 06', letterX, 132, { width: 60, align: 'center' });
 
-    // ── Datos emisor ───────────────────────────────────────────────────────
-    doc
-      .fillColor('#333333')
-      .fontSize(9)
-      .font('Helvetica')
-      .text('Fecha:', 50, 130)
-      .font('Helvetica-Bold')
-      .text(formatAfipDate(data.invoiceDate), 110, 130)
-      .font('Helvetica')
-      .text('IVA Responsable Inscripto', 50, 145);
+    // ── Recuadro tipo y número (columna derecha) ───────────────────────────
+    doc.rect(doc.page.width / 2 + 32, 40, pageWidth / 2 - 22, 120).stroke(BLACK);
 
-    // ── Separador ─────────────────────────────────────────────────────────
-    doc
-      .moveTo(40, 168)
-      .lineTo(doc.page.width - 40, 168)
-      .strokeColor(GREEN)
-      .lineWidth(1.5)
-      .stroke();
+    doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(11)
+      .text('FACTURA', doc.page.width / 2 + 40, 50);
 
-    // ── Datos receptor ─────────────────────────────────────────────────────
-    doc
-      .fillColor(GRAY)
-      .font('Helvetica')
-      .fontSize(9)
-      .text('DATOS DEL RECEPTOR', 50, 180);
+    const [ptoVta, nro] = data.invoiceNumber.split('-');
+    doc.font('Helvetica').fontSize(9).fillColor(GRAY)
+      .text(`Punto de Venta: ${ptoVta}`, doc.page.width / 2 + 40, 68)
+      .text(`Comp. Nro: ${nro}`, doc.page.width / 2 + 40, 82)
+      .text(`Fecha: ${formatAfipDate(data.invoiceDate)}`, doc.page.width / 2 + 40, 96);
 
-    doc
-      .fillColor('#333333')
-      .fontSize(10)
-      .font('Helvetica-Bold')
-      .text(data.buyer.fullName, 50, 196);
+    // ── Datos del receptor ────────────────────────────────────────────────
+    let y = 178;
+    doc.rect(leftCol, y, pageWidth, 60).stroke(BLACK);
 
-    doc
-      .font('Helvetica')
-      .fontSize(9)
-      .fillColor(GRAY)
-      .text(`${data.buyer.docType}: ${data.buyer.docNumber}`, 50, 212);
+    doc.fillColor(GRAY).font('Helvetica').fontSize(8)
+      .text('Apellido y Nombre / Razón Social:', leftCol + 8, y + 8)
+      .text('Condición frente al IVA:', leftCol + 8, y + 30);
 
-    if (data.buyer.email) {
-      doc.text(data.buyer.email, 50, 226);
+    doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(9)
+      .text(data.buyer.fullName, leftCol + 180, y + 8)
+      .text('Consumidor Final', leftCol + 180, y + 30);
+
+    if (data.buyer.docType !== 'CONSUMIDOR_FINAL' && data.buyer.docNumber !== '0') {
+      doc.fillColor(GRAY).font('Helvetica').fontSize(8)
+        .text(`${data.buyer.docType}: ${data.buyer.docNumber}`, rightColX, y + 8);
     }
 
-    // ── Separador ─────────────────────────────────────────────────────────
-    doc
-      .moveTo(40, 248)
-      .lineTo(doc.page.width - 40, 248)
-      .strokeColor('#e2e8f0')
-      .lineWidth(1)
-      .stroke();
+    // ── Tabla de detalle ──────────────────────────────────────────────────
+    y = 256;
+    // Header de tabla
+    doc.rect(leftCol, y, pageWidth, 20).fill(LIGHT_GRAY).stroke(BLACK);
+    doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(8)
+      .text('Descripción', leftCol + 8, y + 6)
+      .text('Importe', doc.page.width - 120, y + 6, { width: 80, align: 'right' });
 
-    // ── Detalle ────────────────────────────────────────────────────────────
-    doc
-      .fillColor(GRAY)
-      .font('Helvetica')
-      .fontSize(9)
-      .text('DETALLE', 50, 262);
+    y += 20;
+    // Fila de detalle
+    doc.rect(leftCol, y, pageWidth, 24).stroke(BLACK);
+    doc.fillColor(BLACK).font('Helvetica').fontSize(9)
+      .text(data.description ?? 'Servicios', leftCol + 8, y + 7, { width: pageWidth - 100 })
+      .text(`$ ${formatMoney(data.amounts.impTotal)}`, doc.page.width - 120, y + 7, { width: 80, align: 'right' });
 
-    doc
-      .fillColor('#333333')
-      .fontSize(10)
-      .font('Helvetica')
-      .text(data.description ?? 'Servicio', 50, 278, { width: pageWidth - 100 });
+    // ── Total ─────────────────────────────────────────────────────────────
+    y += 40;
+    doc.rect(doc.page.width - 200, y, 160, 28).stroke(BLACK);
+    doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(10)
+      .text('Importe Total: $', doc.page.width - 195, y + 8)
+      .text(formatMoney(data.amounts.impTotal), doc.page.width - 65, y + 8, { width: 55, align: 'right' });
 
-    // ── Importes ───────────────────────────────────────────────────────────
-    const amtX = doc.page.width - 200;
-    let amtY = 350;
+    // ── CAE ───────────────────────────────────────────────────────────────
+    y = doc.page.height - 120;
+    doc.rect(leftCol, y, pageWidth, 50).stroke(BLACK);
 
-    const addAmountRow = (label: string, value: string, bold = false) => {
-      doc
-        .font(bold ? 'Helvetica-Bold' : 'Helvetica')
-        .fontSize(10)
-        .fillColor(bold ? '#333333' : GRAY)
-        .text(label, amtX, amtY)
-        .text(`$ ${value}`, amtX + 80, amtY, { width: 80, align: 'right' });
-      amtY += 18;
-    };
+    doc.fillColor(GRAY).font('Helvetica').fontSize(8)
+      .text('CAE N°:', leftCol + 8, y + 10)
+      .text('Fecha de Vto. de CAE:', leftCol + 8, y + 26);
 
-    addAmountRow('Neto:', formatMoney(data.amounts.impNeto));
-    addAmountRow('IVA 21%:', formatMoney(data.amounts.impIVA));
+    doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(9)
+      .text(data.cae, leftCol + 65, y + 10)
+      .text(formatAfipDate(data.caeDueDate), leftCol + 145, y + 26);
 
-    doc
-      .moveTo(amtX, amtY)
-      .lineTo(amtX + 160, amtY)
-      .strokeColor('#e2e8f0')
-      .lineWidth(1)
-      .stroke();
-    amtY += 8;
-
-    addAmountRow('TOTAL:', formatMoney(data.amounts.impTotal), true);
-
-    // ── CAE ────────────────────────────────────────────────────────────────
-    doc
-      .rect(40, 460, pageWidth, 60)
-      .fill('#f8fafc');
-
-    doc
-      .fillColor(GRAY)
-      .font('Helvetica')
-      .fontSize(8)
-      .text('CAE:', 50, 472)
-      .text('Vencimiento CAE:', 50, 488);
-
-    doc
-      .fillColor('#333333')
-      .font('Helvetica-Bold')
-      .fontSize(9)
-      .text(data.cae, 150, 472)
-      .text(formatAfipDate(data.caeDueDate), 150, 488);
-
-    doc
-      .fillColor(GRAY)
-      .font('Helvetica')
-      .fontSize(7)
-      .text(
-        'Comprobante válido — Resolución General AFIP N° 4291/2018',
-        50,
-        504,
-        { width: pageWidth, align: 'center' }
-      );
+    doc.font('Helvetica').fontSize(7).fillColor(GRAY)
+      .text('Comprobante emitido en los términos de la R.G. N° 1415/03 de AFIP',
+        leftCol, y + 58, { width: pageWidth, align: 'center' });
 
     doc.end();
   });
