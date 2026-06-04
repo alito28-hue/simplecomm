@@ -1,0 +1,14 @@
+.page { display: flex; flex-direction: column; gap: 1.5rem; }
+.pageHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.pageTitle { font-size: 1.75rem; font-weight: 700; font-family: var(--font-heading); }
+.pageSubtitle { font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem; }
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 1rem; }
+.modal { background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; }
+.modalHeader { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); font-size: 1rem; font-weight: 700; font-family: var(--font-heading); }
+.modalHeader button { background: none; border: none; font-size: 1.1rem; cursor: pointer; color: var(--text-muted); }
+.modalForm { padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 0.9rem; }
+.modalActions { display: flex; justify-content: flex-end; gap: 0.75rem; padding: 1rem 1.5rem; border-top: 1px solid var(--border); }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+.field { display: flex; flex-direction: column; gap: 0.35rem; }
+.field label { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); }
+.error { background: var(--error-bg); border: 1px solid #fca5a5; color: var(--error); padding: 0.65rem 1rem; margin: 0 1.5rem; border-radius: var(--radius); font-size: 0.875rem; }

@@ -1,25 +1,7 @@
-.page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg);
-  padding: 1.5rem;
-}
-
-.card {
-  width: 100%;
-  max-width: 560px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 2rem;
-  box-shadow: var(--shadow-lg);
-}
-
+.page { min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); padding: 1.5rem; }
+.card { width: 100%; max-width: 560px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2rem; box-shadow: var(--shadow-lg); }
 .logoWrap { display: flex; justify-content: center; margin-bottom: 1.75rem; }
 
-/* Progress */
 .progressSection { margin-bottom: 1.75rem; }
 .progressBar { height: 6px; background: var(--surface-mid); border-radius: var(--radius-full); overflow: hidden; margin-bottom: 0.65rem; }
 .progressFill { height: 100%; background: var(--blue); border-radius: var(--radius-full); transition: width 0.4s ease; }
@@ -27,20 +9,24 @@
 .stepLabel { font-size: 0.7rem; color: var(--text-muted); }
 .stepActive { color: var(--blue); font-weight: 600; }
 
-/* Step */
 .stepContent { min-height: 220px; }
 .stepTitle { font-size: 1.3rem; font-weight: 700; font-family: var(--font-heading); margin-bottom: 0.5rem; }
 .stepDesc { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.25rem; line-height: 1.6; }
 
+.emailAlert { display: flex; gap: 0.75rem; background: var(--blue-light); border: 1px solid rgba(0,122,255,0.2); border-radius: var(--radius-md); padding: 0.85rem; margin-bottom: 1.25rem; }
+.emailAlertIcon { font-size: 1.25rem; flex-shrink: 0; }
+.emailAlertTitle { font-size: 0.875rem; font-weight: 700; margin-bottom: 0.15rem; }
+.emailAlertDesc { font-size: 0.78rem; color: var(--text-muted); }
+
 .checkList { display: flex; flex-direction: column; gap: 0.65rem; }
 .checkItem { display: flex; align-items: center; gap: 0.75rem; font-size: 0.9rem; }
-.checkIcon { font-size: 1.1rem; }
 
 .form { display: flex; flex-direction: column; gap: 0.9rem; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
 .field { display: flex; flex-direction: column; gap: 0.35rem; }
 .field label { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); }
+.formError { background: var(--error-bg); border: 1px solid #fca5a5; color: var(--error); padding: 0.5rem 0.75rem; border-radius: var(--radius); font-size: 0.8rem; }
 
-/* ARCA */
 .stepCards { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.25rem; }
 .arcaStep { display: flex; gap: 0.75rem; align-items: flex-start; padding: 0.85rem; background: var(--surface-low); border-radius: var(--radius-md); }
 .arcaNum { width: 28px; height: 28px; background: var(--blue); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 700; flex-shrink: 0; }
@@ -49,10 +35,8 @@
 .arcaBtn { margin-bottom: 0.75rem; }
 .arcaNote { font-size: 0.78rem; color: var(--text-muted); }
 
-/* Ready */
 .readySection { text-align: center; padding: 1rem 0; }
 .readyIcon { font-size: 3rem; margin-bottom: 0.75rem; }
 .readyActions { display: flex; gap: 0.75rem; justify-content: center; margin-top: 1.5rem; flex-wrap: wrap; }
 
-/* Nav */
 .nav { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }

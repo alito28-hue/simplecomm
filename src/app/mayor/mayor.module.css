@@ -1,0 +1,28 @@
+.page { display: flex; flex-direction: column; gap: 1.5rem; }
+.header {}
+.title { font-size: 1.75rem; font-weight: 700; font-family: var(--font-heading); }
+.subtitle { font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+.alertsGrid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; }
+@media (max-width: 1000px) { .alertsGrid { grid-template-columns: repeat(2,1fr); } }
+
+.alertCard { padding: 1.25rem; display: flex; align-items: center; gap: 1rem; }
+.alertBlue { border-color: var(--blue) !important; background: var(--blue-light) !important; }
+.alertRed { border-color: #fca5a5 !important; background: var(--error-bg) !important; }
+.alertIcon { font-size: 1.75rem; flex-shrink: 0; }
+.alertBody { flex: 1; }
+.alertNum { font-size: 2rem; font-weight: 800; font-family: var(--font-heading); }
+.alertLabel { font-size: 0.78rem; color: var(--text-muted); }
+.alertLink { font-size: 0.8rem; color: var(--blue); font-weight: 600; white-space: nowrap; }
+.alertLink:hover { text-decoration: underline; }
+
+.sectionsGrid { display: grid; grid-template-columns: repeat(2,1fr); gap: 1rem; }
+.sectionCard { padding: 1.5rem; display: flex; flex-direction: column; gap: 0.35rem; text-decoration: none; transition: box-shadow 0.15s, transform 0.15s; position: relative; }
+.sectionCard:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+.sectionIcon { font-size: 1.5rem; margin-bottom: 0.25rem; }
+.sectionTitle { font-size: 0.95rem; font-weight: 700; font-family: var(--font-heading); color: var(--text-primary); }
+.sectionDesc { font-size: 0.8rem; color: var(--text-muted); }
+.sectionArrow { position: absolute; top: 1.25rem; right: 1.25rem; color: var(--text-muted); font-size: 1rem; }
+
+.tableHeader { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); }
+.viewAll { font-size: 0.8rem; color: var(--blue); font-weight: 500; }

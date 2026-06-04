@@ -1,0 +1,25 @@
+.shell { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 220px;
+  background: var(--navy);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0;
+  height: 100vh;
+  z-index: 50;
+}
+
+.logo { padding: 1.25rem 1rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.adminBadge { display: inline-block; background: #dc2626; color: #fff; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.1em; padding: 0.15rem 0.5rem; border-radius: var(--radius-full); margin-top: 0.35rem; }
+
+.nav { flex: 1; padding: 0.75rem 0.5rem; display: flex; flex-direction: column; gap: 0.15rem; }
+.navItem { display: flex; align-items: center; gap: 0.65rem; padding: 0.55rem 0.75rem; border-radius: var(--radius); color: rgba(255,255,255,0.6); font-size: 0.875rem; font-weight: 500; transition: all 0.15s; text-decoration: none; }
+.navItem:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+.bottom { padding: 0.75rem 0.5rem 1rem; border-top: 1px solid rgba(255,255,255,0.08); }
+.bottomLink { display: block; padding: 0.4rem 0.75rem; font-size: 0.8rem; color: rgba(255,255,255,0.45); text-decoration: none; }
+.bottomLink:hover { color: rgba(255,255,255,0.75); }
+
+.main { flex: 1; margin-left: 220px; padding: 2rem; background: var(--bg); min-height: 100vh; }
