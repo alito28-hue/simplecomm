@@ -1,53 +1,158 @@
+'use client';
+
+import { useState } from 'react';
 import styles from './simplificada.module.css';
 
 export default function FacturacionSimplificadaPage() {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<{ invoiceNumber: string; cae: string; pdfBase64: string } | null>(null);
+  const [error, setError] = useState('');
+  const [sendEmail, setSendEmail] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setResult(null);
+
+    const form = new FormData(e.currentTarget);
+    const amount = parseFloat(form.get('amount') as string);
+    const description = form.get('description') as string;
+    const docNumber = form.get('docNumber') as string;
+
+    try {
+      const res = await fetch('/api/invoices/issue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          description,
+          docNumber: docNumber || undefined,
+          sendEmail,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'Error al emitir factura');
+
+      setResult(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function downloadPdf() {
+    if (!result?.pdfBase64) return;
+    const bytes = atob(result.pdfBase64);
+    const arr = new Uint8Array(bytes.length);
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+    const blob = new Blob([arr], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `factura-${result.invoiceNumber}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
-    <div>
-      <div className={styles.infoBanner}>
-        <span>ℹ</span>
+    <div className={styles.page}>
+      <div className={styles.pageHeader}>
         <div>
-          <strong>Estamos procesando la habilitación en ARCA</strong>
-          <p>Mientras probá nuestro facturador, creando comprobantes sin validez fiscal.</p>
+          <h1 className={styles.pageTitle}>Quick Invoice</h1>
+          <p className={styles.pageSubtitle}>Issue a Factura B instantly with just the amount.</p>
         </div>
       </div>
 
-      <h1 className={styles.pageTitle}>Nuevo Comprobante</h1>
+      <div className={styles.layout}>
+        <div className={`card ${styles.formCard}`}>
+          <h2 className={styles.cardTitle}>New Comprobante</h2>
 
-      <div className={styles.formCard}>
-        <div className={styles.amountField}>
-          <span className={styles.currencyIcon}>$</span>
-          <input type="number" placeholder="Ingresá el monto final" className={styles.amountInput} />
+          {error && <div className={styles.error}>{error}</div>}
+
+          {result ? (
+            <div className={styles.success}>
+              <div className={styles.successIcon}>✅</div>
+              <h3 className={styles.successTitle}>Invoice issued!</h3>
+              <div className={styles.successDetail}>
+                <div className={styles.detailRow}>
+                  <span>Invoice N°</span>
+                  <strong className="mono">{result.invoiceNumber}</strong>
+                </div>
+                <div className={styles.detailRow}>
+                  <span>CAE</span>
+                  <strong className="mono">{result.cae}</strong>
+                </div>
+              </div>
+              <div className={styles.successActions}>
+                <button className="btn btn-primary" onClick={downloadPdf}>⬇ Download PDF</button>
+                <button className="btn btn-outline" onClick={() => setResult(null)}>Issue another</button>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className={styles.form}>
+              <div className={styles.amountField}>
+                <span className={styles.currencySign}>$</span>
+                <input
+                  name="amount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  required
+                  placeholder="Final amount (IVA included)"
+                  className={styles.amountInput}
+                />
+              </div>
+
+              <textarea
+                name="description"
+                placeholder="What did you sell? (optional)"
+                className={`input ${styles.descArea}`}
+                rows={3}
+              />
+
+              <input
+                name="docNumber"
+                type="text"
+                placeholder="DNI or CUIT of buyer (optional)"
+                className="input"
+              />
+
+              <div className={styles.emailRow}>
+                <span className={styles.emailLabel}>Send by email</span>
+                <label className={styles.toggle}>
+                  <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
+                  <span className={styles.slider} />
+                </label>
+              </div>
+
+              <button type="submit" className={`btn btn-primary ${styles.submitBtn}`} disabled={loading}>
+                {loading ? 'Issuing...' : 'Issue Invoice'}
+              </button>
+            </form>
+          )}
         </div>
 
-        <textarea
-          placeholder="¿Qué vendiste? (Opcional)"
-          className={styles.descriptionField}
-          rows={3}
-        />
-
-        <input
-          type="text"
-          placeholder="DNI o CUIT del cliente (Opcional)"
-          className={styles.cuitField}
-        />
-
-        <div className={styles.emailRow}>
-          <span className={styles.emailLabel}>Enviar al E-mail</span>
-          <label className={styles.toggle}>
-            <input type="checkbox" className={styles.toggleInput} />
-            <span className={styles.toggleSlider}></span>
-          </label>
+        <div className={styles.sidebar}>
+          <div className={`card ${styles.infoCard}`}>
+            <h3 className={styles.infoTitle}>How it works</h3>
+            <ol className={styles.infoList}>
+              <li>Enter the <strong>final price</strong> (IVA already included)</li>
+              <li>Add description (optional)</li>
+              <li>SimpleComm connects to ARCA and issues a Factura B</li>
+              <li>Download the PDF or send it by email</li>
+            </ol>
+          </div>
+          <div className={`card ${styles.infoCard}`}>
+            <h3 className={styles.infoTitle}>IVA Note</h3>
+            <p className={styles.infoText}>
+              For Factura B (Consumidor Final), IVA is included in the price and
+              is <strong>not discriminated</strong> on the invoice.
+            </p>
+          </div>
         </div>
-
-        <button className={styles.submitBtn}>Facturar</button>
-      </div>
-
-      <div className={styles.historySection}>
-        <h2 className={styles.historyTitle}>
-          Últimos Comprobantes
-          <span className={styles.chevron}>▲</span>
-        </h2>
-        <p className={styles.emptyText}>No hay comprobantes recientes.</p>
       </div>
     </div>
   );

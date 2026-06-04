@@ -26,6 +26,7 @@ export async function register(formData: FormData) {
       data: {
         first_name: formData.get('firstName'),
         last_name: formData.get('lastName'),
+        org_name: formData.get('orgName'),
       },
     },
   });
