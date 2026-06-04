@@ -1,67 +1,79 @@
 import styles from './integraciones.module.css';
+import Link from 'next/link';
 
-const INTEGRATIONS = [
+const INTEGRACIONES = [
   {
-    name: 'Mercado Libre',
-    desc: 'Automate order fulfillment and sync inventory across all of Latam\'s largest marketplace.',
-    status: 'connected', category: 'marketplace', logo: '🛒'
+    id: 'mercadolibre',
+    nombre: 'Mercado Libre',
+    desc: 'Automatizá el fulfillment y sincronizá inventario en el marketplace más grande de Latinoamérica.',
+    estado: 'disponible', categoria: 'marketplace', logo: '🛒',
+    href: '/dashboard/integraciones/mercadolibre',
   },
   {
-    name: 'Tiendanube',
-    desc: 'Sync your cloud store products and centralize sales management in real-time.',
-    status: 'disconnected', category: 'ecommerce', logo: '☁'
+    id: 'mercadopago',
+    nombre: 'Mercado Pago',
+    desc: 'Sincronizá pagos y conciliá transacciones de Mercado Pago automáticamente.',
+    estado: 'disponible', categoria: 'marketplace', logo: '💳',
+    href: '/dashboard/integraciones/mercadopago',
   },
   {
-    name: 'Shopify',
-    desc: 'Connect your international Shopify stores for global unified reporting.',
-    status: 'disconnected', category: 'ecommerce', logo: '🟩'
+    id: 'tiendanube',
+    nombre: 'Tiendanube',
+    desc: 'Sincronizá productos de tu nube y centralizá la gestión de ventas en tiempo real.',
+    estado: 'disponible', categoria: 'ecommerce', logo: '☁',
+    href: '/dashboard/integraciones/tiendanube',
   },
   {
-    name: 'Magento',
-    desc: 'Enterprise-grade sync for your online Comission and Magento Open Source platforms.',
-    status: 'disconnected', category: 'ecommerce', logo: '🧲'
+    id: 'shopify',
+    nombre: 'Shopify',
+    desc: 'Conectá tus tiendas Shopify internacionales para reportes globales unificados.',
+    estado: 'disponible', categoria: 'ecommerce', logo: '🟩',
+    href: '/dashboard/integraciones/shopify',
   },
   {
-    name: 'WooCommerce',
-    desc: 'Seamlessly integrate your WordPress-based storefront with our advanced ops dashboard.',
-    status: 'connected', category: 'ecommerce', logo: '🛍'
+    id: 'woocommerce',
+    nombre: 'WooCommerce',
+    desc: 'Integración nativa con tu tienda WordPress para un dashboard operativo avanzado.',
+    estado: 'proximamente', categoria: 'ecommerce', logo: '🛍',
   },
   {
-    name: 'VTEX',
-    desc: 'Powerful enterprise commerce platform with multi-channel capabilities.',
-    status: 'connected', category: 'ecommerce', logo: '🔺'
+    id: 'vtex',
+    nombre: 'VTEX',
+    desc: 'Plataforma de comercio empresarial con capacidades multi-canal.',
+    estado: 'proximamente', categoria: 'ecommerce', logo: '🔺',
   },
   {
-    name: 'Mercado Pago',
-    desc: 'Sync payments and reconcile transactions across Mercado Pago automatically.',
-    status: 'connected', category: 'marketplace', logo: '💳'
+    id: 'magento',
+    nombre: 'Magento',
+    desc: 'Sincronización enterprise para plataformas Magento Open Source.',
+    estado: 'proximamente', categoria: 'ecommerce', logo: '🧲',
   },
   {
-    name: 'Empretienda',
-    desc: 'Import and automate invoicing for your Empretienda orders.',
-    status: 'disconnected', category: 'ecommerce', logo: '🏪'
+    id: 'empretienda',
+    nombre: 'Empretienda',
+    desc: 'Importá y automatizá la facturación de tus pedidos de Empretienda.',
+    estado: 'proximamente', categoria: 'ecommerce', logo: '🏪',
   },
 ];
 
-const TABS = ['All Integrations', 'Marketplaces', 'E-commerce Platforms', 'Marketing Tools'];
+const TABS = ['Todas', 'Marketplaces', 'E-commerce', 'Marketing'];
 
 export default function IntegracionesPage() {
-  const connected = INTEGRATIONS.filter(i => i.status === 'connected').length;
+  const conectadas = INTEGRACIONES.filter(i => i.estado === 'disponible').length;
 
   return (
     <div className={styles.page}>
       <div className={styles.pageHeader}>
         <div>
-          <p className={styles.breadcrumb}>DASHBOARD › INTEGRATIONS</p>
-          <h1 className={styles.pageTitle}>External Platforms</h1>
+          <p className={styles.breadcrumb}>DASHBOARD › INTEGRACIONES</p>
+          <h1 className={styles.pageTitle}>Plataformas Externas</h1>
           <p className={styles.pageSubtitle}>
-            Connect your existing e-commerce storefronts and marketplaces to synchronize
-            inventory, orders, and customer data across your entire operation.
+            Conectá tus tiendas online y marketplaces para sincronizar inventario,
+            pedidos y datos de clientes en toda tu operación.
           </p>
         </div>
       </div>
 
-      {/* Tabs */}
       <div className={styles.tabs}>
         {TABS.map((tab, i) => (
           <button key={tab} className={`${styles.tab} ${i === 0 ? styles.activeTab : ''}`}>
@@ -70,26 +82,22 @@ export default function IntegracionesPage() {
         ))}
       </div>
 
-      {/* Grid */}
       <div className={styles.grid}>
-        {INTEGRATIONS.map((int) => (
-          <div key={int.name} className={`card ${styles.intCard}`}>
+        {INTEGRACIONES.map((int) => (
+          <div key={int.id} className={`card ${styles.intCard}`}>
             <div className={styles.cardHeader}>
               <div className={styles.intLogo}>{int.logo}</div>
-              <span className={`badge ${int.status === 'connected' ? 'badge-success' : 'badge-gray'}`}>
-                {int.status === 'connected' ? '● Connected' : '○ Disconnected'}
+              <span className={`badge ${int.estado === 'disponible' ? 'badge-success' : 'badge-gray'}`}>
+                {int.estado === 'disponible' ? '● Disponible' : '○ Próximamente'}
               </span>
             </div>
-            <h3 className={styles.intName}>{int.name}</h3>
+            <h3 className={styles.intName}>{int.nombre}</h3>
             <p className={styles.intDesc}>{int.desc}</p>
             <div className={styles.cardActions}>
-              {int.status === 'connected' ? (
-                <button className="btn btn-primary btn-sm">Configure</button>
+              {int.estado === 'disponible' && int.href ? (
+                <Link href={int.href} className="btn btn-primary btn-sm">Conectar</Link>
               ) : (
-                <button className="btn btn-outline btn-sm">Connect</button>
-              )}
-              {int.status === 'connected' && (
-                <button className="btn btn-ghost btn-sm">No</button>
+                <button className="btn btn-ghost btn-sm" disabled>Próximamente</button>
               )}
             </div>
           </div>
@@ -98,28 +106,29 @@ export default function IntegracionesPage() {
         {/* Request Integration */}
         <div className={`card ${styles.requestCard}`}>
           <div className={styles.requestPlus}>+</div>
-          <p className={styles.requestText}>
-            Can&apos;t find your platform? Let us know!
-          </p>
-          <button className="btn btn-outline btn-sm">Request Integration</button>
+          <h3 className={styles.requestTitle}>¿No encontrás tu plataforma?</h3>
+          <p className={styles.requestText}>Contanos qué plataforma usás y la agregamos.</p>
+          <Link href="/dashboard/integraciones/solicitar" className="btn btn-outline btn-sm">
+            Solicitar integración
+          </Link>
         </div>
       </div>
 
       {/* API Status Bar */}
       <div className={`card ${styles.apiBar}`}>
         <div className={styles.apiStat}>
-          <span className={styles.apiNum}>{connected}/5</span>
-          <span className={styles.apiLabel}>All integration tools are currently running at 98.95% uptime.</span>
+          <span className={styles.apiNum}>{conectadas}/8</span>
+          <span className={styles.apiLabel}>Integraciones disponibles. Uptime 98.95%.</span>
         </div>
         <div className={styles.apiDivider} />
         <div className={styles.apiStat}>
           <span className={styles.apiNum}>1.2k</span>
-          <span className={styles.apiLabel}>Avg. latency across all connected channels.</span>
+          <span className={styles.apiLabel}>Latencia promedio (ms)</span>
         </div>
         <div className={styles.apiDivider} />
         <div className={styles.apiStat}>
           <span className={styles.apiNum}>342k</span>
-          <span className={styles.apiLabel}>Daily synced records.</span>
+          <span className={styles.apiLabel}>Registros sincronizados por día</span>
         </div>
       </div>
     </div>

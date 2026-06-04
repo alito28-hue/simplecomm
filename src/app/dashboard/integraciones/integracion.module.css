@@ -1,0 +1,38 @@
+.page { display: flex; flex-direction: column; gap: 1.5rem; max-width: 700px; }
+.backLink { font-size: 0.85rem; color: var(--blue); font-weight: 500; }
+.backLink:hover { text-decoration: underline; }
+
+.header { display: flex; align-items: center; gap: 1rem; }
+.logo { font-size: 2.5rem; }
+.title { font-size: 1.75rem; font-weight: 700; font-family: var(--font-heading); }
+.subtitle { font-size: 0.875rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+.sectionTitle { font-size: 0.95rem; font-weight: 700; font-family: var(--font-heading); margin-bottom: 0.75rem; }
+.stepDesc { font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1.25rem; line-height: 1.6; }
+
+.featureList { padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+.featureList li { font-size: 0.875rem; color: var(--text-secondary); }
+
+.loadingCard { padding: 2rem; text-align: center; color: var(--text-muted); }
+
+.connectedCard { padding: 2rem; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+.connectedIcon { font-size: 2.5rem; }
+.connectedTitle { font-size: 1.25rem; font-weight: 700; font-family: var(--font-heading); }
+.connectedDesc { font-size: 0.875rem; color: var(--text-muted); max-width: 380px; }
+.connectedActions { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
+
+.connectBtn { margin-top: 0.5rem; }
+
+.errorBanner {
+  background: var(--error-bg);
+  border: 1px solid #fca5a5;
+  color: var(--error);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+}
+
+.configSection { display: flex; flex-direction: column; gap: 0.9rem; }
+.configField { display: flex; flex-direction: column; gap: 0.35rem; }
+.configField label { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); }
+.configActions { display: flex; justify-content: flex-end; gap: 0.75rem; padding-top: 0.5rem; }

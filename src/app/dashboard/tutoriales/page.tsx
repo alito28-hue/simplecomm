@@ -1,92 +1,89 @@
 import styles from './tutoriales.module.css';
 import Link from 'next/link';
 
-const CATEGORIES = [
-  { icon: '🚀', title: 'Getting Started',       desc: 'The fundamentals to get your shop running in minutes.' },
-  { icon: '⚡', title: 'Invoice Automation',     desc: 'Setup complex billing cycles and automatic payments.' },
-  { icon: '🔗', title: 'Platform Connections',  desc: 'Sync with Shopify, Amazon, and ERP systems.' },
-  { icon: '🔧', title: 'Troubleshooting',        desc: 'Resolve common API and integration sync errors.' },
+const CATEGORIAS = [
+  { icon: '🚀', titulo: 'Primeros pasos',      desc: 'Los fundamentos para tener tu tienda funcionando en minutos.' },
+  { icon: '⚡', titulo: 'Facturación automática', desc: 'Configurá ciclos de facturación y pagos automáticos.' },
+  { icon: '🔗', titulo: 'Conectar plataformas', desc: 'Sincronizá con Shopify, Mercado Libre, y más.' },
+  { icon: '🔧', titulo: 'Solución de problemas', desc: 'Resolvé errores comunes de API y sincronización.' },
 ];
 
-const TUTORIALS = [
+const TUTORIALES = [
   {
-    tag: 'BEGINNER', tagColor: 'success',
-    title: 'Setting Up Your First Merchant Account',
-    desc: 'Learn how to configure your bank accounts and verify your identity fo...',
-    updated: '2 days ago', views: '1.3k', type: 'video',
+    tag: 'PRINCIPIANTE', tagColor: 'success',
+    titulo: 'Configurar tu primera cuenta de vendedor',
+    desc: 'Aprendé a configurar tus datos bancarios y verificar tu identidad fiscal...',
+    actualizado: 'hace 2 días', vistas: '1.3k', tipo: 'video',
   },
   {
-    tag: 'INTERMEDIATE', tagColor: 'warning',
-    title: 'Advanced Invoicing Logic: Conditional Triggers',
-    desc: 'Deep dive into setting up automated triggers based on customer behavio...',
-    readTime: '9 min read', type: 'article',
+    tag: 'INTERMEDIO', tagColor: 'warning',
+    titulo: 'Facturación automática: Triggers condicionales',
+    desc: 'Cómo configurar triggers automáticos basados en el comportamiento del cliente...',
+    lecturaMin: '9 min', tipo: 'articulo',
   },
   {
-    tag: 'EXPERT', tagColor: 'error',
-    title: 'API Sync: Resolving Webhook Latency',
-    desc: 'Technical walkthrough on optimizing your API endpoints for real time...',
-    updated: 'recent', type: 'video',
+    tag: 'EXPERTO', tagColor: 'error',
+    titulo: 'API Sync: Resolver latencia en webhooks',
+    desc: 'Guía técnica para optimizar tus endpoints de API en tiempo real...',
+    actualizado: 'reciente', tipo: 'video',
   },
 ];
 
 export default function TutorialesPage() {
   return (
     <div className={styles.page}>
-      {/* Search header */}
       <div className={styles.heroSection}>
         <div className={styles.heroSearch}>
           <span className={styles.searchIcon}>🔍</span>
-          <input type="text" placeholder="Search tutorials, help articles, or videos..."
+          <input type="text" placeholder="Buscar tutoriales, artículos o videos..."
             className={styles.searchInput} />
         </div>
-        <h1 className={styles.heroTitle}>How can we help you scale today?</h1>
+        <h1 className={styles.heroTitle}>¿En qué podemos ayudarte hoy?</h1>
         <p className={styles.heroSubtitle}>
-          Explore our comprehensive guide of tutorials and documentation designed to
-          help you master SimpleComm&apos;s e-commerce operations suite.
+          Explorá nuestra guía completa de tutoriales y documentación para dominar
+          la suite de operaciones de e-commerce de SimpleComm.
         </p>
       </div>
 
-      {/* Categories */}
       <div className={styles.categoriesGrid}>
-        {CATEGORIES.map((cat) => (
-          <div key={cat.title} className={`card ${styles.catCard}`}>
+        {CATEGORIAS.map((cat) => (
+          <div key={cat.titulo} className={`card ${styles.catCard}`}>
             <div className={styles.catIcon}>{cat.icon}</div>
-            <h3 className={styles.catTitle}>{cat.title}</h3>
+            <h3 className={styles.catTitle}>{cat.titulo}</h3>
             <p className={styles.catDesc}>{cat.desc}</p>
           </div>
         ))}
       </div>
 
-      {/* Latest tutorials */}
       <div className={styles.sectionHeader}>
         <div>
-          <h2 className={styles.sectionTitle}>Latest Tutorials</h2>
-          <p className={styles.sectionSub}>Curated content to improve your operational efficiency.</p>
+          <h2 className={styles.sectionTitle}>Últimos tutoriales</h2>
+          <p className={styles.sectionSub}>Contenido curado para mejorar tu eficiencia operativa.</p>
         </div>
         <div className={styles.viewToggle}>
-          <button className={`${styles.toggleBtn} ${styles.active}`}>Grid</button>
-          <button className={styles.toggleBtn}>List</button>
+          <button className={`${styles.toggleBtn} ${styles.active}`}>Grilla</button>
+          <button className={styles.toggleBtn}>Lista</button>
         </div>
       </div>
 
       <div className={styles.tutGrid}>
-        {TUTORIALS.map((tut) => (
-          <div key={tut.title} className={`card ${styles.tutCard}`}>
-            <div className={`${styles.tutThumb} ${tut.type === 'video' ? styles.videoThumb : styles.articleThumb}`}>
-              {tut.type === 'video' && <div className={styles.playBtn}>▶</div>}
+        {TUTORIALES.map((tut) => (
+          <div key={tut.titulo} className={`card ${styles.tutCard}`}>
+            <div className={`${styles.tutThumb} ${tut.tipo === 'video' ? styles.videoThumb : styles.articleThumb}`}>
+              {tut.tipo === 'video' && <div className={styles.playBtn}>▶</div>}
               <span className={`badge badge-${tut.tagColor}`}>{tut.tag}</span>
             </div>
             <div className={styles.tutBody}>
-              {tut.updated && <span className={styles.tutMeta}>🕐 Updated {tut.updated}</span>}
-              {tut.readTime && <span className={styles.tutMeta}>📖 {tut.readTime}</span>}
-              <h3 className={styles.tutTitle}>{tut.title}</h3>
+              {tut.actualizado && <span className={styles.tutMeta}>🕐 Actualizado {tut.actualizado}</span>}
+              {tut.lecturaMin && <span className={styles.tutMeta}>📖 {tut.lecturaMin} de lectura</span>}
+              <h3 className={styles.tutTitle}>{tut.titulo}</h3>
               <p className={styles.tutDesc}>{tut.desc}</p>
               <div className={styles.tutActions}>
-                {tut.type === 'video'
-                  ? <button className="btn btn-outline btn-sm">▶ Watch Tutorial</button>
-                  : <button className="btn btn-outline btn-sm">Read Article →</button>
+                {tut.tipo === 'video'
+                  ? <button className="btn btn-outline btn-sm">▶ Ver tutorial</button>
+                  : <button className="btn btn-outline btn-sm">Leer artículo →</button>
                 }
-                {tut.views && <span className={styles.tutViews}>👁 {tut.views} views</span>}
+                {tut.vistas && <span className={styles.tutViews}>👁 {tut.vistas} vistas</span>}
               </div>
             </div>
           </div>
@@ -94,24 +91,23 @@ export default function TutorialesPage() {
       </div>
 
       <div style={{ textAlign: 'center' }}>
-        <button className="btn btn-outline">View All 42 Tutorials</button>
+        <button className="btn btn-outline">Ver todos los tutoriales</button>
       </div>
 
-      {/* Support banner */}
       <div className={`card ${styles.supportBanner}`}>
         <div>
-          <h3 className={styles.supportTitle}>Can&apos;t find what you&apos;re looking for?</h3>
+          <h3 className={styles.supportTitle}>¿No encontrás lo que buscás?</h3>
           <p className={styles.supportDesc}>
-            Our support team is available 24/7 to help you with technical setup, billing
-            queries, or feature requests. Join our community forum for developer tips.
+            Nuestro equipo de soporte está disponible 24/7 para ayudarte con configuración técnica,
+            consultas de facturación o solicitudes de funciones. Únete a nuestra comunidad de desarrolladores.
           </p>
         </div>
         <div className={styles.supportBtns}>
-          <button className="btn btn-navy">Visit Help Center</button>
-          <button className="btn btn-outline">Developer Docs</button>
+          <button className="btn btn-navy">Ir al Centro de Ayuda</button>
+          <button className="btn btn-outline">Documentación para devs</button>
         </div>
         <button className="btn btn-primary" style={{ marginLeft: 'auto' }}>
-          💬 Contact Support
+          💬 Contactar soporte
         </button>
       </div>
     </div>
