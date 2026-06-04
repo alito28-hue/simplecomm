@@ -1,0 +1,173 @@
+.infoBanner {
+  display: flex;
+  gap: 0.75rem;
+  background: #fff8f0;
+  border: 1px solid #fed7aa;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.875rem;
+  color: #7c2d12;
+}
+
+.infoBanner strong { display: block; margin-bottom: 0.15rem; }
+.infoBanner p { margin: 0; opacity: 0.85; }
+
+.pageTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 1rem;
+}
+
+.formCard {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-width: 600px;
+}
+
+.amountField {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.currencyIcon {
+  padding: 0.75rem;
+  font-size: 1rem;
+  color: #888;
+  font-weight: 600;
+}
+
+.amountInput {
+  flex: 1;
+  padding: 0.75rem 0.5rem;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  font-family: inherit;
+  background: transparent;
+  color: var(--text-color);
+}
+
+.amountInput::placeholder { color: #bbb; }
+
+.descriptionField,
+.cuitField {
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  border-bottom: 1px solid var(--border-color);
+  outline: none;
+  font-size: 0.9rem;
+  font-family: inherit;
+  background: transparent;
+  color: var(--text-color);
+  resize: none;
+}
+
+.descriptionField::placeholder,
+.cuitField::placeholder { color: #bbb; }
+
+.emailRow {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.emailLabel {
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.toggle {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.toggleInput {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleSlider {
+  position: absolute;
+  inset: 0;
+  background: #ccc;
+  border-radius: 20px;
+  transition: background 0.2s;
+}
+
+.toggleSlider::before {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: white;
+  border-radius: 50%;
+  top: 3px;
+  left: 3px;
+  transition: transform 0.2s;
+}
+
+.toggleInput:checked + .toggleSlider { background: #2e7d32; }
+.toggleInput:checked + .toggleSlider::before { transform: translateX(16px); }
+
+.submitBtn {
+  width: 100%;
+  padding: 0.9rem;
+  background: #2e7d32;
+  color: white;
+  border: none;
+  border-radius: 0 0 8px 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  transition: background 0.15s;
+}
+
+.submitBtn:hover { background: #1b5e20; }
+
+.historySection {
+  margin-top: 1.75rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 1rem;
+  max-width: 600px;
+}
+
+.historyTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-color);
+  cursor: pointer;
+  margin-bottom: 0.75rem;
+}
+
+.chevron { font-size: 0.75rem; }
+
+.emptyText {
+  font-size: 0.85rem;
+  color: #aaa;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  .infoBanner { background: #1c0a00; border-color: #7c2d12; color: #fdba74; }
+}

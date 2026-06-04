@@ -1,0 +1,107 @@
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.pageTitle {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.infoBanner {
+  display: flex;
+  gap: 0.75rem;
+  background: #fff8f0;
+  border: 1px solid #fed7aa;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.875rem;
+  color: #7c2d12;
+}
+
+.infoBanner strong { display: block; margin-bottom: 0.15rem; }
+.infoBanner p { margin: 0; opacity: 0.85; }
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+
+.clientSearch {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 250px;
+}
+
+.clientSelect {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: var(--card-bg);
+  color: var(--text-color);
+}
+
+.newClientBtn {
+  padding: 0.45rem 0.9rem;
+  background: #2e7d32;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.typeSection {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.typeSelect {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: var(--card-bg);
+  color: #aaa;
+  min-width: 220px;
+}
+
+.emailToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.875rem;
+  color: #888;
+  cursor: pointer;
+}
+
+.emptyState {
+  padding: 3rem;
+  text-align: center;
+  color: #aaa;
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+@media (prefers-color-scheme: dark) {
+  .infoBanner { background: #1c0a00; border-color: #7c2d12; color: #fdba74; }
+}

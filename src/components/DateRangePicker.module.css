@@ -1,0 +1,21 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.78rem;
+  color: #555;
+  cursor: pointer;
+  background: var(--card-bg);
+  white-space: nowrap;
+  transition: border-color 0.15s;
+}
+
+.wrap:hover {
+  border-color: #2e7d32;
+}
+
+.icon { font-size: 0.85rem; }
+.chevron { font-size: 0.65rem; opacity: 0.6; }

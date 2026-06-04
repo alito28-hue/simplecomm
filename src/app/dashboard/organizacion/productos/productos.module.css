@@ -1,0 +1,9 @@
+.deleteSelected {
+  border-color: #c62828 !important;
+  color: #c62828 !important;
+}
+
+.deleteSelected:hover {
+  background: #c62828 !important;
+  color: white !important;
+}

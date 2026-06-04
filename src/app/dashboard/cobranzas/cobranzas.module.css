@@ -1,0 +1,33 @@
+.pageTitle {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin-bottom: 1.25rem;
+}
+
+.toolbar {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.clientSelect {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: var(--card-bg);
+  color: #aaa;
+  min-width: 320px;
+  max-width: 500px;
+  width: 100%;
+}
+
+.emptyState {
+  padding: 3rem;
+  text-align: center;
+  color: #aaa;
+  font-size: 0.875rem;
+  font-style: italic;
+  border-bottom: 1px solid var(--border-color);
+}

@@ -1,0 +1,233 @@
+/* ── Navbar principal (verde, igual a Facturante) ── */
+.navbar {
+  background-color: #2e7d32;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  height: 52px;
+  gap: 0.5rem;
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: white;
+  border-radius: 50%;
+  color: #2e7d32;
+  font-weight: 800;
+  font-size: 1.1rem;
+  text-decoration: none;
+  flex-shrink: 0;
+  margin-right: 0.75rem;
+}
+
+/* Lista nav */
+.navList {
+  display: flex;
+  align-items: center;
+  list-style: none;
+  gap: 0.1rem;
+  flex: 1;
+}
+
+.navItem {
+  position: relative;
+}
+
+.navLink {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.4rem 0.65rem;
+  border-radius: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.navLink:hover,
+.navLink.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.chevron {
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+/* Dropdown nav */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  min-width: 200px;
+  z-index: 200;
+  padding: 0.25rem 0;
+}
+
+.dropdownItem {
+  display: block;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: var(--text-color);
+  text-decoration: none;
+  transition: background 0.1s;
+}
+
+.dropdownItem:hover {
+  background: #f1f8f1;
+  color: #2e7d32;
+}
+
+/* User section */
+.userSection {
+  position: relative;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.userBtn {
+  color: rgba(255,255,255,0.9);
+  background: none;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.userBtn:hover {
+  background: rgba(255,255,255,0.15);
+  color: white;
+}
+
+.userDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: white;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+  min-width: 260px;
+  z-index: 200;
+  overflow: hidden;
+}
+
+.userInfo {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.userInfo strong {
+  font-size: 0.9rem;
+  color: var(--text-color);
+}
+
+.userEmail {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.userStats {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.83rem;
+  color: var(--text-color);
+}
+
+.green {
+  color: #2e7d32;
+  font-weight: 600;
+}
+
+.userActions {
+  padding: 0.25rem 0;
+}
+
+.userAction {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 1rem;
+  font-size: 0.875rem;
+  color: var(--text-color);
+  text-decoration: none;
+  background: none;
+  border: none;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.userAction:hover {
+  background: #f5f5f5;
+}
+
+.logout {
+  color: #c62828;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .dropdown,
+  .userDropdown {
+    background: #1e293b;
+    border-color: #334155;
+  }
+
+  .dropdownItem {
+    color: #f1f5f9;
+  }
+
+  .dropdownItem:hover {
+    background: #1a3a1a;
+    color: #66bb6a;
+  }
+
+  .userInfo strong,
+  .userStats,
+  .userAction {
+    color: #f1f5f9;
+  }
+
+  .userAction:hover {
+    background: #334155;
+  }
+}

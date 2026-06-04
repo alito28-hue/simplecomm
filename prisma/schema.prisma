@@ -1,0 +1,343 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── ORGANIZACIÓN (multi-tenant) ──────────────────────────────────────────────
+
+model Organization {
+  id                   String   @id @default(cuid())
+  name                 String
+  cuit                 String   @unique
+  fiscalTreatment      FiscalTreatment @default(RESPONSABLE_INSCRIPTO)
+  address              String?
+  province             String?
+  city                 String?
+  zipCode              String?
+  phone                String?
+  emailAlerts          String?
+  emailAccountant      String?
+  replyTo              String?
+  iibb                 String?
+  cbu                  String?
+  startDate            DateTime?
+  logoUrl              String?
+  enableMessaging      Boolean  @default(false)
+  validateVouchers     Boolean  @default(true)
+  // FCE
+  fceCbu               String?
+  fceTransferOption    String?
+  // Percepciones
+  receivesIva          Boolean  @default(false)
+  receivesGanancias    Boolean  @default(false)
+  receivesSuss         Boolean  @default(false)
+  iibbPerceptionAgent  Boolean  @default(false)
+  trialEndsAt          DateTime?
+  subscriptionStatus   SubscriptionStatus @default(TRIAL)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  users          User[]
+  pointsOfSale   PointOfSale[]
+  clients        Client[]
+  products       Product[]
+  invoices       Invoice[]
+  afipCredential AfipCredential?
+  integrations   Integration[]
+
+  @@map("organizations")
+}
+
+// ─── USUARIO ──────────────────────────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  supabaseId     String   @unique
+  email          String   @unique
+  firstName      String?
+  lastName       String?
+  role           UserRole @default(OPERATOR)
+  organizationId String
+  pointOfSaleId  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pointOfSale  PointOfSale?  @relation(fields: [pointOfSaleId], references: [id])
+
+  @@map("users")
+}
+
+// ─── PUNTO DE VENTA ───────────────────────────────────────────────────────────
+
+model PointOfSale {
+  id             String   @id @default(cuid())
+  organizationId String
+  prefix         String
+  name           String
+  address        String?
+  province       String?
+  city           String?
+  arcaNumber     Int?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  users        User[]
+  invoices     Invoice[]
+
+  @@unique([organizationId, prefix])
+  @@map("points_of_sale")
+}
+
+// ─── CLIENTE ──────────────────────────────────────────────────────────────────
+
+model Client {
+  id                   String          @id @default(cuid())
+  organizationId       String
+  businessName         String
+  docType              DocType         @default(CUIT)
+  docNumber            String
+  fiscalTreatment      FiscalTreatment @default(RESPONSABLE_INSCRIPTO)
+  address              String?
+  province             String?
+  city                 String?
+  zipCode              String?
+  phone                String?
+  contact              String?
+  cbu                  String?
+  emailContact         String?
+  emailBilling         String?
+  emailCopyTo          String?
+  defaultInvoiceType   InvoiceType?
+  defaultPaymentCond   PaymentCondition @default(CONTADO)
+  defaultProductType   ProductType      @default(SERVICES)
+  sendInvoice          Boolean          @default(true)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoices     Invoice[]
+
+  @@unique([organizationId, docNumber])
+  @@map("clients")
+}
+
+// ─── PRODUCTO / SERVICIO ──────────────────────────────────────────────────────
+
+model Product {
+  id             String   @id @default(cuid())
+  organizationId String
+  code           String
+  description    String
+  netPrice       Decimal  @default(0) @db.Decimal(12, 2)
+  ivaRate        IvaRate  @default(IVA_21)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceItems  InvoiceItem[]
+
+  @@unique([organizationId, code])
+  @@map("products")
+}
+
+// ─── COMPROBANTE (FACTURA) ────────────────────────────────────────────────────
+
+model Invoice {
+  id             String        @id @default(cuid())
+  organizationId String
+  pointOfSaleId  String
+  clientId       String?
+  invoiceType    InvoiceType
+  invoiceNumber  Int
+  date           DateTime      @default(now())
+  concept        InvoiceConcept @default(PRODUCTS)
+  paymentCond    PaymentCondition @default(CONTADO)
+  netAmount      Decimal       @default(0) @db.Decimal(12, 2)
+  ivaAmount      Decimal       @default(0) @db.Decimal(12, 2)
+  totalAmount    Decimal       @default(0) @db.Decimal(12, 2)
+  cae            String?
+  caeExpiry      DateTime?
+  status         InvoiceStatus @default(PENDING)
+  sentByEmail    Boolean       @default(false)
+  arcaResponse   Json?
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  pointOfSale  PointOfSale   @relation(fields: [pointOfSaleId], references: [id])
+  client       Client?       @relation(fields: [clientId], references: [id])
+  items        InvoiceItem[]
+
+  @@unique([organizationId, pointOfSaleId, invoiceType, invoiceNumber])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  productId   String?
+  description String
+  quantity    Decimal  @default(1) @db.Decimal(10, 4)
+  unitPrice   Decimal  @default(0) @db.Decimal(12, 2)
+  ivaRate     IvaRate  @default(IVA_21)
+  subtotal    Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
+
+  invoice Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@map("invoice_items")
+}
+
+// ─── CREDENCIAL AFIP/ARCA ─────────────────────────────────────────────────────
+
+model AfipCredential {
+  id              String   @id @default(cuid())
+  organizationId  String   @unique
+  certificatePem  String   @db.Text
+  privateKeyPem   String   @db.Text
+  environment     AfipEnvironment @default(HOMOLOGATION)
+  createdAt       DateTime @default(now())
+  expiresAt       DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("afip_credentials")
+}
+
+// ─── INTEGRACIÓN ──────────────────────────────────────────────────────────────
+
+model Integration {
+  id             String            @id @default(cuid())
+  organizationId String
+  platform       IntegrationPlatform
+  status         IntegrationStatus @default(DISCONNECTED)
+  accessToken    String?           @db.Text
+  refreshToken   String?           @db.Text
+  config         Json?
+  mode           IntegrationMode   @default(MANUAL)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, platform])
+  @@map("integrations")
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
+
+enum FiscalTreatment {
+  RESPONSABLE_INSCRIPTO
+  MONOTRIBUTISTA
+  EXENTO
+  CONSUMIDOR_FINAL
+  NO_CATEGORIZADO
+}
+
+enum UserRole {
+  ADMIN
+  OPERATOR
+}
+
+enum InvoiceType {
+  FACTURA_A
+  FACTURA_B
+  FACTURA_C
+  NOTA_CREDITO_A
+  NOTA_CREDITO_B
+  NOTA_CREDITO_C
+  NOTA_DEBITO_A
+  NOTA_DEBITO_B
+  NOTA_DEBITO_C
+}
+
+enum InvoiceStatus {
+  PENDING
+  AUTHORIZED
+  ERROR
+  CANCELLED
+}
+
+enum InvoiceConcept {
+  PRODUCTS
+  SERVICES
+  PRODUCTS_AND_SERVICES
+}
+
+enum PaymentCondition {
+  CONTADO
+  CUENTA_CORRIENTE
+  TARJETA
+  TRANSFERENCIA
+}
+
+enum IvaRate {
+  EXENTO
+  NO_GRAVADO
+  IVA_2_5
+  IVA_5
+  IVA_10_5
+  IVA_21
+  IVA_27
+}
+
+enum DocType {
+  CUIT
+  CUIL
+  CDI
+  DNI
+  PASAPORTE
+  CONSUMIDOR_FINAL
+}
+
+enum ProductType {
+  PRODUCTS
+  SERVICES
+  PRODUCTS_AND_SERVICES
+}
+
+enum AfipEnvironment {
+  HOMOLOGATION
+  PRODUCTION
+}
+
+enum IntegrationPlatform {
+  MERCADO_LIBRE
+  MERCADO_PAGO
+  TIENDANUBE
+  MERCADO_SHOPS
+  EMPRETIENDA
+  WOOCOMMERCE
+  VTEX
+  SHOPIFY
+  MAGENTO
+  MOBBEX
+  ZAPIER
+  FACTURANTE_API
+}
+
+enum IntegrationStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum IntegrationMode {
+  AUTOMATIC
+  MANUAL
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}

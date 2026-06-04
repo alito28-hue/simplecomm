@@ -1,0 +1,31 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: 1.5px solid;
+}
+
+.connected {
+  color: #2e7d32;
+  border-color: #2e7d32;
+  background: #f0fdf4;
+}
+
+.disconnected {
+  color: #78350f;
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.connected .dot { background: #2e7d32; }
+.disconnected .dot { background: #f59e0b; }

@@ -1,0 +1,34 @@
+.banner {
+  background-color: #fefce8;
+  border-bottom: 1px solid #fde68a;
+  color: #78350f;
+  text-align: center;
+  padding: 0.45rem 1rem;
+  font-size: 0.875rem;
+}
+
+.btn {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.15rem 0.65rem;
+  border: 1.5px solid #2e7d32;
+  border-radius: 20px;
+  color: #2e7d32;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+
+.btn:hover {
+  background: #2e7d32;
+  color: white;
+}
+
+@media (prefers-color-scheme: dark) {
+  .banner {
+    background-color: #1c1a04;
+    border-color: #78350f;
+    color: #fde68a;
+  }
+}
