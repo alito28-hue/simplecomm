@@ -48,11 +48,11 @@ export interface InvoiceResult {
 }
 
 function buildAuth(ticket: AuthTicket, cuit: string): string {
-  return `<Auth>
-    <Token>${ticket.token}</Token>
-    <Sign>${ticket.sign}</Sign>
-    <Cuit>${cuit}</Cuit>
-  </Auth>`;
+  return `<ar:Auth>
+    <ar:Token>${ticket.token}</ar:Token>
+    <ar:Sign>${ticket.sign}</ar:Sign>
+    <ar:Cuit>${cuit}</ar:Cuit>
+  </ar:Auth>`;
 }
 
 function formatAmount(n: number): string {
