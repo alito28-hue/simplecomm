@@ -15,6 +15,7 @@ const NAV_KEYS = [
   { href: '/dashboard/integraciones',          key: 'integrations', icon: '🔗' },
   { href: '/dashboard/ads',                    key: 'ads',          icon: '📈' },
   { href: '/dashboard/tutoriales',             key: 'tutorials',    icon: '📚' },
+  { href: '/dashboard/soporte',                key: 'settings',     icon: '🎫', label: 'Soporte' },
   { href: '/dashboard/organizacion',           key: 'settings',     icon: '⚙' },
 ] as const;
 
