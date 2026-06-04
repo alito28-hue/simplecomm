@@ -1,24 +1,15 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "SimpleComm - Facturación Electrónica",
-  description: "Simplificando el e-commerce en Argentina con facturación automática y masiva.",
+  title: 'SimpleComm — E-commerce Operations Suite',
+  description: 'Automate invoicing, sync platforms, and scale your Argentine e-commerce operations.',
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={inter.variable}>
-      <body>
-        {children}
-      </body>
+    <html lang="en">
+      <body>{children}</body>
     </html>
   );
 }

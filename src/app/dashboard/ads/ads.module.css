@@ -1,0 +1,47 @@
+.page { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.pageHeader { display: flex; align-items: flex-start; justify-content: space-between; }
+.pageTitle { font-size: 1.75rem; font-weight: 700; font-family: var(--font-heading); }
+.pageSubtitle { font-size: 0.875rem; color: var(--text-muted); margin-top: 0.3rem; }
+
+.periodBtns { display: flex; gap: 0.5rem; }
+.periodBtn { padding: 0.4rem 0.9rem; border-radius: var(--radius); border: 1px solid var(--border); background: none; font-size: 0.8rem; cursor: pointer; color: var(--text-secondary); }
+.periodBtn.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+.statsGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
+@media (max-width: 1000px) { .statsGrid { grid-template-columns: repeat(2, 1fr); } }
+
+.statCard { padding: 1.25rem; }
+.statLabel { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 0.35rem; }
+.statValue { font-size: 1.4rem; font-weight: 800; font-family: var(--font-heading); }
+.statDelta { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+.chartGrid { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
+@media (max-width: 800px) { .chartGrid { grid-template-columns: 1fr; } }
+
+.chartCard, .distCard { padding: 1.25rem; }
+.chartTitle { font-size: 0.95rem; font-weight: 700; font-family: var(--font-heading); }
+.chartSub { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+.chartPlaceholder {
+  height: 160px;
+  background: var(--surface-low);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-top: 1rem;
+}
+
+.chartLegend { display: flex; gap: 1.25rem; margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-secondary); }
+.dotBlue, .dotCyan { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 0.3rem; }
+.dotBlue { background: var(--blue); }
+.dotCyan { background: var(--cyan); }
+
+.distBar { height: 12px; background: var(--surface-mid); border-radius: var(--radius-full); overflow: hidden; margin-top: 1rem; }
+.distFill { height: 100%; border-radius: var(--radius-full); }
+.distLabels { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-secondary); }
+
+.tableHeader { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
