@@ -107,8 +107,19 @@ export async function signLoginTicket(
   ) as ArrayBuffer;
 
   // Firmar — pkijs embebe el contenido y agrega authenticated attrs estándar
-  // El último argumento (cryptoEngine) especifica explícitamente el engine a usar
   await signedData.sign(privateKey, 0, 'SHA-1', contentArrayBuffer, cryptoEngine);
+
+  // AFIP requiere el OID combinado sha1WithRSAEncryption (1.2.840.113549.1.1.5)
+  // pkijs puede generar rsaEncryption (1.2.840.113549.1.1.1) que WSAA rechaza
+  if (signedData.signerInfos[0]) {
+    signedData.signerInfos[0].signatureAlgorithm = new pkijs.AlgorithmIdentifier({
+      algorithmId: '1.2.840.113549.1.1.5', // sha1WithRSAEncryption
+      algorithmParams: new asn1js.Null(),
+    });
+    signedData.signerInfos[0].digestAlgorithm = new pkijs.AlgorithmIdentifier({
+      algorithmId: '1.3.14.3.2.26', // SHA-1
+    });
+  }
 
   // Envolver en ContentInfo
   const contentInfo = new pkijs.ContentInfo({

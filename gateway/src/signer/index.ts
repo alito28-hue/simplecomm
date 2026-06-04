@@ -15,9 +15,12 @@ export interface SignResult {
 
 let _cachedSigner: 'openssl' | 'pkijs' | null = null;
 
+// FORCE_PKIJS=true para testear pkijs independientemente de si openssl está disponible
+const FORCE_PKIJS = process.env.FORCE_PKIJS === 'true';
+
 function resolveSigner(): 'openssl' | 'pkijs' {
   if (_cachedSigner) return _cachedSigner;
-  _cachedSigner = isOpensslAvailable() ? 'openssl' : 'pkijs';
+  _cachedSigner = (!FORCE_PKIJS && isOpensslAvailable()) ? 'openssl' : 'pkijs';
   console.log(`[signer] Usando: ${_cachedSigner}`);
   return _cachedSigner;
 }
