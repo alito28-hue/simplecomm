@@ -161,4 +161,53 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
 
     return reply.send({ message: 'Factura marcada para reintento. Llamar POST /v1/invoices/issue con el mismo idempotency_key.' });
   });
+
+  /**
+   * GET /v1/invoices
+   * Lista todas las facturas del tenant con paginación.
+   */
+  app.get<{
+    Querystring: { page?: string; limit?: string; status?: string; source_app?: string };
+  }>('/v1/invoices', {
+    preHandler: authenticateApiKey,
+  }, async (request, reply) => {
+    const page  = Math.max(1, parseInt(request.query.page  ?? '1'));
+    const limit = Math.min(100, parseInt(request.query.limit ?? '20'));
+    const skip  = (page - 1) * limit;
+
+    const where: Record<string, unknown> = { tenantId: request.tenantId };
+    if (request.query.status)     where.status     = request.query.status.toUpperCase();
+    if (request.query.source_app) where.sourceApp  = request.query.source_app;
+
+    const [invoices, total] = await Promise.all([
+      db.invoice.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip,
+      }),
+      db.invoice.count({ where }),
+    ]);
+
+    return reply.send({
+      data: invoices.map(inv => ({
+        invoice_id:     inv.id,
+        invoice_number: inv.invoiceNumber
+          ? `${String(inv.ptoVta).padStart(4,'0')}-${String(inv.invoiceNumber).padStart(8,'0')}`
+          : null,
+        status:         inv.status.toLowerCase(),
+        buyer_name:     inv.buyerName,
+        buyer_doc:      inv.buyerDocNumber,
+        total_amount:   Number(inv.totalAmount),
+        cae:            inv.cae,
+        cae_due_date:   inv.caeDueDate,
+        description:    inv.description,
+        external_ref:   inv.externalRef,
+        source_app:     inv.sourceApp,
+        created_at:     inv.createdAt.toISOString(),
+        error:          inv.errorMessage,
+      })),
+      meta: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
+  });
 }
