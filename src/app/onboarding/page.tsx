@@ -12,7 +12,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError]   = useState('');
 
   const [data, setData] = useState({
     name: '', cuit: '', address: '', province: 'Buenos Aires',
@@ -121,6 +121,7 @@ export default function OnboardingPage() {
                 <div className={styles.checkItem}><span>⬜</span><span>Email confirmado</span></div>
                 <div className={styles.checkItem}><span>⬜</span><span>Datos de empresa</span></div>
                 <div className={styles.checkItem}><span>⬜</span><span>Conexión con ARCA</span></div>
+                <div className={styles.checkItem}><span>🎁</span><span>10 comprobantes gratis para empezar</span></div>
               </div>
             </div>
           )}
@@ -252,13 +253,27 @@ export default function OnboardingPage() {
 
           {step === 3 && (
             <div className={styles.readySection}>
-              <div className={styles.readyIcon}>🚀</div>
+              <div className={styles.readyIcon}>🎉</div>
               <h2 className={styles.stepTitle}>¡Todo listo!</h2>
               <p className={styles.stepDesc}>
-                SimpleComm está configurado. Ya podés empezar a emitir facturas bajo tu CUIT.
+                SimpleComm está configurado y listo para usar.
               </p>
+              <div style={{
+                background: 'var(--surface-low)',
+                border: '1px solid var(--border)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '1rem 1.25rem',
+                margin: '1rem 0 1.5rem',
+                textAlign: 'left',
+              }}>
+                <p style={{ fontWeight: 700, marginBottom: '0.25rem' }}>🎁 10 comprobantes gratis para empezar</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                  No necesitás tarjeta ahora. Emitís tus primeros 10 comprobantes sin costo.
+                  Cuando los uses, podés elegir el plan que mejor se adapte a tu volumen.
+                </p>
+              </div>
               <div className={styles.readyActions}>
-                <button onClick={() => router.push('/login')} className="btn btn-primary btn-lg">Ir al dashboard</button>
+                <button onClick={() => router.push('/dashboard')} className="btn btn-primary btn-lg">Ir al dashboard</button>
               </div>
             </div>
           )}
@@ -268,7 +283,7 @@ export default function OnboardingPage() {
           <div className={styles.nav}>
             {step > 0 && <button onClick={() => setStep(s => s - 1)} className="btn btn-ghost">← Atrás</button>}
             <button onClick={handleNext} className="btn btn-primary" disabled={saving}>
-              {saving ? 'Guardando...' : step === 2 ? 'Finalizar configuración' : 'Continuar →'}
+              {saving ? 'Guardando...' : 'Continuar →'}
             </button>
           </div>
         )}

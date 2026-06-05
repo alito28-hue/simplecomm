@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { PLANS, type PlanId } from '@/lib/usage';
+import { PLANS, type PlanId } from '@/lib/plans';
 
 interface Payment {
   id: string; planId: string; amount: number; currency: string;
@@ -28,6 +28,7 @@ export default function CuentaPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading]   = useState(true);
   const [paying, setPaying]     = useState<string | null>(null);
+  const [confirm, setConfirm]   = useState<string | null>(null);
 
   const pagoStatus = params.get('pago');
 
@@ -40,10 +41,11 @@ export default function CuentaPage() {
 
   async function pagar(planId: string) {
     setPaying(planId);
+    setConfirm(null);
     const res = await fetch('/api/cuenta/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ planId }),
+      body: JSON.stringify({ planId, returnUrl: '/dashboard/cuenta' }),
     });
     const data = await res.json();
     if (data.checkoutUrl) {
@@ -58,8 +60,42 @@ export default function CuentaPage() {
 
   const plan = usage ? (PLANS[usage.planId] ?? PLANS.plan_starter) : PLANS.plan_starter;
 
+  const PLAN_PRICES: Record<PlanId, string> = {
+    plan_starter: '$4.990', plan_pro: '$9.990', plan_enterprise: '$24.990',
+  };
+  const confirmPlan = confirm ? PLANS[confirm as PlanId] : null;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Modal confirmación */}
+      {confirm && confirmPlan && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ padding: '2rem', maxWidth: 420, width: '90%' }}>
+            <h2 style={{ fontWeight: 700, marginBottom: '0.5rem' }}>Confirmar pago</h2>
+            {usage && usage.planId !== confirm && (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+                Cambiás de <strong>{PLANS[usage.planId]?.label}</strong> a <strong>{confirmPlan.label}</strong>.
+              </p>
+            )}
+            <div style={{ background: 'var(--surface-low)', borderRadius: 'var(--radius)', padding: '1rem', marginBottom: '1.25rem' }}>
+              <p style={{ fontWeight: 700 }}>{confirmPlan.label}</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{confirmPlan.monthlyLimit} comprobantes / mes</p>
+              <p style={{ fontWeight: 800, fontSize: '1.5rem', marginTop: '0.5rem' }}>
+                {PLAN_PRICES[confirm as PlanId]}<span style={{ fontSize: '0.8rem', fontWeight: 400 }}>/mes</span>
+              </p>
+            </div>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+              Serás redirigido a Mercado Pago. El plan se activa automáticamente al confirmar el pago.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setConfirm(null)} disabled={paying !== null}>Cancelar</button>
+              <button className="btn btn-primary" onClick={() => pagar(confirm)} disabled={paying !== null}>
+                {paying ? 'Redirigiendo...' : 'Pagar con Mercado Pago'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div>
         <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>DASHBOARD › CUENTA</p>
         <h1 style={{ fontSize: '1.75rem', fontWeight: 700 }}>Estado de cuenta</h1>
@@ -123,18 +159,15 @@ export default function CuentaPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
           {(Object.entries(PLANS) as [PlanId, { label: string; monthlyLimit: number }][]).map(([pid, p]) => {
-            const prices: Record<PlanId, string> = {
-              plan_starter: '$4.990', plan_pro: '$9.990', plan_enterprise: '$24.990',
-            };
             const isCurrent = usage?.planId === pid;
             return (
               <div key={pid} className="card" style={{ padding: '1.25rem', border: isCurrent ? '2px solid var(--blue)' : undefined }}>
                 {isCurrent && <p style={{ fontSize: '0.7rem', color: 'var(--blue)', fontWeight: 700, marginBottom: '0.25rem' }}>✓ PLAN ACTUAL</p>}
                 <p style={{ fontWeight: 700 }}>{p.label}</p>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>{p.monthlyLimit} comprobantes/mes</p>
-                <p style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.75rem' }}>{prices[pid]}<span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>/mes</span></p>
+                <p style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '0.75rem' }}>{PLAN_PRICES[pid]}<span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>/mes</span></p>
                 <button
-                  onClick={() => pagar(pid)}
+                  onClick={() => setConfirm(pid)}
                   disabled={paying !== null}
                   className={`btn btn-sm ${isCurrent ? 'btn-outline' : 'btn-primary'}`}
                   style={{ width: '100%' }}

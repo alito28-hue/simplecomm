@@ -29,7 +29,8 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { planId } = await req.json();
+  const body = await req.json();
+  const { planId, returnUrl } = body;
   if (!planId || !(planId in PLANS)) {
     return NextResponse.json({ error: 'Plan inválido' }, { status: 400 });
   }
@@ -53,9 +54,9 @@ export async function POST(req: NextRequest) {
         currency_id: 'ARS',
       }],
       back_urls: {
-        success: `${APP_URL}/dashboard/cuenta?pago=ok`,
-        failure: `${APP_URL}/dashboard/cuenta?pago=error`,
-        pending: `${APP_URL}/dashboard/cuenta?pago=pendiente`,
+        success: `${APP_URL}${returnUrl ?? '/dashboard/cuenta'}?pago=ok`,
+        failure: `${APP_URL}${returnUrl ?? '/dashboard/cuenta'}?pago=error`,
+        pending: `${APP_URL}${returnUrl ?? '/dashboard/cuenta'}?pago=pendiente`,
       },
       auto_return: 'approved',
       external_reference: `${user.id}:${planId}`,

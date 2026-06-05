@@ -1,16 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
+import { PLANS, TRIAL_LIMIT, getPlan } from '@/lib/plans';
 
-export const PLANS = {
-  plan_starter:    { label: 'Starter',    monthlyLimit: 50   },
-  plan_pro:        { label: 'Pro',        monthlyLimit: 150  },
-  plan_enterprise: { label: 'Enterprise', monthlyLimit: 1500 },
-} as const;
-
-export type PlanId = keyof typeof PLANS;
-
-export function getPlan(planId: string | null) {
-  return PLANS[(planId ?? 'plan_starter') as PlanId] ?? PLANS.plan_starter;
-}
+// Re-export so existing server-side imports don't need to change
+export { PLANS, TRIAL_LIMIT, getPlan };
+export type { PlanId } from '@/lib/plans';
 
 export async function getOrgUsage(organizationId: string) {
   const supabase = await createClient();
@@ -22,8 +15,8 @@ export async function getOrgUsage(organizationId: string) {
 
   if (!org) return null;
 
-  const plan = getPlan(org.planId);
-  const now  = new Date();
+  const plan  = getPlan(org.planId);
+  const now   = new Date();
   const resetAt = org.invoiceCountResetAt ? new Date(org.invoiceCountResetAt) : new Date(0);
   const needsReset =
     now.getFullYear() !== resetAt.getFullYear() ||
@@ -39,14 +32,20 @@ export async function getOrgUsage(organizationId: string) {
     currentCount = 0;
   }
 
+  const isSubscribed    = org.subscriptionStatus === 'ACTIVE';
+  const effectiveLimit  = isSubscribed ? plan.monthlyLimit : TRIAL_LIMIT;
+
   return {
-    planId:             (org.planId ?? 'plan_starter') as PlanId,
+    planId:             (org.planId ?? 'plan_starter') as import('@/lib/plans').PlanId,
     planLabel:          plan.label,
-    monthlyLimit:       plan.monthlyLimit,
+    monthlyLimit:       effectiveLimit,
     currentCount,
-    remaining:          Math.max(0, plan.monthlyLimit - currentCount),
-    percentage:         Math.min(100, Math.round((currentCount / plan.monthlyLimit) * 100)),
-    subscriptionStatus: org.subscriptionStatus,
+    remaining:          Math.max(0, effectiveLimit - currentCount),
+    percentage:         Math.min(100, Math.round((currentCount / effectiveLimit) * 100)),
+    subscriptionStatus: org.subscriptionStatus as string | null,
+    isSubscribed,
+    isTrial:            !isSubscribed && currentCount < TRIAL_LIMIT,
+    trialRemaining:     !isSubscribed ? Math.max(0, TRIAL_LIMIT - currentCount) : null,
   };
 }
 
@@ -63,13 +62,26 @@ export async function checkAndIncrementUsage(
     return { allowed: false, reason: 'Cuenta cancelada. Contactá soporte.', current: usage.currentCount, limit: usage.monthlyLimit };
   }
 
-  if (usage.currentCount >= usage.monthlyLimit) {
-    return {
-      allowed: false,
-      reason:  `Límite mensual alcanzado (${usage.currentCount}/${usage.monthlyLimit}). Actualizá tu plan para continuar.`,
-      current: usage.currentCount,
-      limit:   usage.monthlyLimit,
-    };
+  if (!usage.isSubscribed) {
+    // Trial mode
+    if (usage.currentCount >= TRIAL_LIMIT) {
+      return {
+        allowed: false,
+        reason:  `Período de prueba agotado (${usage.currentCount}/${TRIAL_LIMIT} comprobantes gratuitos usados). Suscribite para continuar.`,
+        current: usage.currentCount,
+        limit:   TRIAL_LIMIT,
+      };
+    }
+  } else {
+    // Subscribed: check plan limit
+    if (usage.currentCount >= usage.monthlyLimit) {
+      return {
+        allowed: false,
+        reason:  `Límite mensual alcanzado (${usage.currentCount}/${usage.monthlyLimit}). Actualizá tu plan para continuar.`,
+        current: usage.currentCount,
+        limit:   usage.monthlyLimit,
+      };
+    }
   }
 
   const supabase = await createClient();
