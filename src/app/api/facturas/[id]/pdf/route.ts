@@ -1,17 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 
-const GATEWAY_URL    = process.env.GATEWAY_URL    ?? 'https://simplecomm-production.up.railway.app';
-const GATEWAY_API_KEY = process.env.GATEWAY_API_KEY ?? '';
-
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  const apiKey = await getGatewayKey(user.id);
+
   const res = await fetch(`${GATEWAY_URL}/v1/invoices/${id}/pdf`, {
-    headers: { 'Authorization': `Bearer ${GATEWAY_API_KEY}` },
+    headers: { 'Authorization': `Bearer ${apiKey}` },
     signal: AbortSignal.timeout(15_000),
   });
 

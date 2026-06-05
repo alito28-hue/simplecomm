@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-
-const GATEWAY_URL = process.env.GATEWAY_URL ?? 'https://simplecomm-production.up.railway.app';
-const GATEWAY_API_KEY = process.env.GATEWAY_API_KEY ?? '';
+import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
@@ -17,8 +15,10 @@ export async function GET(req: NextRequest) {
   const params = new URLSearchParams({ page, limit });
   if (status) params.set('status', status);
 
+  const apiKey = await getGatewayKey(user.id);
+
   const res = await fetch(`${GATEWAY_URL}/v1/invoices?${params}`, {
-    headers: { 'Authorization': `Bearer ${GATEWAY_API_KEY}` },
+    headers: { 'Authorization': `Bearer ${apiKey}` },
     signal: AbortSignal.timeout(15_000),
   });
 
