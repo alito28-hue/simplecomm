@@ -82,6 +82,42 @@
   flex-shrink: 0;
 }
 
+/* Accordion Facturación */
+.navBtn {
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.chevron {
+  margin-left: auto;
+  font-size: 0.65rem;
+  opacity: 0.6;
+}
+
+.subMenu {
+  padding: 0.2rem 0 0.2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.subItem {
+  display: block;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.5);
+  border-radius: var(--radius);
+  transition: all 0.15s;
+  text-decoration: none;
+}
+
+.subItem:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.06); }
+.subActive { color: #fff !important; background: rgba(0,122,255,0.15) !important; }
+
 /* Bottom */
 .bottom {
   padding: 0.75rem 0.5rem 1rem;

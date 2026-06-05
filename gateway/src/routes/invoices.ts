@@ -8,13 +8,15 @@ const issueSchema = z.object({
   idempotency_key: z.string().min(1).max(255),
   invoice: z.object({
     total_amount: z.number().positive(),
+    invoice_letter: z.enum(['A', 'B', 'C']).optional().default('B'),
+    iva_rate: z.number().optional().default(21),
     concept: z.number().int().min(1).max(3).optional(),
     description: z.string().optional(),
     pto_vta: z.number().int().positive().optional(),
   }),
   buyer: z.object({
     full_name: z.string().min(1),
-    doc_type: z.enum(['DNI', 'CUIT', 'CUIL', 'CDI', 'PASAPORTE', 'CONSUMIDOR_FINAL']),
+    doc_type: z.string().default('CONSUMIDOR_FINAL'),
     doc_number: z.string().default('0'),
     email: z.string().email().optional(),
   }),
@@ -59,6 +61,8 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
         },
         invoice: {
           totalAmount: body.invoice.total_amount,
+          invoiceLetter: body.invoice.invoice_letter as 'A' | 'B' | 'C' | undefined,
+          ivaRate: body.invoice.iva_rate,
           concept: body.invoice.concept,
           description: body.invoice.description,
         },

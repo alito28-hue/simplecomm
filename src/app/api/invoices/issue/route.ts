@@ -2,22 +2,38 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { randomUUID } from 'crypto';
 
-const GATEWAY_URL = process.env.GATEWAY_URL ?? 'https://simplecomm-production.up.railway.app';
+const GATEWAY_URL    = process.env.GATEWAY_URL    ?? 'https://simplecomm-production.up.railway.app';
 const GATEWAY_API_KEY = process.env.GATEWAY_API_KEY ?? '';
 
 export async function POST(req: NextRequest) {
-  // Verificar auth
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { amount, description, docNumber, sendEmail } = await req.json();
+  const {
+    amount,
+    description,
+    docNumber,
+    docType,
+    buyerName,
+    concept,
+    invoiceLetter = 'B',  // 'A' | 'B' | 'C'
+    ivaRate = 21,          // 21, 10.5, 27, 0
+    buyerCuit,
+  } = await req.json();
 
   if (!amount || amount <= 0) {
-    return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+    return NextResponse.json({ error: 'Monto inválido' }, { status: 400 });
   }
+
+  // Para Factura A, el receptor debe ser CUIT
+  const finalDocType = invoiceLetter === 'A'
+    ? 'CUIT'
+    : (docType ?? (docNumber ? 'DNI' : 'CONSUMIDOR_FINAL'));
+
+  const finalDocNumber = invoiceLetter === 'A'
+    ? (buyerCuit || docNumber || '0')
+    : (docNumber || '0');
 
   const idempotencyKey = `${user.id}:${randomUUID()}`;
 
@@ -25,13 +41,15 @@ export async function POST(req: NextRequest) {
     idempotency_key: idempotencyKey,
     invoice: {
       total_amount: amount,
-      concept: 1,
-      description: description || 'Venta',
+      invoice_letter: invoiceLetter,
+      iva_rate: ivaRate,
+      concept: concept ?? 1,
+      description: description ?? 'Venta',
     },
     buyer: {
-      full_name: 'Consumidor Final',
-      doc_type: docNumber ? 'DNI' : 'CONSUMIDOR_FINAL',
-      doc_number: docNumber || '0',
+      full_name:   buyerName ?? 'Consumidor Final',
+      doc_type:    finalDocType,
+      doc_number:  finalDocNumber,
     },
     source_app: 'simplecomm',
   };
@@ -43,6 +61,7 @@ export async function POST(req: NextRequest) {
       'Authorization': `Bearer ${GATEWAY_API_KEY}`,
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60_000),
   });
 
   const data = await res.json();
@@ -53,9 +72,9 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     invoiceNumber: data.invoice_number,
-    cae: data.cae,
-    caeDueDate: data.cae_due_date,
-    pdfBase64: data.pdf_base64,
-    status: data.status,
+    cae:           data.cae,
+    caeDueDate:    data.cae_due_date,
+    pdfBase64:     data.pdf_base64,
+    status:        data.status,
   });
 }

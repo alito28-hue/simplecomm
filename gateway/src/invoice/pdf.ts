@@ -4,8 +4,9 @@ import type { Tenant } from '@prisma/client';
 
 interface PdfData {
   tenant: Tenant;
-  invoiceNumber: string;   // "0004-00000001"
-  invoiceDate: string;     // YYYYMMDD
+  invoiceNumber: string;       // "0004-00000001"
+  invoiceDate: string;         // YYYYMMDD
+  invoiceLetter?: string;      // 'A' | 'B' | 'C'
   buyer: {
     fullName: string;
     docType: string;
@@ -15,7 +16,7 @@ interface PdfData {
   amounts: InvoiceAmounts;
   description?: string;
   cae: string;
-  caeDueDate: string;      // YYYYMMDD
+  caeDueDate: string;          // YYYYMMDD
 }
 
 function formatAfipDate(yyyymmdd: string): string {
@@ -54,13 +55,15 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
       .text('IVA Responsable Inscripto', leftCol + 8, 80)
       .text('Ingresos Brutos', leftCol + 8, 94);
 
-    // ── Recuadro letra "B" (centro) ────────────────────────────────────────
+    // ── Recuadro letra (centro) ────────────────────────────────────────────
+    const letter = data.invoiceLetter ?? 'B';
+    const letterCodes: Record<string, string> = { A: 'CÓDIGO 01', B: 'CÓDIGO 06', C: 'CÓDIGO 11' };
     const letterX = doc.page.width / 2 - 30;
     doc.rect(letterX, 40, 60, 120).stroke(BLACK);
     doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(52)
-      .text('B', letterX, 62, { width: 60, align: 'center' });
+      .text(letter, letterX, 62, { width: 60, align: 'center' });
     doc.font('Helvetica').fontSize(7).fillColor(GRAY)
-      .text('CÓDIGO 06', letterX, 132, { width: 60, align: 'center' });
+      .text(letterCodes[letter] ?? 'CÓDIGO 06', letterX, 132, { width: 60, align: 'center' });
 
     // ── Recuadro tipo y número (columna derecha) ───────────────────────────
     doc.rect(doc.page.width / 2 + 32, 40, pageWidth / 2 - 22, 120).stroke(BLACK);
@@ -106,12 +109,25 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
       .text(data.description ?? 'Servicios', leftCol + 8, y + 7, { width: pageWidth - 100 })
       .text(`$ ${formatMoney(data.amounts.impTotal)}`, doc.page.width - 120, y + 7, { width: 80, align: 'right' });
 
-    // ── Total ─────────────────────────────────────────────────────────────
-    y += 40;
-    doc.rect(doc.page.width - 200, y, 160, 28).stroke(BLACK);
+    // ── Totales (IVA discriminado solo para Factura A) ────────────────────
+    y += 30;
+    const amtX = doc.page.width - 200;
+
+    if (letter === 'A' && data.amounts.impIVA > 0) {
+      // Factura A: mostrar neto + IVA + total
+      doc.font('Helvetica').fontSize(9).fillColor(GRAY)
+        .text('Subtotal neto:', amtX, y)
+        .text(`$ ${formatMoney(data.amounts.impNeto)}`, amtX + 70, y, { width: 80, align: 'right' });
+      y += 16;
+      doc.text('IVA 21%:', amtX, y)
+        .text(`$ ${formatMoney(data.amounts.impIVA)}`, amtX + 70, y, { width: 80, align: 'right' });
+      y += 16;
+    }
+
+    doc.rect(amtX, y, 160, 28).stroke(BLACK);
     doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(10)
-      .text('Importe Total: $', doc.page.width - 195, y + 8)
-      .text(formatMoney(data.amounts.impTotal), doc.page.width - 65, y + 8, { width: 55, align: 'right' });
+      .text('Importe Total: $', amtX + 5, y + 8)
+      .text(formatMoney(data.amounts.impTotal), amtX + 90, y + 8, { width: 65, align: 'right' });
 
     // ── CAE ───────────────────────────────────────────────────────────────
     y = doc.page.height - 120;

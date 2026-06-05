@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { db } from '../db/client';
 import { getValidTicket, invalidateTicket } from '../wsaa/cache';
 import { feCompUltimoAutorizado, feCAESolicitar } from '../wsfe/client';
-import { calculateFacturaB, toAfipDate, docTypeToAfipId, formatInvoiceNumber } from './calculate';
+import { calculateByType, CBTE_TYPE, toAfipDate, docTypeToAfipId, formatInvoiceNumber, parseIvaRate, type InvoiceLetterType, type IvaRateId } from './calculate';
 import { generateInvoicePdf } from './pdf';
 import { endpoints, config } from '../config';
 
@@ -17,7 +17,9 @@ export interface IssueRequest {
     email?: string;
   };
   invoice: {
-    totalAmount: number;    // Total final con IVA incluido
+    totalAmount: number;    // Para B/C: total con IVA. Para A: monto NETO
+    invoiceLetter?: InvoiceLetterType; // 'A' | 'B' | 'C' (default 'B')
+    ivaRate?: number;       // 21, 10.5, 27, 0 (default 21)
     concept?: number;       // 1=Productos, 2=Servicios, 3=Ambos (default 1)
     description?: string;
   };
@@ -35,6 +37,7 @@ export interface IssueResult {
   pdfBase64: string;
 }
 
+// Mantenemos para compatibilidad pero ahora usamos cbteType dinámico
 const CBTE_TYPE_FACTURA_B = 6;
 
 /**
@@ -71,7 +74,16 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
   }
 
   // ── Calcular importes ────────────────────────────────────────────────────
-  const amounts = calculateFacturaB(req.invoice.totalAmount);
+  const invoiceLetter: InvoiceLetterType = req.invoice.invoiceLetter ?? 'B';
+  const ivaRateId: IvaRateId = parseIvaRate(req.invoice.ivaRate ?? 21);
+  const cbteType = CBTE_TYPE[invoiceLetter];
+
+  // Para Factura A, el receptor debe tener CUIT
+  if (invoiceLetter === 'A' && !['CUIT','CUIL'].includes(req.buyer.docType.toUpperCase())) {
+    throw new Error('Factura A requiere receptor con CUIT o CUIL');
+  }
+
+  const amounts = calculateByType(req.invoice.totalAmount, invoiceLetter, ivaRateId);
   const docTypeId = docTypeToAfipId(req.buyer.docType);
   const docNumber = docTypeId === 99 ? '0' : req.buyer.docNumber.replace(/\D/g, '');
   const cbteFch = toAfipDate();
@@ -88,7 +100,7 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
           tenantId: req.tenantId,
           idempotencyKey: req.idempotencyKey,
           ptoVta: req.ptoVta,
-          invoiceType: CBTE_TYPE_FACTURA_B,
+          invoiceType: cbteType,
           buyerDocType: docTypeId,
           buyerDocNumber: docNumber,
           buyerName: req.buyer.fullName,
@@ -111,11 +123,7 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
     // ── Obtener último número de comprobante ──────────────────────────────
     await log(req.tenantId, dbInvoice.id, requestId, 'wsfe_last', 'pkijs', true, 'Consultando último comprobante');
     const lastNumber = await feCompUltimoAutorizado(
-      endpoints.wsfe,
-      ticket,
-      tenant.cuit,
-      req.ptoVta,
-      CBTE_TYPE_FACTURA_B
+      endpoints.wsfe, ticket, tenant.cuit, req.ptoVta, cbteType
     );
     const nextNumber = lastNumber + 1;
 
@@ -123,7 +131,7 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
     await log(req.tenantId, dbInvoice.id, requestId, 'wsfe_issue', 'pkijs', true, `Solicitando CAE para comprobante ${nextNumber}`);
     const result = await feCAESolicitar(endpoints.wsfe, ticket, tenant.cuit, {
       ptoVta: req.ptoVta,
-      cbteType: CBTE_TYPE_FACTURA_B,
+      cbteType,
       concept,
       docType: docTypeId,
       docNumber,
@@ -145,6 +153,7 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
       tenant,
       invoiceNumber: formatInvoiceNumber(req.ptoVta, result.cbteNro),
       invoiceDate: cbteFch,
+      invoiceLetter,
       buyer: req.buyer,
       amounts,
       description: req.invoice.description,
