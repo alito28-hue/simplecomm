@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
+import { checkAndIncrementUsage } from '@/lib/usage';
 
 const USER_AGENT = 'SimpleComm (alito28@gmail.com)';
 
@@ -101,6 +102,12 @@ export async function POST(req: NextRequest) {
     const amountForGateway = letter === 'A'
       ? Math.round((totalAmount / (1 + IVA_RATE)) * 100) / 100
       : totalAmount;
+
+    const usageCheck = await checkAndIncrementUsage(integration.organizationId);
+    if (!usageCheck.allowed) {
+      console.warn(`[TN webhook] Límite de plan alcanzado para org ${integration.organizationId}: ${usageCheck.reason}`);
+      return NextResponse.json({ ok: true, skipped: 'plan_limit' });
+    }
 
     const gatewayApiKey = await getGatewayKey(integration.organizationId);
     const gatewayRes = await fetch(`${GATEWAY_URL}/v1/invoices/issue`, {

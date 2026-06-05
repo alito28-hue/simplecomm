@@ -23,6 +23,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/mayor" className={styles.navItem}>⊞ Dashboard</Link>
           <Link href="/mayor/clientes" className={styles.navItem}>👥 Clientes</Link>
           <Link href="/mayor/tickets" className={styles.navItem}>🎫 Tickets</Link>
+          <Link href="/mayor/planes" className={styles.navItem}>📊 Planes</Link>
         </nav>
         <div className={styles.bottom}>
           <Link href="/dashboard" className={styles.bottomLink}>← Ir a mi dashboard</Link>

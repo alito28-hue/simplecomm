@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
+import { checkAndIncrementUsage } from '@/lib/usage';
 
 /**
  * Detecta el tipo de factura según:
@@ -122,7 +123,12 @@ export async function POST(req: NextRequest) {
       ? Math.round((totalAmount / (1 + IVA_RATE)) * 100) / 100
       : totalAmount;
 
-    // Emitir factura via Gateway con el API key de la organización
+    const usageCheck = await checkAndIncrementUsage(integration.organizationId);
+    if (!usageCheck.allowed) {
+      console.warn(`[ML webhook] Límite de plan alcanzado para org ${integration.organizationId}: ${usageCheck.reason}`);
+      return NextResponse.json({ ok: true, skipped: 'plan_limit' });
+    }
+
     const gatewayApiKey = await getGatewayKey(integration.organizationId);
     const gatewayRes = await fetch(`${GATEWAY_URL}/v1/invoices/issue`, {
       method: 'POST',

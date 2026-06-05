@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { randomUUID } from 'crypto';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
+import { checkAndIncrementUsage } from '@/lib/usage';
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -32,6 +33,11 @@ export async function POST(req: NextRequest) {
   const finalDocNumber = invoiceLetter === 'A'
     ? (buyerCuit || docNumber || '0')
     : (docNumber || '0');
+
+  const usageCheck = await checkAndIncrementUsage(user.id);
+  if (!usageCheck.allowed) {
+    return NextResponse.json({ error: usageCheck.reason, limitReached: true }, { status: 402 });
+  }
 
   const idempotencyKey = `${user.id}:${randomUUID()}`;
 
