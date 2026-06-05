@@ -108,6 +108,22 @@ export async function POST(req: NextRequest) {
 
     console.log(`[ML webhook] Orden ${orderId} → Factura ${letter} | Comprador: ${buyerName} | Doc: ${docType} ${docNumber}`);
 
+    /**
+     * Conversión de monto según tipo de factura:
+     *
+     * ML siempre envía total_amount = precio BRUTO (IVA incluido).
+     *
+     * Factura B → Gateway espera bruto (él descuenta IVA internamente y no lo discrimina)
+     * Factura A → Gateway espera NETO (él agrega IVA encima y lo discrimina)
+     * Factura C → Sin IVA, el bruto = neto
+     *
+     * Para A: neto = bruto / 1.21  (asumimos 21% — el más común en ML)
+     */
+    const IVA_RATE = 0.21;
+    const amountForGateway = letter === 'A'
+      ? Math.round((totalAmount / (1 + IVA_RATE)) * 100) / 100
+      : totalAmount;
+
     // Emitir factura via Gateway
     const gatewayRes = await fetch(`${GATEWAY_URL}/v1/invoices/issue`, {
       method: 'POST',
@@ -118,13 +134,10 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         idempotency_key: `mercadolibre:order:${orderId}`,
         invoice: {
-          total_amount:   totalAmount,
+          total_amount:   amountForGateway,
           invoice_letter: letter,
           concept:        1,
           description:    `Venta ML #${orderId}`,
-          // Para Factura A el total_amount es el NETO — ML ya incluye IVA en el precio,
-          // por lo que para A necesitamos dividir. ML informa si es B2B en los metadatos.
-          // TODO: confirmar con cada cliente si sus ventas de ML son B2B o B2C
         },
         buyer: {
           full_name:  buyerName,

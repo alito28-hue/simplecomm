@@ -46,21 +46,33 @@ const modules = [
 const plans = [
   {
     name: 'Inicial',
-    limit: 'Hasta 50 comprobantes',
-    description: 'Para tiendas que están empezando o venden pocos pedidos por mes.',
-    features: ['Facturas A, B y C', 'Integraciones e-commerce', 'Facturación manual web'],
+    price: '$4.990',
+    period: '/ mes',
+    icon: '50',
+    description: 'Ideal para tiendas que están empezando',
+    features: ['50 comprobantes por mes', 'Facturas A, B y C', 'Integración con Mercado Libre', 'Soporte por email', 'Dashboard básico'],
+    cta: 'Contratar Inicial',
+    highlighted: false,
   },
   {
     name: 'Intermedio',
-    limit: 'Hasta 200 comprobantes',
-    description: 'Para tiendas con operación activa que necesitan automatizar más pedidos.',
-    features: ['Todo lo del Inicial', 'Facturación por lotes', 'Reportes para revisar el mes'],
+    price: '$9.990',
+    period: '/ mes',
+    icon: '200',
+    description: 'Para e-commerce con operación activa',
+    features: ['200 comprobantes por mes', 'Facturas A, B y C', 'Todas las integraciones incluidas', 'Soporte prioritario', 'Importación de lotes (CSV)', 'Dashboard con métricas'],
+    cta: 'Contratar Intermedio',
+    highlighted: true,
   },
   {
     name: 'Pro',
-    limit: 'Comprobantes ilimitados',
+    price: 'A consultar',
+    period: '',
+    icon: '∞',
     description: 'Para tiendas con volumen alto o campañas que disparan muchos pedidos.',
-    features: ['Todo lo del Intermedio', 'Comprobantes ilimitados', 'Preparado para módulo Meta Ads'],
+    features: ['Comprobantes ilimitados', 'Facturación masiva (batch API)', 'Todas las integraciones', 'Soporte dedicado', 'API personalizada', 'Onboarding con el equipo técnico'],
+    cta: 'Contactar ventas',
+    highlighted: false,
   },
 ];
 
@@ -204,18 +216,33 @@ export default function Home() {
 
         <div className={styles.plans}>
           {plans.map((plan) => (
-            <article className={styles.planCard} key={plan.name}>
-              <div>
-                <p>{plan.name}</p>
-                <h3>{plan.limit}</h3>
-                <small>{plan.description}</small>
+            <article
+              className={`${styles.planCard} ${plan.highlighted ? styles.planHighlighted : ''}`}
+              key={plan.name}
+            >
+              {plan.highlighted && <div className={styles.planBadge}>Más popular</div>}
+
+              <div className={styles.planIcon}>{plan.icon}</div>
+              <h3 className={styles.planName}>{plan.name}</h3>
+              <p className={styles.planDesc}>{plan.description}</p>
+
+              <div className={styles.priceWrap}>
+                <span className={styles.price}>{plan.price}</span>
+                {plan.period && <span className={styles.period}>{plan.period}</span>}
               </div>
-              <ul>
+
+              <ul className={styles.planFeatures}>
                 {plan.features.map((feature) => (
-                  <li key={feature}>{feature}</li>
+                  <li key={feature}><span>✓</span>{feature}</li>
                 ))}
               </ul>
-              <Link href="/register" className="btn btn-primary">Elegir plan</Link>
+
+              <Link
+                href="/register"
+                className={`btn ${plan.highlighted ? 'btn-primary' : 'btn-outline'} ${styles.planCta}`}
+              >
+                {plan.cta}
+              </Link>
             </article>
           ))}
         </div>
