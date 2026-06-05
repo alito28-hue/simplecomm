@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/onboarding'];
+const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password', '/onboarding'];
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -38,7 +38,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isPublic) {
+  if (user && isPublic && pathname !== '/reset-password') {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);

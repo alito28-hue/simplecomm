@@ -73,8 +73,10 @@ export default function MercadoLibrePage() {
             <h2 className={styles.sectionTitle}>¿Qué hace esta integración?</h2>
             <ul className={styles.featureList}>
               <li>✓ Detecta automáticamente los pedidos pagados</li>
-              <li>✓ Emite Factura B a consumidor final por cada venta</li>
-              <li>✓ Sincroniza datos del comprador (nombre, DNI/CUIT si disponible)</li>
+              <li>✓ Emite Factura A si el comprador tiene CUIT (responsable inscripto)</li>
+              <li>✓ Emite Factura B a consumidor final (DNI o sin datos)</li>
+              <li>✓ Emite Factura C si el vendedor es monotributista</li>
+              <li>✓ Sincroniza datos del comprador (nombre, DNI/CUIT)</li>
               <li>✓ Guarda el CAE asociado a cada pedido</li>
             </ul>
           </div>
