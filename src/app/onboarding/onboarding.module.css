@@ -40,3 +40,20 @@
 .readyActions { display: flex; gap: 0.75rem; justify-content: center; margin-top: 1.5rem; flex-wrap: wrap; }
 
 .nav { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.75rem; padding-top: 1.25rem; border-top: 1px solid var(--border); }
+
+/* AFIP step */
+.helpLink { color: var(--blue); text-decoration: underline; font-size: inherit; }
+.methodCards { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-top: 0.35rem; }
+.methodCard { border: 2px solid var(--border); border-radius: var(--radius-md); padding: 0.85rem; cursor: pointer; transition: border-color 0.15s; }
+.methodCard:hover { border-color: var(--blue); }
+.methodSelected { border-color: var(--blue); background: var(--blue-light); }
+.methodIcon { font-size: 1.4rem; margin-bottom: 0.35rem; }
+.methodTitle { font-size: 0.82rem; font-weight: 700; margin-bottom: 0.2rem; }
+.methodDesc { font-size: 0.74rem; color: var(--text-muted); line-height: 1.4; }
+
+.delegationSteps { background: var(--surface-low); border-radius: var(--radius-md); padding: 1rem; margin-top: 0.5rem; }
+.delegationTitle { font-size: 0.82rem; font-weight: 700; margin-bottom: 0.5rem; }
+.stepsList { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.8; padding-left: 1.25rem; margin-bottom: 0.75rem; }
+
+.certUpload { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem; }
+.certNote { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.25rem; }

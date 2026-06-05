@@ -1,4 +1,5 @@
 import styles from './tutoriales.module.css';
+import Link from 'next/link';
 
 const CATEGORIAS = [
   { icon: '🚀', titulo: 'Primeros pasos',      desc: 'Los fundamentos para tener tu tienda funcionando en minutos.' },
@@ -9,9 +10,15 @@ const CATEGORIAS = [
 
 const TUTORIALES = [
   {
+    tag: 'ESENCIAL', tagColor: 'error',
+    titulo: 'Conectar tu empresa con ARCA',
+    desc: 'Autorizá a SimpleComm para emitir facturas bajo tu CUIT. Delegación o certificado propio, paso a paso.',
+    lecturaMin: '5 min', tipo: 'articulo', href: '/dashboard/tutoriales/certificado-afip',
+  },
+  {
     tag: 'PRINCIPIANTE', tagColor: 'success',
     titulo: 'Configurar tu primera cuenta de vendedor',
-    desc: 'Aprendé a configurar tus datos bancarios y verificar tu identidad fiscal...',
+    desc: 'Aprendé a configurar tus datos fiscales y emitir tu primera factura electrónica...',
     actualizado: 'hace 2 días', vistas: '1.3k', tipo: 'video',
   },
   {
@@ -80,7 +87,9 @@ export default function TutorialesPage() {
               <div className={styles.tutActions}>
                 {tut.tipo === 'video'
                   ? <button className="btn btn-outline btn-sm">▶ Ver tutorial</button>
-                  : <button className="btn btn-outline btn-sm">Leer artículo →</button>
+                  : tut.href
+                    ? <Link href={tut.href} className="btn btn-outline btn-sm">Leer artículo →</Link>
+                    : <button className="btn btn-outline btn-sm">Leer artículo →</button>
                 }
                 {tut.vistas && <span className={styles.tutViews}>👁 {tut.vistas} vistas</span>}
               </div>

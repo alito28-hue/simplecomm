@@ -13,17 +13,32 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
   const [data, setData] = useState({
     name: '', cuit: '', address: '', province: 'Buenos Aires',
     city: '', fiscalTreatment: 'RESPONSABLE_INSCRIPTO',
   });
 
+  const [afip, setAfip] = useState({
+    ptoVta: '',
+    authMethod: 'delegation' as 'delegation' | 'certificate',
+    certPem: '', keyPem: '', chainPem: '',
+  });
+
   const progress = ((step + 1) / STEPS.length) * 100;
+
+  function readFile(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target?.result as string);
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+  }
 
   async function handleNext() {
     setError('');
 
-    // Step 1 (Empresa) → guardar organización en DB
     if (step === 1) {
       if (!data.name) { setError('El nombre de la empresa es requerido.'); return; }
       setSaving(true);
@@ -33,15 +48,34 @@ export default function OnboardingPage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
         });
-        if (!res.ok) {
-          const d = await res.json();
-          throw new Error(d.error ?? 'Error al guardar empresa');
-        }
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Error al guardar');
-        setSaving(false);
-        return;
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Error al guardar empresa'); }
+      } catch (e) { setError(e instanceof Error ? e.message : 'Error al guardar'); setSaving(false); return; }
+      setSaving(false);
+    }
+
+    if (step === 2) {
+      if (!afip.ptoVta || isNaN(Number(afip.ptoVta))) {
+        setError('Ingresá el número de punto de venta.'); return;
       }
+      if (afip.authMethod === 'certificate' && (!afip.certPem || !afip.keyPem || !afip.chainPem)) {
+        setError('Debés subir el certificado, la clave privada y la cadena CA.'); return;
+      }
+      setSaving(true);
+      try {
+        const res = await fetch('/api/organizations/afip-setup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cuit:       data.cuit.replace(/\D/g, ''),
+            ptoVta:     Number(afip.ptoVta),
+            authMethod: afip.authMethod,
+            certPem:    afip.certPem || undefined,
+            keyPem:     afip.keyPem  || undefined,
+            chainPem:   afip.chainPem || undefined,
+          }),
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error ?? 'Error al configurar ARCA'); }
+      } catch (e) { setError(e instanceof Error ? e.message : 'Error al configurar ARCA'); setSaving(false); return; }
       setSaving(false);
     }
 
@@ -65,9 +99,10 @@ export default function OnboardingPage() {
         </div>
 
         <div className={styles.stepContent}>
+
           {step === 0 && (
             <div>
-              <h2 className={styles.stepTitle}>¡Bienvenido a SimpleComm! 🎉</h2>
+              <h2 className={styles.stepTitle}>¡Bienvenido a SimpleComm!</h2>
               <p className={styles.stepDesc}>
                 Tu cuenta fue creada. Antes de continuar, <strong>revisá tu email</strong> y
                 confirmá tu dirección. Luego volvé para configurar tu empresa.
@@ -98,7 +133,7 @@ export default function OnboardingPage() {
               <div className={styles.field}><label>Razón social *</label>
                 <input className="input" value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} placeholder="Acme S.A." />
               </div>
-              <div className={styles.field}><label>CUIT</label>
+              <div className={styles.field}><label>CUIT *</label>
                 <input className="input" value={data.cuit} onChange={e => setData(d => ({ ...d, cuit: e.target.value }))} placeholder="30-00000000-0" />
               </div>
               <div className={styles.field}><label>Condición fiscal</label>
@@ -125,27 +160,93 @@ export default function OnboardingPage() {
           )}
 
           {step === 2 && (
-            <div>
+            <div className={styles.form}>
               <h2 className={styles.stepTitle}>Conectar ARCA</h2>
-              <p className={styles.stepDesc}>Para emitir facturas electrónicas reales, necesitás autorizar a SimpleComm en ARCA.</p>
-              <div className={styles.stepCards}>
-                <div className={styles.arcaStep}>
-                  <span className={styles.arcaNum}>1</span>
-                  <div>
-                    <div className={styles.arcaTitle}>Autorizá a SimpleComm en ARCA</div>
-                    <div className={styles.arcaDesc}>Ingresá a <strong>mi.afip.gov.ar</strong> → Delegaciones → Autorizá el CUIT de SimpleComm para el servicio <strong>wsfe</strong>.</div>
+              <p className={styles.stepDesc}>
+                Para emitir facturas bajo tu CUIT, necesitás autorizar a SimpleComm en ARCA.
+                <a href="/dashboard/tutoriales/certificado-afip" target="_blank" className={styles.helpLink}> Ver guía paso a paso ↗</a>
+              </p>
+              {error && <div className={styles.formError}>{error}</div>}
+
+              <div className={styles.field}><label>Número de Punto de Venta *</label>
+                <input className="input" type="number" min="1" value={afip.ptoVta}
+                  onChange={e => setAfip(a => ({ ...a, ptoVta: e.target.value }))}
+                  placeholder="Ej: 5 (crealo en ARCA como tipo Web Services)" />
+              </div>
+
+              <div className={styles.field}>
+                <label>Método de autorización</label>
+                <div className={styles.methodCards}>
+                  <div
+                    className={`${styles.methodCard} ${afip.authMethod === 'delegation' ? styles.methodSelected : ''}`}
+                    onClick={() => setAfip(a => ({ ...a, authMethod: 'delegation' }))}>
+                    <div className={styles.methodIcon}>🤝</div>
+                    <div className={styles.methodTitle}>Delegación (recomendado)</div>
+                    <div className={styles.methodDesc}>Autorizás el CUIT de SimpleComm en ARCA. Sin archivos que subir.</div>
                   </div>
-                </div>
-                <div className={styles.arcaStep}>
-                  <span className={styles.arcaNum}>2</span>
-                  <div>
-                    <div className={styles.arcaTitle}>Creá un Punto de Venta</div>
-                    <div className={styles.arcaDesc}>En ARCA, creá un nuevo punto de venta con tipo <strong>Web Services</strong>.</div>
+                  <div
+                    className={`${styles.methodCard} ${afip.authMethod === 'certificate' ? styles.methodSelected : ''}`}
+                    onClick={() => setAfip(a => ({ ...a, authMethod: 'certificate' }))}>
+                    <div className={styles.methodIcon}>🔐</div>
+                    <div className={styles.methodTitle}>Certificado propio</div>
+                    <div className={styles.methodDesc}>Subís tu propio certificado AFIP. Mayor control.</div>
                   </div>
                 </div>
               </div>
-              <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml" target="_blank" className={`btn btn-outline ${styles.arcaBtn}`}>Ir al portal de ARCA ↗</a>
-              <p className={styles.arcaNote}>¿Ya lo hiciste? Hacé clic en Continuar. Podés completar esto después desde Configuración.</p>
+
+              {afip.authMethod === 'delegation' && (
+                <div className={styles.delegationSteps}>
+                  <p className={styles.delegationTitle}>Pasos para delegar:</p>
+                  <ol className={styles.stepsList}>
+                    <li>Ingresá a <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml" target="_blank" className={styles.helpLink}>mi.afip.gov.ar</a> con tu CUIT y clave fiscal</li>
+                    <li>Ir a <strong>Administrador de Relaciones de Clave Fiscal</strong></li>
+                    <li>Seleccionar <strong>Nueva Relación</strong></li>
+                    <li>CUIT del representante: <strong>30715371622</strong> (Mocla SA / SimpleComm)</li>
+                    <li>Servicio: <strong>wsfe</strong> (Facturación Electrónica)</li>
+                    <li>Confirmar y volver acá</li>
+                  </ol>
+                  <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml" target="_blank" className={`btn btn-outline btn-sm ${styles.arcaBtn}`}>
+                    Ir al portal de ARCA ↗
+                  </a>
+                </div>
+              )}
+
+              {afip.authMethod === 'certificate' && (
+                <div className={styles.certUpload}>
+                  <p className={styles.certNote}>
+                    Necesitás generar un certificado en ARCA para el servicio wsfe.
+                    <a href="/dashboard/tutoriales/certificado-afip" target="_blank" className={styles.helpLink}> Ver cómo hacerlo ↗</a>
+                  </p>
+                  <div className={styles.field}>
+                    <label>Certificado (.pem)</label>
+                    <input type="file" accept=".pem,.crt,.cer" className="input"
+                      onChange={async e => {
+                        const f = e.target.files?.[0]; if (!f) return;
+                        setAfip(a => ({ ...a, certPem: '' }));
+                        const txt = await readFile(f);
+                        setAfip(a => ({ ...a, certPem: txt }));
+                      }} />
+                  </div>
+                  <div className={styles.field}>
+                    <label>Clave privada (.pem)</label>
+                    <input type="file" accept=".pem,.key" className="input"
+                      onChange={async e => {
+                        const f = e.target.files?.[0]; if (!f) return;
+                        const txt = await readFile(f);
+                        setAfip(a => ({ ...a, keyPem: txt }));
+                      }} />
+                  </div>
+                  <div className={styles.field}>
+                    <label>Cadena CA (.pem) — descargala de ARCA</label>
+                    <input type="file" accept=".pem,.crt,.cer" className="input"
+                      onChange={async e => {
+                        const f = e.target.files?.[0]; if (!f) return;
+                        const txt = await readFile(f);
+                        setAfip(a => ({ ...a, chainPem: txt }));
+                      }} />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -154,12 +255,11 @@ export default function OnboardingPage() {
               <div className={styles.readyIcon}>🚀</div>
               <h2 className={styles.stepTitle}>¡Todo listo!</h2>
               <p className={styles.stepDesc}>
-                SimpleComm está configurado. Iniciá sesión con tu email confirmado para comenzar a facturar.
+                SimpleComm está configurado. Ya podés empezar a emitir facturas bajo tu CUIT.
               </p>
               <div className={styles.readyActions}>
-                <button onClick={() => router.push('/login')} className="btn btn-primary btn-lg">Iniciar sesión</button>
+                <button onClick={() => router.push('/login')} className="btn btn-primary btn-lg">Ir al dashboard</button>
               </div>
-              <p className={styles.arcaNote} style={{ marginTop: '1rem' }}>¿No recibiste el email? Revisá tu carpeta de spam.</p>
             </div>
           )}
         </div>
@@ -168,7 +268,7 @@ export default function OnboardingPage() {
           <div className={styles.nav}>
             {step > 0 && <button onClick={() => setStep(s => s - 1)} className="btn btn-ghost">← Atrás</button>}
             <button onClick={handleNext} className="btn btn-primary" disabled={saving}>
-              {saving ? 'Guardando...' : step === STEPS.length - 2 ? 'Finalizar' : 'Continuar →'}
+              {saving ? 'Guardando...' : step === 2 ? 'Finalizar configuración' : 'Continuar →'}
             </button>
           </div>
         )}

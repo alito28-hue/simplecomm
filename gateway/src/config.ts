@@ -10,6 +10,7 @@ const schema = z.object({
   AFIP_KEY_BASE64: z.string().min(1),
   AFIP_CHAIN_BASE64: z.string().min(1),
   AFIP_CUIT: z.string().min(1),
+  GATEWAY_ADMIN_SECRET: z.string().min(16).optional(),
 });
 
 const parsed = schema.safeParse(process.env);

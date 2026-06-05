@@ -8,6 +8,7 @@ import { authRoutes } from './routes/auth';
 import { wsfeRoutes } from './routes/wsfe';
 import { invoiceRoutes } from './routes/invoices';
 import { batchRoutes } from './routes/batches';
+import { adminRoutes } from './routes/admin';
 
 async function main() {
   const app = Fastify({
@@ -43,6 +44,7 @@ async function main() {
   await app.register(wsfeRoutes);
   await app.register(invoiceRoutes);
   await app.register(batchRoutes);
+  await app.register(adminRoutes);
 
   // ── Error handler global ───────────────────────────────────────────────
   app.setErrorHandler((error, _request, reply) => {
