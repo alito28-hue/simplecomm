@@ -1,5 +1,4 @@
 import styles from './tutoriales.module.css';
-import Link from 'next/link';
 
 const CATEGORIAS = [
   { icon: '🚀', titulo: 'Primeros pasos',      desc: 'Los fundamentos para tener tu tienda funcionando en minutos.' },

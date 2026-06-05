@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const GATEWAY_URL    = process.env.GATEWAY_URL    ?? 'https://simplecomm-production.up.railway.app';
 const GATEWAY_API_KEY = process.env.GATEWAY_API_KEY ?? '';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://simplecomm.com.ar';
 
 /**
  * Webhook de Mercado Libre — recibe notificaciones de órdenes pagadas

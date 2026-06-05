@@ -58,6 +58,22 @@ const batchSchema = z.object({
   items: z.array(batchItemSchema).min(1).max(5000),
 });
 
+type BatchResult =
+  | {
+      batchItemId: string;
+      status: 'issued';
+      invoiceNumber: string;
+      cae: string | null;
+      caeDueDate: Date | string | null;
+      pdfBase64: string | null;
+      rawResponse: unknown;
+    }
+  | {
+      batchItemId: string;
+      status: 'failed';
+      error: string;
+    };
+
 export async function batchRoutes(app: FastifyInstance): Promise<void> {
   /**
    * POST /v1/batches/invoices
@@ -97,7 +113,7 @@ export async function batchRoutes(app: FastifyInstance): Promise<void> {
       endpoints.wsfe, ticket, tenant.cuit, tenant.defaultPtoVta, 6
     );
 
-    const results: object[] = [];
+    const results: BatchResult[] = [];
 
     // Procesar en chunks de CONCURRENCY elementos en paralelo
     for (let i = 0; i < items.length; i += CONCURRENCY) {
@@ -258,8 +274,8 @@ export async function batchRoutes(app: FastifyInstance): Promise<void> {
       app.log.info(`[batch] ${batchId}: ${results.length}/${items.length} procesados`);
     }
 
-    const issued = results.filter((r: any) => r.status === 'issued').length;
-    const failed = results.filter((r: any) => r.status === 'failed').length;
+    const issued = results.filter((r) => r.status === 'issued').length;
+    const failed = results.filter((r) => r.status === 'failed').length;
     const batchStatus = failed === 0 ? 'completed' : issued === 0 ? 'failed' : 'completed_with_errors';
     const durationMs = Date.now() - startTime;
 

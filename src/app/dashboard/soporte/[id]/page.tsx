@@ -21,7 +21,21 @@ export default function UserTicketPage() {
     setMessages(d.messages ?? []);
   }
 
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch(`/api/soporte/tickets/${id}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        setTicket(d.ticket);
+        setMessages(d.messages ?? []);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   async function send() {
     if (!reply.trim() || sending) return;

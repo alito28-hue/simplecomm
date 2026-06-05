@@ -1,7 +1,5 @@
 'use client';
 
-import BackButton from '@/components/BackButton';
-
 import { useEffect, useState } from 'react';
 import styles from './clientes.module.css';
 
@@ -41,7 +39,26 @@ export default function ClientesPage() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, [search]);
+  useEffect(() => {
+    let cancelled = false;
+    const q = search ? `?q=${encodeURIComponent(search)}` : '';
+
+    fetch(`/api/clientes${q}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setClientes(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setClientes([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [search]);
 
   function openNew() { setForm(EMPTY_FORM); setEditId(null); setError(''); setModal(true); }
 

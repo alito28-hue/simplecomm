@@ -1,5 +1,4 @@
-// dotenv solo carga en desarrollo local — en Railway las vars vienen del platform
-try { require('dotenv').config(); } catch {}
+import 'dotenv/config';
 import Fastify from 'fastify';
 import helmet from '@fastify/helmet';
 import cors from '@fastify/cors';

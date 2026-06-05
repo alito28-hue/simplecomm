@@ -1,17 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import styles from '../integracion.module.css';
 
-export default function MercadoPagoPage() {
-  const [status, setStatus] = useState<'idle' | 'connected' | 'error'>('idle');
+function getInitialStatus(): 'idle' | 'connected' | 'error' {
+  if (typeof window === 'undefined') return 'idle';
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('success') === '1') return 'connected';
+  if (params.get('error')) return 'error';
+  return 'idle';
+}
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('success') === '1') setStatus('connected');
-    if (params.get('error')) setStatus('error');
-  }, []);
+export default function MercadoPagoPage() {
+  const [status] = useState<'idle' | 'connected' | 'error'>(getInitialStatus);
 
   return (
     <div className={styles.page}>

@@ -1,7 +1,5 @@
 'use client';
 
-import BackButton from '@/components/BackButton';
-
 import { useEffect, useState } from 'react';
 import styles from '../clientes/clientes.module.css';
 
@@ -24,7 +22,25 @@ export default function PuntosDeVentaPage() {
     setItems(await res.json());
     setLoading(false);
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch('/api/organizacion/puntos-de-venta')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setItems(data);
+      })
+      .catch(() => {
+        if (!cancelled) setItems([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function openNew() { setForm(EMPTY); setEditId(null); setError(''); setModal(true); }
   function openEdit(p: PdV) {

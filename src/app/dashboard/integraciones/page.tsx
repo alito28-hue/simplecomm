@@ -56,8 +56,6 @@ const INTEGRACIONES = [
   },
 ];
 
-const TABS = ['Todas', 'Marketplaces', 'E-commerce', 'Marketing'];
-
 export default function IntegracionesPage() {
   const conectadas = INTEGRACIONES.filter(i => i.estado === 'disponible').length;
 

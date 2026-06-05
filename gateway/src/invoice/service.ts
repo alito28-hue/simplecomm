@@ -4,7 +4,7 @@ import { getValidTicket, invalidateTicket } from '../wsaa/cache';
 import { feCompUltimoAutorizado, feCAESolicitar } from '../wsfe/client';
 import { calculateByType, CBTE_TYPE, toAfipDate, docTypeToAfipId, formatInvoiceNumber, parseIvaRate, type InvoiceLetterType, type IvaRateId } from './calculate';
 import { generateInvoicePdf } from './pdf';
-import { endpoints, config } from '../config';
+import { endpoints } from '../config';
 
 export interface IssueRequest {
   tenantId: string;
@@ -36,9 +36,6 @@ export interface IssueResult {
   caeDueDate: string;
   pdfBase64: string;
 }
-
-// Mantenemos para compatibilidad pero ahora usamos cbteType dinámico
-const CBTE_TYPE_FACTURA_B = 6;
 
 /**
  * Orquesta la emisión completa de una Factura B.

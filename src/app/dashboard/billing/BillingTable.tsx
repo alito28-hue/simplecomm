@@ -38,15 +38,25 @@ export default function BillingTable() {
   const limit = 20;
 
   useEffect(() => {
-    setLoading(true);
+    let cancelled = false;
+
     fetch(`/api/facturas?page=${page}&limit=${limit}`)
       .then(r => r.json())
       .then(data => {
+        if (cancelled) return;
         setInvoices(data.data ?? []);
         setTotal(data.meta?.total ?? 0);
       })
-      .catch(() => setInvoices([]))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (!cancelled) setInvoices([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [page]);
 
   async function downloadPdf(invoiceId: string, invoiceNumber: string) {

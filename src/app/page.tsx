@@ -27,13 +27,40 @@ const modules = [
     kicker: 'Disponible primero',
     title: 'Facturación automática para tiendas online',
     body: 'La primera promesa es concreta: vender, facturar y seguir operando sin copiar pedidos entre plataformas.',
-    bullets: ['Factura B para e-commerce', 'CAE y PDF en segundos', 'Estados claros para resolver errores'],
+    bullets: ['Facturas A, B y C', 'CAE y PDF en segundos', 'Estados claros para resolver errores'],
+  },
+  {
+    kicker: 'Para volumen',
+    title: 'Facturación por lotes',
+    body: 'Cuando hay muchos pedidos juntos, SimpleComm puede convertirlos en comprobantes sin cargar uno por uno.',
+    bullets: ['Importación de pedidos en bloque', 'Hasta cientos de comprobantes por corrida', 'Resumen de emitidas, pendientes y errores'],
   },
   {
     kicker: 'Próxima capa',
     title: 'Meta Ads explicado como negocio',
     body: 'No queremos replicar Ads Manager. Queremos mostrar si la inversión está ayudando a vender o solo consumiendo margen.',
     bullets: ['Gasto, ventas y ROAS en lenguaje simple', 'Alertas para pausar o revisar campañas', 'Lectura por producto y canal'],
+  },
+];
+
+const plans = [
+  {
+    name: 'Inicial',
+    limit: 'Hasta 50 comprobantes',
+    description: 'Para tiendas que están empezando o venden pocos pedidos por mes.',
+    features: ['Facturas A, B y C', 'Integraciones e-commerce', 'Facturación manual web'],
+  },
+  {
+    name: 'Intermedio',
+    limit: 'Hasta 200 comprobantes',
+    description: 'Para tiendas con operación activa que necesitan automatizar más pedidos.',
+    features: ['Todo lo del Inicial', 'Facturación por lotes', 'Reportes para revisar el mes'],
+  },
+  {
+    name: 'Pro',
+    limit: 'Comprobantes ilimitados',
+    description: 'Para tiendas con volumen alto o campañas que disparan muchos pedidos.',
+    features: ['Todo lo del Intermedio', 'Comprobantes ilimitados', 'Preparado para módulo Meta Ads'],
   },
 ];
 
@@ -51,7 +78,9 @@ export default function Home() {
         <Logo size="md" />
         <div className={styles.navLinks}>
           <a href="#facturacion">Facturación</a>
+          <a href="#lotes">Lotes</a>
           <a href="#anuncios">Anuncios</a>
+          <a href="#planes">Planes</a>
           <a href="#diferencia">Diferencia</a>
         </div>
         <div className={styles.navActions}>
@@ -61,7 +90,22 @@ export default function Home() {
       </nav>
 
       <section className={styles.hero}>
-        <div className={styles.heroScene} aria-hidden="true">
+        <div className={styles.heroContent}>
+          <p className={styles.heroBadge}>Hecho para tiendas online simples en Argentina</p>
+          <h1 className={styles.heroTitle}>
+            Tu tienda vende. SimpleComm se encarga del trabajo repetitivo.
+          </h1>
+          <p className={styles.heroDesc}>
+            Automatizá facturas de ARCA, conectá tus canales de venta y prepará el camino para entender si tus anuncios de Meta están dejando plata o quemándola.
+          </p>
+          <div className={styles.heroActions}>
+            <Link href="/register" className="btn btn-primary btn-lg">Empezar prueba gratis</Link>
+            <a href="#como-funciona" className="btn btn-ghost btn-lg">Ver cómo funciona</a>
+          </div>
+          <p className={styles.heroCta}>15 días gratis. Sin tarjeta. Sin convertir tu negocio en un ERP.</p>
+        </div>
+
+        <div className={styles.heroScene} aria-label="Resumen visual de SimpleComm">
           <div className={styles.scenePanel}>
             <div className={styles.sceneHeader}>
               <span>Hoy en tu tienda</span>
@@ -86,7 +130,7 @@ export default function Home() {
             </div>
             <div className={styles.sceneList}>
               <span>ML #8492</span>
-              <strong>Factura B emitida</strong>
+              <strong>Factura A emitida</strong>
               <em>CAE aprobado</em>
             </div>
             <div className={styles.sceneList}>
@@ -95,21 +139,6 @@ export default function Home() {
               <em>Resolver</em>
             </div>
           </div>
-        </div>
-
-        <div className={styles.heroContent}>
-          <p className={styles.heroBadge}>Hecho para tiendas online simples en Argentina</p>
-          <h1 className={styles.heroTitle}>
-            Tu tienda vende. SimpleComm se encarga del trabajo repetitivo.
-          </h1>
-          <p className={styles.heroDesc}>
-            Automatizá facturas de ARCA, conectá tus canales de venta y prepará el camino para entender si tus anuncios de Meta están dejando plata o quemándola.
-          </p>
-          <div className={styles.heroActions}>
-            <Link href="/register" className="btn btn-primary btn-lg">Empezar prueba gratis</Link>
-            <a href="#como-funciona" className="btn btn-ghost btn-lg">Ver cómo funciona</a>
-          </div>
-          <p className={styles.heroCta}>15 días gratis. Sin tarjeta. Sin convertir tu negocio en un ERP.</p>
         </div>
       </section>
 
@@ -147,7 +176,7 @@ export default function Home() {
         {modules.map((module, index) => (
           <article
             className={styles.module}
-            id={index === 0 ? 'facturacion' : 'anuncios'}
+            id={index === 0 ? 'facturacion' : index === 1 ? 'lotes' : 'anuncios'}
             key={module.title}
           >
             <div>
@@ -164,10 +193,38 @@ export default function Home() {
         ))}
       </section>
 
+      <section className={styles.section} id="planes">
+        <div className={styles.sectionHeader}>
+          <p className={styles.kicker}>Planes</p>
+          <h2>Planes simples según cuántos comprobantes emitís.</h2>
+          <p>
+            La idea es que el precio acompañe el tamaño de la tienda, sin obligarte a comprar un ERP completo.
+          </p>
+        </div>
+
+        <div className={styles.plans}>
+          {plans.map((plan) => (
+            <article className={styles.planCard} key={plan.name}>
+              <div>
+                <p>{plan.name}</p>
+                <h3>{plan.limit}</h3>
+                <small>{plan.description}</small>
+              </div>
+              <ul>
+                {plan.features.map((feature) => (
+                  <li key={feature}>{feature}</li>
+                ))}
+              </ul>
+              <Link href="/register" className="btn btn-primary">Elegir plan</Link>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className={styles.section} id="diferencia">
         <div className={styles.sectionHeader}>
           <p className={styles.kicker}>Diferencia</p>
-          <h2>No competimos por ser el sistema mas grande. Competimos por sacarte tareas de encima.</h2>
+          <h2>No competimos por ser el sistema más grande. Competimos por sacarte tareas de encima.</h2>
           <p>
             SimpleComm debe vender foco: menos administración, menos copia manual y mejores señales para decidir.
           </p>

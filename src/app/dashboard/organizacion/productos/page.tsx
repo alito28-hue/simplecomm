@@ -1,10 +1,7 @@
 'use client';
 
-import BackButton from '@/components/BackButton';
-
 import { useEffect, useState } from 'react';
 import styles from '../clientes/clientes.module.css';
-import modalStyles from './productos.module.css';
 
 interface Producto { id: string; code: string; description: string; netPrice: number; ivaRate: string; }
 const IVA_RATES = ['EXENTO','NO_GRAVADO','IVA_2_5','IVA_5','IVA_10_5','IVA_21','IVA_27'];
@@ -28,7 +25,26 @@ export default function ProductosPage() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, [search]);
+  useEffect(() => {
+    let cancelled = false;
+    const q = search ? `?q=${encodeURIComponent(search)}` : '';
+
+    fetch(`/api/organizacion/productos${q}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled) setItems(data);
+      })
+      .catch(() => {
+        if (!cancelled) setItems([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [search]);
 
   function openNew() { setForm(EMPTY); setEditId(null); setError(''); setModal(true); }
   function openEdit(p: Producto) {

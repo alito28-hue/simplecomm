@@ -4,22 +4,30 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import styles from '../integracion.module.css';
 
+function getInitialStatus(): 'idle' | 'connected' | 'error' {
+  if (typeof window === 'undefined') return 'idle';
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('success') === '1') return 'connected';
+  if (params.get('error')) return 'error';
+  return 'idle';
+}
+
 export default function MercadoLibrePage() {
-  const [status, setStatus] = useState<'idle' | 'connected' | 'error'>('idle');
-  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<'idle' | 'connected' | 'error'>(getInitialStatus);
+  const [loading, setLoading] = useState(() => getInitialStatus() === 'idle');
 
   useEffect(() => {
+    const initialStatus = getInitialStatus();
+    if (initialStatus !== 'idle') {
+      return;
+    }
+
     // Verificar si ya está conectado
     fetch('/api/integraciones/mercadolibre/status')
       .then(r => r.json())
       .then(d => setStatus(d.connected ? 'connected' : 'idle'))
       .catch(() => setStatus('idle'))
       .finally(() => setLoading(false));
-
-    // Verificar si vuelve de OAuth
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('success') === '1') setStatus('connected');
-    if (params.get('error')) setStatus('error');
   }, []);
 
   function conectar() {

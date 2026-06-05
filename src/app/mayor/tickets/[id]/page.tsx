@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import styles from './ticket.module.css';
 
@@ -10,7 +10,6 @@ interface Ticket { id: string; subject: string; status: string; priority: string
 
 export default function AdminTicketPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [reply, setReply] = useState('');

@@ -1,7 +1,5 @@
 'use client';
 
-import BackButton from '@/components/BackButton';
-
 import { useEffect, useState } from 'react';
 import styles from '../clientes/clientes.module.css';
 
