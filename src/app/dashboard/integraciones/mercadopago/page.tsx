@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import styles from '../integracion.module.css';
 
@@ -13,7 +13,23 @@ function getInitialStatus(): 'idle' | 'connected' | 'error' {
 }
 
 export default function MercadoPagoPage() {
-  const [status] = useState<'idle' | 'connected' | 'error'>(getInitialStatus);
+  const [status, setStatus] = useState<'idle' | 'connected' | 'error'>(getInitialStatus);
+  const [loading, setLoading] = useState(() => getInitialStatus() === 'idle');
+
+  useEffect(() => {
+    if (getInitialStatus() !== 'idle') return;
+    fetch('/api/integraciones/mercadopago/status')
+      .then(r => r.json())
+      .then(d => setStatus(d.connected ? 'connected' : 'idle'))
+      .catch(() => setStatus('idle'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function desconectar() {
+    if (!confirm('¿Desconectar Mercado Pago?')) return;
+    await fetch('/api/integraciones/mercadopago/disconnect', { method: 'DELETE' });
+    setStatus('idle');
+  }
 
   return (
     <div className={styles.page}>
@@ -23,18 +39,23 @@ export default function MercadoPagoPage() {
         <div className={styles.logo}>💳</div>
         <div>
           <h1 className={styles.title}>Mercado Pago</h1>
-          <p className={styles.subtitle}>Sincronizá pagos y conciliá transacciones automáticamente.</p>
+          <p className={styles.subtitle}>Facturación automática por cada pago aprobado.</p>
         </div>
         {status === 'connected' && <span className="badge badge-success">● Conectado</span>}
       </div>
 
-      {status === 'connected' ? (
+      {loading ? (
+        <div className={`card ${styles.loadingCard}`}>Verificando conexión...</div>
+      ) : status === 'connected' ? (
         <div className={`card ${styles.connectedCard}`}>
           <div className={styles.connectedIcon}>✅</div>
           <h2 className={styles.connectedTitle}>¡Mercado Pago conectado!</h2>
-          <p className={styles.connectedDesc}>Los pagos aprobados generarán facturas automáticamente.</p>
+          <p className={styles.connectedDesc}>
+            Los pagos aprobados generarán facturas automáticamente (A, B o C según el comprador).
+          </p>
           <div className={styles.connectedActions}>
-            <Link href="/dashboard/billing" className="btn btn-primary">Ver facturas →</Link>
+            <Link href="/dashboard/facturacion" className="btn btn-primary">Ver facturas →</Link>
+            <button onClick={desconectar} className="btn btn-ghost">Desconectar</button>
           </div>
         </div>
       ) : (
@@ -43,9 +64,10 @@ export default function MercadoPagoPage() {
             <h2 className={styles.sectionTitle}>¿Qué hace esta integración?</h2>
             <ul className={styles.featureList}>
               <li>✓ Detecta pagos aprobados en tiempo real via webhook</li>
-              <li>✓ Emite Factura B automáticamente por cada pago</li>
-              <li>✓ Concilia montos con los comprobantes emitidos</li>
-              <li>✓ Soporta pagos por link, QR y checkout</li>
+              <li>✓ Emite Factura A si el comprador tiene CUIT (responsable inscripto)</li>
+              <li>✓ Emite Factura B a consumidor final (DNI o sin datos)</li>
+              <li>✓ Emite Factura C si el vendedor es monotributista</li>
+              <li>✓ Funciona con pagos por link, QR, checkout y suscripciones</li>
             </ul>
           </div>
 
@@ -56,7 +78,7 @@ export default function MercadoPagoPage() {
           <div className="card" style={{ padding: '1.5rem' }}>
             <h2 className={styles.sectionTitle}>Conectar cuenta</h2>
             <p className={styles.stepDesc}>
-              Autorizá a SimpleComm para acceder a tu cuenta de Mercado Pago y recibir notificaciones de pago.
+              Autorizá a SimpleComm para recibir notificaciones de pago de tu cuenta de Mercado Pago.
             </p>
             <button
               onClick={() => window.location.href = '/api/integraciones/mercadopago/connect'}
