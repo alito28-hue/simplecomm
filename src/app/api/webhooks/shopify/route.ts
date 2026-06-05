@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createHmac } from 'crypto';
 import { createClient } from '@/lib/supabase/server';
+import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 
-const GATEWAY_URL        = process.env.GATEWAY_URL        ?? 'https://simplecomm-production.up.railway.app';
-const GATEWAY_API_KEY    = process.env.GATEWAY_API_KEY    ?? '';
 const SHOPIFY_CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET ?? '';
 
 function verifyWebhook(body: string, signature: string): boolean {
@@ -129,11 +128,12 @@ export async function POST(req: NextRequest) {
       ? Math.round((totalAmount / (1 + IVA_RATE)) * 100) / 100
       : totalAmount;
 
+    const gatewayApiKey = await getGatewayKey(integration.organizationId);
     const gatewayRes = await fetch(`${GATEWAY_URL}/v1/invoices/issue`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GATEWAY_API_KEY}`,
+        'Authorization': `Bearer ${gatewayApiKey}`,
       },
       body: JSON.stringify({
         idempotency_key: `shopify:order:${shopDomain}:${orderId}`,

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { randomUUID } from 'crypto';
-
-const GATEWAY_URL    = process.env.GATEWAY_URL    ?? 'https://simplecomm-production.up.railway.app';
-const GATEWAY_API_KEY = process.env.GATEWAY_API_KEY ?? '';
+import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -54,11 +52,12 @@ export async function POST(req: NextRequest) {
     source_app: 'simplecomm',
   };
 
+  const gatewayApiKey = await getGatewayKey(user.id);
   const res = await fetch(`${GATEWAY_URL}/v1/invoices/issue`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${GATEWAY_API_KEY}`,
+      'Authorization': `Bearer ${gatewayApiKey}`,
     },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(60_000),

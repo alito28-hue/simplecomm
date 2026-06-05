@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
   const { data: org } = await supabase
     .from('organizations')
     .select('id, name, cuit')
-    .eq('userId', user.id)
+    .eq('id', user.id)
     .maybeSingle();
 
   if (!org) return NextResponse.json({ error: 'Organización no encontrada' }, { status: 404 });
