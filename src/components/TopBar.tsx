@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useI18n } from '@/lib/i18n/context';
+import NotificationBell from './NotificationBell';
 import styles from './TopBar.module.css';
 
 interface TopBarProps {
@@ -23,6 +24,7 @@ export default function TopBar({ userInitials = 'U', userName }: TopBarProps) {
       <div className={styles.actions}>
         <Link href="/dashboard/soporte" className={styles.iconBtn} title="Soporte">🎫</Link>
         <Link href="/faq" className={styles.iconBtn} title="FAQ">❓</Link>
+        <NotificationBell />
         <Link href="/dashboard/facturacion/simplificada" className="btn btn-primary btn-sm">
           + Nueva factura
         </Link>

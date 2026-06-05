@@ -26,6 +26,7 @@ const NAV = [
   { href: '/dashboard/ads',           label: 'Publicidad',   icon: '📈' },
   { href: '/dashboard/tutoriales',    label: 'Tutoriales',   icon: '📚' },
   { href: '/dashboard/soporte',       label: 'Soporte',      icon: '🎫' },
+  { href: '/dashboard/cuenta',        label: 'Mi cuenta',     icon: '💳' },
   { href: '/dashboard/organizacion',  label: 'Configuración', icon: '⚙' },
 ];
 
