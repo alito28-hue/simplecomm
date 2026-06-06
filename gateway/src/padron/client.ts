@@ -39,8 +39,10 @@ async function soapCall(padronUrl: string, body: string): Promise<string> {
 
   const text = await res.text();
 
-  if (text.includes('<faultstring>') || text.includes(':faultstring>')) {
-    const fault = text.match(/(?::)?faultstring>([^<]*)/)?.[1] ?? 'Error desconocido';
+  if (!res.ok || text.includes('<faultstring>') || text.includes(':faultstring>')) {
+    const fault = text.match(/(?::)?faultstring>([^<]*)/)?.[1] ?? `HTTP ${res.status}`;
+    // Log raw response (first 1000 chars) so Railway shows the exact AFIP message
+    console.error('[padron] SOAP fault raw:', text.slice(0, 1000));
     throw new Error(`Padrón SOAP fault: ${fault}`);
   }
 

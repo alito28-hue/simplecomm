@@ -28,6 +28,7 @@ export async function padronRoutes(app: FastifyInstance): Promise<void> {
       return reply.send(persona);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      request.log.error({ cuil: clean, afipError: message }, 'Error consultando Padrón AFIP (CUIL)');
       if (/no encontrado|inexistente|no registrado|no existe/i.test(message)) {
         return reply.status(404).send({ error: 'CUIL no encontrado en el Padrón AFIP' });
       }
@@ -71,6 +72,7 @@ export async function padronRoutes(app: FastifyInstance): Promise<void> {
       return reply.send({ resultados });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      request.log.error({ dni: clean, afipError: message }, 'Error consultando Padrón AFIP (DNI)');
       return reply.status(502).send({ error: message });
     }
   });
