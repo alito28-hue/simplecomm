@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import styles from './mayor.module.css';
 
 async function getStats() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -18,14 +18,14 @@ async function getStats() {
 }
 
 async function getRecentClients() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase.from('organizations').select('id,name,cuit,subscriptionStatus,createdAt')
     .order('createdAt', { ascending: false }).limit(5);
   return data ?? [];
 }
 
 async function getRecentTickets() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data } = await supabase.from('support_tickets').select('id,subject,status,priority,createdAt,organizationId')
     .eq('status', 'open').order('createdAt', { ascending: false }).limit(5);
   return data ?? [];
@@ -43,7 +43,6 @@ export default async function AdminDashboard() {
         <p className={styles.subtitle}>Bienvenido al centro de control de SimpleComm.</p>
       </div>
 
-      {/* Alertas importantes */}
       <div className={styles.alertsGrid}>
         <div className={`card ${styles.alertCard} ${stats.newClients > 0 ? styles.alertBlue : ''}`}>
           <div className={styles.alertIcon}>👥</div>
@@ -81,11 +80,10 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
-      {/* Secciones */}
       <div className={styles.sectionsGrid}>
         {[
-          { href: '/mayor/clientes',  icon: '👥', title: 'Gestión de Clientes',  desc: 'Ver todos los clientes, su plan, estado y actividad.' },
-          { href: '/mayor/tickets',   icon: '🎫', title: 'Soporte y Tickets',    desc: 'Gestionar tickets de soporte, responder y cambiar estado.' },
+          { href: '/mayor/clientes', icon: '👥', title: 'Gestión de Clientes',  desc: 'Ver todos los clientes, su plan, estado y actividad.' },
+          { href: '/mayor/tickets',  icon: '🎫', title: 'Soporte y Tickets',    desc: 'Gestionar tickets de soporte, responder y cambiar estado.' },
         ].map(s => (
           <Link key={s.href} href={s.href} className={`card ${styles.sectionCard}`}>
             <div className={styles.sectionIcon}>{s.icon}</div>
@@ -96,7 +94,6 @@ export default async function AdminDashboard() {
         ))}
       </div>
 
-      {/* Últimos clientes */}
       <div className="card">
         <div className={styles.tableHeader}>
           <h2 className={styles.sectionTitle}>Últimos clientes registrados</h2>
@@ -112,7 +109,7 @@ export default async function AdminDashboard() {
                 <tr key={c.id}>
                   <td><strong>{c.name}</strong></td>
                   <td className="mono text-sm">{c.cuit || '—'}</td>
-                  <td><span className={`badge ${c.subscriptionStatus === 'TRIAL' ? 'badge-warning' : 'badge-success'}`}>{c.subscriptionStatus}</span></td>
+                  <td><span className={`badge ${c.subscriptionStatus === 'ACTIVE' ? 'badge-success' : c.subscriptionStatus === 'CANCELLED' ? 'badge-error' : 'badge-gray'}`}>{c.subscriptionStatus}</span></td>
                   <td className="text-sm text-muted">{new Date(c.createdAt).toLocaleDateString('es-AR')}</td>
                   <td><Link href={`/mayor/clientes/${c.id}`} className="btn btn-ghost btn-sm">Ver →</Link></td>
                 </tr>
@@ -122,7 +119,6 @@ export default async function AdminDashboard() {
         </div>
       </div>
 
-      {/* Tickets abiertos */}
       {recentTickets.length > 0 && (
         <div className="card">
           <div className={styles.tableHeader}>

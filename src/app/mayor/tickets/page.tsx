@@ -1,9 +1,9 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import Link from 'next/link';
 import styles from '../mayor.module.css';
 
 export default async function AdminTicketsPage() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: tickets } = await supabase.from('support_tickets')
     .select('*, organizations(name)')
     .order('createdAt', { ascending: false });

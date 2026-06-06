@@ -1,15 +1,15 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import Link from 'next/link';
 import styles from '../mayor.module.css';
 
 export default async function AdminClientesPage() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data: clientes } = await supabase.from('organizations').select('*').order('createdAt', { ascending: false });
 
   async function pausar(id: string, status: string) {
     'use server';
-    const supabase = await createClient();
-    await supabase.from('organizations').update({
+    const db = createAdminClient();
+    await db.from('organizations').update({
       subscriptionStatus: status === 'ACTIVE' ? 'CANCELLED' : 'ACTIVE',
       updatedAt: new Date().toISOString(),
     }).eq('id', id);
@@ -26,7 +26,7 @@ export default async function AdminClientesPage() {
         <div className="table-wrap">
           <table className="table">
             <thead>
-              <tr><th>Empresa</th><th>CUIT</th><th>Email</th><th>Plan</th><th>Registro</th><th></th></tr>
+              <tr><th>Empresa</th><th>CUIT</th><th>Email</th><th>Estado</th><th>Registro</th><th></th></tr>
             </thead>
             <tbody>
               {!clientes || clientes.length === 0 ? (
@@ -38,17 +38,17 @@ export default async function AdminClientesPage() {
                   <td className="text-sm">{c.emailAlerts || '—'}</td>
                   <td>
                     <span className={`badge ${
-                      c.subscriptionStatus === 'ACTIVE' ? 'badge-success' :
-                      c.subscriptionStatus === 'TRIAL' ? 'badge-warning' :
-                      'badge-error'
-                    }`}>{c.subscriptionStatus}</span>
+                      c.subscriptionStatus === 'ACTIVE'    ? 'badge-success' :
+                      c.subscriptionStatus === 'CANCELLED' ? 'badge-error'   : 'badge-gray'
+                    }`}>{c.subscriptionStatus ?? 'Trial'}</span>
                   </td>
                   <td className="text-sm text-muted">{new Date(c.createdAt).toLocaleDateString('es-AR')}</td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.35rem' }}>
                       <Link href={`/mayor/clientes/${c.id}`} className="btn btn-ghost btn-sm">Ver</Link>
                       <form action={pausar.bind(null, c.id, c.subscriptionStatus)}>
-                        <button type="submit" className={`btn btn-sm ${c.subscriptionStatus === 'CANCELLED' ? 'btn-primary' : 'btn-ghost'}`}
+                        <button type="submit"
+                          className={`btn btn-sm ${c.subscriptionStatus === 'CANCELLED' ? 'btn-primary' : 'btn-ghost'}`}
                           style={{ color: c.subscriptionStatus !== 'CANCELLED' ? 'var(--error)' : undefined }}>
                           {c.subscriptionStatus === 'CANCELLED' ? 'Activar' : 'Pausar'}
                         </button>
