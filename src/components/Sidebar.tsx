@@ -11,6 +11,8 @@ import styles from './Sidebar.module.css';
 interface SidebarProps {
   orgName?: string;
   userEmail?: string;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 const FACTURACION_ITEMS = [
@@ -30,28 +32,30 @@ const NAV = [
   { href: '/dashboard/organizacion',  label: 'Configuración', icon: '⚙' },
 ];
 
-export default function Sidebar({ orgName = 'Mi Organización', userEmail }: SidebarProps) {
+export default function Sidebar({ orgName = 'Mi Organización', userEmail, mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const { locale, setLocale } = useI18n();
   const isFacturacion = pathname.startsWith('/dashboard/facturacion');
   const [facturacionOpen, setFacturacionOpen] = useState(isFacturacion);
 
+  const close = () => onMobileClose?.();
+
   return (
-    <aside className={styles.sidebar}>
+    <aside className={`${styles.sidebar} ${mobileOpen ? styles.sidebarOpen : ''}`}>
+      <button className={styles.closeBtn} onClick={close} aria-label="Cerrar menú">✕</button>
+
       <div className={styles.logo}>
-        <Link href="/dashboard"><LogoWhite size="sm" /></Link>
+        <Link href="/dashboard" onClick={close}><LogoWhite size="sm" /></Link>
         {orgName && <span className={styles.orgName}>{orgName}</span>}
       </div>
 
       <nav className={styles.nav}>
-        {/* Dashboard */}
-        <Link href="/dashboard"
+        <Link href="/dashboard" onClick={close}
           className={`${styles.navItem} ${pathname === '/dashboard' ? styles.active : ''}`}>
           <span className={styles.icon}>⊞</span>
           <span>Dashboard</span>
         </Link>
 
-        {/* Facturación — accordion */}
         <div>
           <button
             className={`${styles.navItem} ${styles.navBtn} ${isFacturacion || facturacionOpen ? styles.active : ''}`}
@@ -64,7 +68,7 @@ export default function Sidebar({ orgName = 'Mi Organización', userEmail }: Sid
           {facturacionOpen && (
             <div className={styles.subMenu}>
               {FACTURACION_ITEMS.map(item => (
-                <Link key={item.href} href={item.href}
+                <Link key={item.href} href={item.href} onClick={close}
                   className={`${styles.subItem} ${pathname === item.href ? styles.subActive : ''}`}>
                   {item.label}
                 </Link>
@@ -73,11 +77,10 @@ export default function Sidebar({ orgName = 'Mi Organización', userEmail }: Sid
           )}
         </div>
 
-        {/* Resto del nav */}
         {NAV.map((item) => {
           const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'));
           return (
-            <Link key={item.href} href={item.href}
+            <Link key={item.href} href={item.href} onClick={close}
               className={`${styles.navItem} ${active ? styles.active : ''}`}>
               <span className={styles.icon}>{item.icon}</span>
               <span>{item.label}</span>
@@ -95,12 +98,12 @@ export default function Sidebar({ orgName = 'Mi Organización', userEmail }: Sid
         <div className={styles.upgradeBanner}>
           <div className={styles.upgradeTitle}>Mejorar Plan</div>
           <div className={styles.upgradeText}>Desbloqueá todas las funciones</div>
-          <Link href="/dashboard/suscripcion" className={styles.upgradeBtn}>Ver planes →</Link>
+          <Link href="/dashboard/suscripcion" onClick={close} className={styles.upgradeBtn}>Ver planes →</Link>
         </div>
 
         <div className={styles.userSection}>
           {userEmail && <span className={styles.userEmail}>{userEmail}</span>}
-          <Link href="/dashboard/soporte" className={styles.bottomLink}>Soporte</Link>
+          <Link href="/dashboard/soporte" onClick={close} className={styles.bottomLink}>Soporte</Link>
           <form action={logout}>
             <button type="submit" className={styles.bottomLink}>Cerrar sesión</button>
           </form>

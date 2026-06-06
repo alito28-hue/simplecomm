@@ -8,13 +8,18 @@ import styles from './TopBar.module.css';
 interface TopBarProps {
   userInitials?: string;
   userName?: string;
+  onHamburger?: () => void;
 }
 
-export default function TopBar({ userInitials = 'U', userName }: TopBarProps) {
+export default function TopBar({ userInitials = 'U', userName, onHamburger }: TopBarProps) {
   const { t } = useI18n();
 
   return (
     <header className={styles.topbar}>
+      <button className={styles.hamburger} onClick={onHamburger} aria-label="Abrir menú">
+        <span /><span /><span />
+      </button>
+
       <div className={styles.searchWrap}>
         <span className={styles.searchIcon}>🔍</span>
         <input type="text" placeholder={t.topbar.search}

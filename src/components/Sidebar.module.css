@@ -11,6 +11,41 @@
   overflow-y: auto;
 }
 
+/* Mobile: close button (hidden on desktop) */
+.closeBtn {
+  display: none;
+  position: absolute;
+  top: 0.85rem;
+  right: 0.75rem;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.7);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.closeBtn:hover { background: rgba(255,255,255,0.2); }
+
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+  .closeBtn {
+    display: flex;
+  }
+}
+
 /* Logo */
 .logo {
   padding: 1.25rem 1rem 1rem;

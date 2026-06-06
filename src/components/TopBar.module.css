@@ -12,6 +12,37 @@
   gap: 1rem;
 }
 
+/* Hamburger — visible only on mobile */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 36px;
+  height: 36px;
+  padding: 6px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius);
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.hamburger:hover { background: var(--surface-low); }
+.hamburger span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: var(--text-primary);
+  border-radius: 2px;
+}
+
+@media (max-width: 768px) {
+  .hamburger { display: flex; }
+  .searchWrap { display: none; }
+  .topbar { padding: 0 1rem; gap: 0.5rem; }
+}
+
 .searchWrap {
   position: relative;
   flex: 1;
