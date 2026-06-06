@@ -13,21 +13,32 @@ interface Plan {
   createdAt: string;
 }
 
-const EMPTY_FORM = { name: '', monthlyLimit: '', priceARS: '', description: '' };
+interface FormState {
+  name: string;
+  monthlyLimit: string;
+  priceARS: string;
+  description: string;
+  unlimited: boolean;
+}
+
+const EMPTY_FORM: FormState = { name: '', monthlyLimit: '', priceARS: '', description: '', unlimited: false };
+
+function limitLabel(n: number) { return n === 0 ? '∞ Ilimitado' : `${n} / mes`; }
+function money(n: number) { return `$${n.toLocaleString('es-AR')}`; }
 
 export default function PlanesPage() {
   const [plans, setPlans]       = useState<Plan[]>([]);
   const [loading, setLoading]   = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editPlan, setEditPlan] = useState<Plan | null>(null);
-  const [form, setForm]         = useState(EMPTY_FORM);
+  const [form, setForm]         = useState<FormState>(EMPTY_FORM);
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState('');
   const [deleting, setDeleting] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
-    const res = await fetch('/api/admin/planes');
+    const res  = await fetch('/api/admin/planes');
     const data = await res.json();
     setPlans(Array.isArray(data) ? data : []);
     setLoading(false);
@@ -44,21 +55,30 @@ export default function PlanesPage() {
 
   function openEdit(p: Plan) {
     setEditPlan(p);
-    setForm({ name: p.name, monthlyLimit: String(p.monthlyLimit), priceARS: String(p.priceARS), description: p.description ?? '' });
+    setForm({
+      name:        p.name,
+      monthlyLimit: p.monthlyLimit === 0 ? '' : String(p.monthlyLimit),
+      priceARS:    String(p.priceARS),
+      description: p.description ?? '',
+      unlimited:   p.monthlyLimit === 0,
+    });
     setError('');
     setShowForm(true);
   }
 
   async function handleSave() {
     setError('');
-    if (!form.name || !form.monthlyLimit || !form.priceARS) { setError('Nombre, límite y precio son requeridos.'); return; }
+    if (!form.name || !form.priceARS) { setError('Nombre y precio son requeridos.'); return; }
+    if (!form.unlimited && !form.monthlyLimit) { setError('Ingresá el límite de comprobantes o marcá "Ilimitado".'); return; }
+
+    const monthlyLimit = form.unlimited ? 0 : Number(form.monthlyLimit);
     setSaving(true);
     const url    = editPlan ? `/api/admin/planes/${editPlan.id}` : '/api/admin/planes';
     const method = editPlan ? 'PUT' : 'POST';
-    const res  = await fetch(url, {
+    const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, monthlyLimit: Number(form.monthlyLimit), priceARS: Number(form.priceARS) }),
+      body: JSON.stringify({ name: form.name, monthlyLimit, priceARS: Number(form.priceARS), description: form.description }),
     });
     const data = await res.json();
     if (!res.ok) { setError(data.error ?? 'Error al guardar'); setSaving(false); return; }
@@ -86,35 +106,56 @@ export default function PlanesPage() {
     load();
   }
 
-  function money(n: number) { return `$${n.toLocaleString('es-AR')}`; }
-
   return (
     <div className={styles.page}>
-      {/* Modal */}
+
+      {/* Modal crear/editar */}
       {showForm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="card" style={{ padding: '2rem', maxWidth: 460, width: '90%' }}>
+          <div className="card" style={{ padding: '2rem', maxWidth: 480, width: '90%' }}>
             <h2 style={{ fontWeight: 700, marginBottom: '1.25rem' }}>{editPlan ? 'Editar plan' : 'Nuevo plan'}</h2>
             {error && <p style={{ color: 'var(--error)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{error}</p>}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Nombre del plan *</label>
-                <input className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ej: Pack 300" />
+                <input className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ej: Custom Pro" />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Comprobantes / mes *</label>
-                  <input className="input" type="number" min="1" value={form.monthlyLimit} onChange={e => setForm(f => ({ ...f, monthlyLimit: e.target.value }))} placeholder="300" />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Precio ARS / mes *</label>
-                  <input className="input" type="number" min="0" value={form.priceARS} onChange={e => setForm(f => ({ ...f, priceARS: e.target.value }))} placeholder="14990" />
-                </div>
+
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Precio ARS / mes *</label>
+                <input className="input" type="number" min="0" value={form.priceARS} onChange={e => setForm(f => ({ ...f, priceARS: e.target.value }))} placeholder="14990" />
               </div>
+
+              <div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', marginBottom: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={form.unlimited}
+                    onChange={e => setForm(f => ({ ...f, unlimited: e.target.checked, monthlyLimit: e.target.checked ? '' : f.monthlyLimit }))}
+                    style={{ width: 16, height: 16 }}
+                  />
+                  Sin límite de comprobantes (Ilimitado)
+                </label>
+
+                {!form.unlimited && (
+                  <>
+                    <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Comprobantes / mes *</label>
+                    <input
+                      className="input"
+                      type="number"
+                      min="1"
+                      value={form.monthlyLimit}
+                      onChange={e => setForm(f => ({ ...f, monthlyLimit: e.target.value }))}
+                      placeholder="300"
+                    />
+                  </>
+                )}
+              </div>
+
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Descripción (opcional)</label>
-                <input className="input" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Para e-commerce de alto volumen" />
+                <input className="input" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Plan especial para clientes custom" />
               </div>
             </div>
 
@@ -136,27 +177,14 @@ export default function PlanesPage() {
         <button className="btn btn-primary" onClick={openNew}>+ Nuevo plan</button>
       </div>
 
-      {/* Cards de resumen */}
-      {!loading && plans.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-          {plans.filter(p => p.isActive).map(p => (
-            <div key={p.id} className="card" style={{ padding: '1.25rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '1.75rem', fontWeight: 800 }}>{p.monthlyLimit}</div>
-              <div style={{ fontWeight: 600, margin: '0.15rem 0' }}>{p.name}</div>
-              <div className="text-sm text-muted">{money(p.priceARS)}/mes</div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Tabla de planes */}
+      {/* Tabla */}
       <div className="card">
         <table className="table" style={{ width: '100%' }}>
           <thead>
             <tr>
               <th>Plan</th>
               <th>Límite</th>
-              <th>Precio</th>
+              <th>Precio / mes</th>
               <th>Descripción</th>
               <th>Estado</th>
               <th style={{ textAlign: 'right' }}>Acciones</th>
@@ -167,16 +195,19 @@ export default function PlanesPage() {
               <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>Cargando...</td></tr>
             ) : plans.length === 0 ? (
               <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                No hay planes configurados.{' '}
-                <button className="btn btn-ghost btn-sm" onClick={openNew}>Crear el primero →</button>
+                No hay planes. <button className="btn btn-ghost btn-sm" onClick={openNew}>Crear el primero →</button>
               </td></tr>
             ) : plans.map(p => (
               <tr key={p.id}>
                 <td>
                   <strong>{p.name}</strong>
-                  <br /><span className="text-sm text-muted mono" style={{ fontSize: '0.75rem' }}>{p.id}</span>
+                  <br /><span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{p.id}</span>
                 </td>
-                <td><span className="badge badge-blue">{p.monthlyLimit} / mes</span></td>
+                <td>
+                  <span className={`badge ${p.monthlyLimit === 0 ? 'badge-success' : 'badge-blue'}`}>
+                    {limitLabel(p.monthlyLimit)}
+                  </span>
+                </td>
                 <td><strong>{money(p.priceARS)}</strong></td>
                 <td className="text-sm text-muted">{p.description || '—'}</td>
                 <td>
@@ -187,11 +218,7 @@ export default function PlanesPage() {
                 <td>
                   <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
                     <button className="btn btn-ghost btn-sm" onClick={() => openEdit(p)}>✏ Editar</button>
-                    <button
-                      className={`btn btn-sm ${p.isActive ? 'btn-outline' : 'btn-ghost'}`}
-                      onClick={() => togglePause(p)}
-                      title={p.isActive ? 'Pausar' : 'Reactivar'}
-                    >
+                    <button className={`btn btn-sm ${p.isActive ? 'btn-outline' : 'btn-ghost'}`} onClick={() => togglePause(p)}>
                       {p.isActive ? '⏸ Pausar' : '▶ Activar'}
                     </button>
                     <button
@@ -212,7 +239,7 @@ export default function PlanesPage() {
 
       <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--surface-low)' }}>
         <p className="text-sm text-muted">
-          <strong>Nota:</strong> No podés eliminar un plan que tenga clientes activos. Pausar un plan lo oculta de la selección en el onboarding pero no afecta a los clientes ya suscriptos.
+          <strong>Nota:</strong> No podés eliminar un plan con clientes activos. El plan Ilimitado (∞) no tiene restricción de comprobantes — ideal para clientes con contrato custom.
         </p>
       </div>
     </div>

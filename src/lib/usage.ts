@@ -1,9 +1,20 @@
 import { createClient } from '@/lib/supabase/server';
 import { PLANS, TRIAL_LIMIT, getPlan } from '@/lib/plans';
 
-// Re-export so existing server-side imports don't need to change
 export { PLANS, TRIAL_LIMIT, getPlan };
 export type { PlanId } from '@/lib/plans';
+
+async function getPlanLimit(supabase: Awaited<ReturnType<typeof createClient>>, planId: string | null) {
+  const id = planId ?? 'plan_starter';
+
+  // Try DB plan first (supports unlimited = monthlyLimit 0)
+  const { data } = await supabase.from('plans').select('name, monthlyLimit').eq('id', id).single();
+  if (data) return { label: data.name, monthlyLimit: data.monthlyLimit as number };
+
+  // Fallback to hardcoded
+  const p = getPlan(planId);
+  return { label: p.label, monthlyLimit: p.monthlyLimit };
+}
 
 export async function getOrgUsage(organizationId: string) {
   const supabase = await createClient();
@@ -15,8 +26,10 @@ export async function getOrgUsage(organizationId: string) {
 
   if (!org) return null;
 
-  const plan  = getPlan(org.planId);
-  const now   = new Date();
+  const plan = await getPlanLimit(supabase, org.planId);
+  const isUnlimited = plan.monthlyLimit === 0;
+
+  const now     = new Date();
   const resetAt = org.invoiceCountResetAt ? new Date(org.invoiceCountResetAt) : new Date(0);
   const needsReset =
     now.getFullYear() !== resetAt.getFullYear() ||
@@ -32,16 +45,20 @@ export async function getOrgUsage(organizationId: string) {
     currentCount = 0;
   }
 
-  const isSubscribed    = org.subscriptionStatus === 'ACTIVE';
-  const effectiveLimit  = isSubscribed ? plan.monthlyLimit : TRIAL_LIMIT;
+  const isSubscribed   = org.subscriptionStatus === 'ACTIVE';
+  const effectiveLimit = isSubscribed
+    ? plan.monthlyLimit
+    : TRIAL_LIMIT;
+  const effectiveUnlimited = isSubscribed && isUnlimited;
 
   return {
     planId:             (org.planId ?? 'plan_starter') as import('@/lib/plans').PlanId,
     planLabel:          plan.label,
     monthlyLimit:       effectiveLimit,
+    isUnlimited:        effectiveUnlimited,
     currentCount,
-    remaining:          Math.max(0, effectiveLimit - currentCount),
-    percentage:         Math.min(100, Math.round((currentCount / effectiveLimit) * 100)),
+    remaining:          effectiveUnlimited ? Infinity : Math.max(0, effectiveLimit - currentCount),
+    percentage:         effectiveUnlimited ? 0 : Math.min(100, Math.round((currentCount / effectiveLimit) * 100)),
     subscriptionStatus: org.subscriptionStatus as string | null,
     isSubscribed,
     isTrial:            !isSubscribed && currentCount < TRIAL_LIMIT,
@@ -63,7 +80,6 @@ export async function checkAndIncrementUsage(
   }
 
   if (!usage.isSubscribed) {
-    // Trial mode
     if (usage.currentCount >= TRIAL_LIMIT) {
       return {
         allowed: false,
@@ -73,8 +89,8 @@ export async function checkAndIncrementUsage(
       };
     }
   } else {
-    // Subscribed: check plan limit
-    if (usage.currentCount >= usage.monthlyLimit) {
+    // Unlimited plan: always allow
+    if (!usage.isUnlimited && usage.currentCount >= usage.monthlyLimit) {
       return {
         allowed: false,
         reason:  `Límite mensual alcanzado (${usage.currentCount}/${usage.monthlyLimit}). Actualizá tu plan para continuar.`,
