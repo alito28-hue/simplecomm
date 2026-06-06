@@ -9,7 +9,7 @@ import { db } from '../db/client';
 export async function padronRoutes(app: FastifyInstance): Promise<void> {
   /**
    * GET /v1/padron/:cuil
-   * Consulta datos de una persona por CUIL/CUIT (ws_sr_padron_a5).
+   * Consulta datos de una persona por CUIL/CUIT (ws_sr_padron_a4).
    */
   app.get<{ Params: { cuil: string } }>('/v1/padron/:cuil', {
     preHandler: authenticateApiKey,
@@ -23,7 +23,7 @@ export async function padronRoutes(app: FastifyInstance): Promise<void> {
       const tenant = await db.tenant.findUnique({ where: { id: request.tenantId } });
       if (!tenant) return reply.status(404).send({ error: 'Tenant no encontrado' });
 
-      const ticket = await getValidTicket(request.tenantId, 'ws_sr_padron_a5');
+      const ticket = await getValidTicket(request.tenantId, 'ws_sr_padron_a4');
       const persona = await getPersona(endpoints.padron, ticket, tenant.cuit, clean);
       return reply.send(persona);
     } catch (err) {
@@ -39,7 +39,7 @@ export async function padronRoutes(app: FastifyInstance): Promise<void> {
   /**
    * GET /v1/padron/por-dni/:dni
    * Deriva CUILs candidatos desde un DNI usando el algoritmo módulo 11,
-   * luego valida cada uno contra ws_sr_padron_a5.
+   * luego valida cada uno contra ws_sr_padron_a4.
    * No requiere ws_sr_padron_a4 — solo usa a5 (ya autorizado).
    */
   app.get<{ Params: { dni: string } }>('/v1/padron/por-dni/:dni', {
@@ -55,7 +55,7 @@ export async function padronRoutes(app: FastifyInstance): Promise<void> {
       if (!tenant) return reply.status(404).send({ error: 'Tenant no encontrado' });
 
       const candidates = derivarCuils(clean);
-      const ticket = await getValidTicket(request.tenantId, 'ws_sr_padron_a5');
+      const ticket = await getValidTicket(request.tenantId, 'ws_sr_padron_a4');
 
       const resultados = (
         await Promise.all(

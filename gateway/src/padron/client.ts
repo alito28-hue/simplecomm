@@ -20,7 +20,7 @@ async function soapCall(padronUrl: string, body: string): Promise<string> {
   const envelope = `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope
   xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-  xmlns:a5="http://a5.soap.ws.server.puc.sr/">
+  xmlns:a5="http://a4.soap.ws.server.puc.sr/">
   <soapenv:Header/>
   <soapenv:Body>
     ${body}
