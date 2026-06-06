@@ -24,6 +24,13 @@
 .padronHint { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem; }
 .padronWarn { font-size: 0.78rem; color: var(--warning);    margin-top: 0.3rem; }
 
+/* Picker DNI múltiple */
+.candidatePicker { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.pickerLabel { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.1rem; }
+.candidateBtn { text-align: left; padding: 0.55rem 0.75rem; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-size: 0.85rem; font-family: inherit; transition: all 0.15s; }
+.candidateBtn:hover { border-color: var(--blue); background: var(--blue-light); }
+.candidateBtnActive { border-color: var(--blue) !important; background: var(--blue-light) !important; font-weight: 600; }
+
 /* Persona card (resultado padrón) */
 .personaCard {
   margin-top: 0.75rem;

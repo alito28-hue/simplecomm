@@ -4,8 +4,10 @@ import { useState, useEffect, useRef } from 'react';
 import styles from './manual.module.css';
 
 type InvoiceLetter = 'A' | 'B' | 'C';
+type PadronStatus = 'idle' | 'loading' | 'found' | 'multiple' | 'not_found' | 'error';
 
 interface PadronData {
+  cuil: string;
   nombre: string;
   tipoPersona: string;
   estadoClave: string;
@@ -33,28 +35,24 @@ function PersonaCard({ data }: { data: PadronData }) {
   const lugar = [data.domicilio?.localidad, data.domicilio?.provincia].filter(Boolean).join(', ');
   return (
     <div className={`${styles.personaCard} ${!activo ? styles.personaCardWarn : ''}`}>
-      <div className={styles.personaName}>
-        {activo ? '✓' : '⚠'} {data.nombre}
-      </div>
+      <div className={styles.personaName}>{activo ? '✓' : '⚠'} {data.nombre}</div>
       <div className={styles.personaMeta}>
         <span>{data.tipoPersona === 'FISICA' ? 'Persona Física' : 'Persona Jurídica'}</span>
         <span className={activo ? styles.metaActivo : styles.metaInactivo}>{data.estadoClave}</span>
         {lugar && <span>{lugar}</span>}
       </div>
-      {!activo && (
-        <p className={styles.personaWarnText}>
-          Este CUIL figura como {data.estadoClave} en AFIP. Verificá antes de emitir.
-        </p>
-      )}
+      {!activo && <p className={styles.personaWarnText}>Este CUIL figura como {data.estadoClave} en AFIP. Verificá antes de emitir.</p>}
     </div>
   );
 }
 
 export default function FacturacionManualPage() {
   const [letter, setLetter] = useState<InvoiceLetter>('B');
-  const [buyer, setBuyer] = useState({ fullName: '', docType: 'CONSUMIDOR_FINAL', docNumber: '', email: '' });
+  const [buyer, setBuyer] = useState({ fullName: '', docType: 'CONSUMIDOR_FINAL', docNumber: '' });
   const [padronData, setPadronData] = useState<PadronData | null>(null);
-  const [padronStatus, setPadronStatus] = useState<'idle' | 'loading' | 'found' | 'not_found' | 'error'>('idle');
+  const [padronCandidates, setPadronCandidates] = useState<PadronData[]>([]);
+  const [padronStatus, setPadronStatus] = useState<PadronStatus>('idle');
+  const [resolvedCuil, setResolvedCuil] = useState<string | null>(null);
   const [items, setItems] = useState<Item[]>([{ description: '', quantity: 1, unitPrice: 0, ivaRate: 'IVA_21' }]);
   const [concept, setConcept] = useState('1');
   const [sendEmail, setSendEmail] = useState(false);
@@ -64,10 +62,12 @@ export default function FacturacionManualPage() {
   const [error, setError] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  function resetPadron() {
+    setPadronData(null); setPadronCandidates([]); setResolvedCuil(null); setPadronStatus('idle');
+  }
+
   function changeLetter(l: InvoiceLetter) {
-    setLetter(l);
-    setError(''); setResult(null);
-    setPadronData(null); setPadronStatus('idle');
+    setLetter(l); setError(''); setResult(null); resetPadron();
     setBuyer(l === 'A'
       ? b => ({ ...b, docType: 'CUIT', docNumber: '', fullName: '' })
       : b => ({ ...b, docType: 'CONSUMIDOR_FINAL', docNumber: '', fullName: '' })
@@ -76,35 +76,63 @@ export default function FacturacionManualPage() {
 
   useEffect(() => {
     const clean = buyer.docNumber.replace(/[-\s]/g, '');
-    const isLookupable = letter === 'A' || buyer.docType === 'CUIT' || buyer.docType === 'CUIL';
+    const isCuil = clean.length === 11;
+    const isDni  = clean.length >= 7 && clean.length <= 8 && (letter === 'A' || buyer.docType === 'CUIT' || buyer.docType === 'CUIL' || buyer.docType === 'DNI');
 
-    if (clean.length !== 11 || !isLookupable) {
-      setPadronStatus('idle');
-      setPadronData(null);
-      return;
-    }
+    if (!isCuil && !isDni) { resetPadron(); return; }
+
+    // Para DNI solo buscamos si el tipo es DNI (o si la longitud es correcta)
+    const canLookupDni = isDni && (letter === 'A' || buyer.docType === 'CUIT' || buyer.docType === 'CUIL' || buyer.docType === 'DNI');
+
+    if (!isCuil && !canLookupDni) { resetPadron(); return; }
 
     setPadronStatus('loading');
-    setPadronData(null);
+    setPadronData(null); setPadronCandidates([]); setResolvedCuil(null);
+
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/padron/${clean}`);
-        const data = await res.json();
-        if (res.ok && data.nombre) {
-          setBuyer(b => ({ ...b, fullName: data.nombre }));
-          setPadronData(data);
-          setPadronStatus('found');
+        if (isCuil) {
+          const res = await fetch(`/api/padron/${clean}`);
+          const data = await res.json();
+          if (res.ok && data.nombre) {
+            setBuyer(b => ({ ...b, fullName: data.nombre }));
+            setPadronData({ ...data, cuil: clean });
+            setPadronStatus('found');
+          } else {
+            setPadronStatus(res.status === 404 ? 'not_found' : 'error');
+          }
         } else {
-          setPadronStatus(res.status === 404 ? 'not_found' : 'error');
+          const res = await fetch(`/api/padron/dni/${clean}`);
+          const data = await res.json();
+          if (res.ok) {
+            const { resultados } = data as { resultados: PadronData[] };
+            if (resultados.length === 1) {
+              setBuyer(b => ({ ...b, fullName: resultados[0].nombre }));
+              setPadronData(resultados[0]);
+              setResolvedCuil(resultados[0].cuil);
+              setPadronStatus('found');
+            } else if (resultados.length > 1) {
+              setPadronCandidates(resultados);
+              setPadronStatus('multiple');
+            } else {
+              setPadronStatus('not_found');
+            }
+          } else {
+            setPadronStatus(res.status === 404 ? 'not_found' : 'error');
+          }
         }
-      } catch {
-        setPadronStatus('error');
-      }
-    }, 600);
+      } catch { setPadronStatus('error'); }
+    }, 700);
 
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [buyer.docNumber, buyer.docType, letter]);
+
+  function selectCandidate(c: PadronData) {
+    setBuyer(b => ({ ...b, fullName: c.nombre }));
+    setPadronData(c); setResolvedCuil(c.cuil);
+    setPadronCandidates([]); setPadronStatus('found');
+  }
 
   function addItem() { setItems(prev => [...prev, { description: '', quantity: 1, unitPrice: 0, ivaRate: 'IVA_21' }]); }
   function removeItem(i: number) { setItems(prev => prev.filter((_, idx) => idx !== i)); }
@@ -139,6 +167,11 @@ export default function FacturacionManualPage() {
     setLoading(true); setError('');
     try {
       const clean = buyer.docNumber.replace(/\D/g, '');
+      const effectiveDoc  = resolvedCuil ?? (buyer.docType !== 'CONSUMIDOR_FINAL' ? clean : undefined);
+      const effectiveType = letter === 'A' ? 'CUIT'
+        : resolvedCuil ? 'CUIL'
+        : buyer.docType;
+
       const res = await fetch('/api/invoices/issue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -147,8 +180,8 @@ export default function FacturacionManualPage() {
           description:    items.map(it => `${it.description} x${it.quantity}`).join(', '),
           invoiceLetter:  letter,
           ivaRate:        letter === 'C' ? 0 : undefined,
-          docNumber:      buyer.docType !== 'CONSUMIDOR_FINAL' ? clean : undefined,
-          docType:        letter === 'A' ? 'CUIT' : buyer.docType,
+          docNumber:      effectiveDoc,
+          docType:        effectiveType,
           buyerName:      buyer.fullName || 'Consumidor Final',
           concept:        parseInt(concept),
           recipientEmail: sendEmail && recipientEmail ? recipientEmail : undefined,
@@ -171,8 +204,6 @@ export default function FacturacionManualPage() {
     URL.revokeObjectURL(url);
   }
 
-  const isDni = letter !== 'A' && buyer.docType === 'DNI';
-
   if (result) return (
     <div className={styles.page}>
       <h1 className={styles.pageTitle}>Factura Emitida ✅</h1>
@@ -181,11 +212,7 @@ export default function FacturacionManualPage() {
           <div><span>N° Comprobante</span><strong className="mono">{result.invoiceNumber}</strong></div>
           <div><span>CAE</span><strong className="mono">{result.cae}</strong></div>
         </div>
-        {result.emailSent && (
-          <p style={{ fontSize: '0.85rem', color: 'var(--success)', marginBottom: '1rem' }}>
-            ✉ Comprobante enviado a {recipientEmail}
-          </p>
-        )}
+        {result.emailSent && <p style={{ fontSize: '0.85rem', color: 'var(--success)', marginBottom: '1rem' }}>✉ Comprobante enviado a {recipientEmail}</p>}
         <div className={styles.successActions}>
           <button className="btn btn-primary" onClick={downloadPdf}>⬇ Descargar PDF</button>
           <button className="btn btn-outline" onClick={() => setResult(null)}>Emitir otra</button>
@@ -199,7 +226,6 @@ export default function FacturacionManualPage() {
       <h1 className={styles.pageTitle}>Comprobante Manual</h1>
       {error && <div className={styles.error}>{error}</div>}
 
-      {/* Selector de tipo */}
       <div className="card" style={{ padding: '1.25rem' }}>
         <div className={styles.letterSelector}>
           {(['A', 'B', 'C'] as InvoiceLetter[]).map(l => (
@@ -213,7 +239,6 @@ export default function FacturacionManualPage() {
         <p className={styles.letterDesc}>{LETTER_INFO[letter].desc}</p>
       </div>
 
-      {/* Receptor */}
       <div className={`card ${styles.section}`}>
         <h2 className={styles.sectionTitle}>Datos del receptor</h2>
 
@@ -224,7 +249,7 @@ export default function FacturacionManualPage() {
               <select className="select" value={buyer.docType}
                 onChange={e => {
                   setBuyer(b => ({ ...b, docType: e.target.value, docNumber: '', fullName: '' }));
-                  setPadronData(null); setPadronStatus('idle');
+                  resetPadron();
                 }}>
                 {DOC_TYPES_BC.map(d => <option key={d}>{d}</option>)}
               </select>
@@ -237,17 +262,15 @@ export default function FacturacionManualPage() {
               className="input"
               value={buyer.docNumber}
               onChange={e => setBuyer(b => ({ ...b, docNumber: e.target.value }))}
-              placeholder={letter === 'A' ? '30-12345678-9' : 'Número'}
+              placeholder={letter === 'A' ? '30-12345678-9' : buyer.docType === 'DNI' ? '12345678' : '20-12345678-9'}
               disabled={buyer.docType === 'CONSUMIDOR_FINAL' && letter !== 'A'}
               required={letter === 'A'}
             />
             {padronStatus === 'loading'   && <span className={styles.padronHint}>Consultando Padrón AFIP...</span>}
             {padronStatus === 'not_found' && <span className={styles.padronWarn}>No encontrado en el Padrón AFIP</span>}
             {padronStatus === 'error'     && <span className={styles.padronHint}>No se pudo consultar el Padrón</span>}
-            {isDni && <span className={styles.padronHint}>Con DNI la factura sale a nombre de Consumidor Final</span>}
           </div>
 
-          {/* Nombre: auto-completado o manual */}
           <div className={styles.field}>
             <label>Nombre / Razón social{letter === 'A' ? ' *' : ''}</label>
             <input
@@ -261,10 +284,22 @@ export default function FacturacionManualPage() {
           </div>
         </div>
 
-        {/* Tarjeta de confirmación del padrón */}
-        {padronStatus === 'found' && padronData && (
-          <PersonaCard data={padronData} />
+        {/* Picker múltiple */}
+        {padronStatus === 'multiple' && padronCandidates.length > 0 && (
+          <div className={styles.candidatePicker}>
+            <p className={styles.pickerLabel}>Encontramos {padronCandidates.length} personas con ese DNI. ¿Cuál es?</p>
+            {padronCandidates.map(c => (
+              <button key={c.cuil} type="button"
+                className={`${styles.candidateBtn} ${resolvedCuil === c.cuil ? styles.candidateBtnActive : ''}`}
+                onClick={() => selectCandidate(c)}>
+                {c.nombre} · {c.tipoPersona === 'FISICA' ? 'Persona Física' : 'Empresa'}
+              </button>
+            ))}
+          </div>
         )}
+
+        {/* Tarjeta de confirmación */}
+        {padronStatus === 'found' && padronData && <PersonaCard data={padronData} />}
 
         <div className={styles.grid3} style={{ marginTop: '1rem' }}>
           <div className={styles.field}>
@@ -278,7 +313,6 @@ export default function FacturacionManualPage() {
         </div>
       </div>
 
-      {/* Ítems */}
       <div className={`card ${styles.section}`}>
         <h2 className={styles.sectionTitle}>Detalle de ítems</h2>
         {items.map((it, i) => (
@@ -316,7 +350,6 @@ export default function FacturacionManualPage() {
         </div>
       </div>
 
-      {/* Email */}
       <div className="card" style={{ padding: '1.25rem' }}>
         <div className={styles.emailRow}>
           <span className={styles.emailLabel}>Enviar comprobante por email</span>
