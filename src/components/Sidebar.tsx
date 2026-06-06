@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/auth/actions';
@@ -38,6 +38,14 @@ export default function Sidebar({ orgName = 'Mi Organización', userEmail, mobil
   const { locale, setLocale } = useI18n();
   const isFacturacion = pathname.startsWith('/dashboard/facturacion');
   const [facturacionOpen, setFacturacionOpen] = useState(isFacturacion);
+  const [afipConfigured, setAfipConfigured] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    fetch('/api/organizacion/afip-status')
+      .then(r => r.json())
+      .then(d => setAfipConfigured(d.configured ?? false))
+      .catch(() => setAfipConfigured(false));
+  }, []);
 
   const close = () => onMobileClose?.();
 
@@ -48,6 +56,14 @@ export default function Sidebar({ orgName = 'Mi Organización', userEmail, mobil
       <div className={styles.logo}>
         <Link href="/dashboard" onClick={close}><LogoWhite size="sm" /></Link>
         {orgName && <span className={styles.orgName}>{orgName}</span>}
+        {afipConfigured === true && (
+          <span className={`${styles.afipBadge} ${styles.afipOk}`}>● AFIP activo</span>
+        )}
+        {afipConfigured === false && (
+          <Link href="/dashboard/organizacion" onClick={close} className={`${styles.afipBadge} ${styles.afipWarn}`}>
+            ⚠ Configurar AFIP
+          </Link>
+        )}
       </div>
 
       <nav className={styles.nav}>

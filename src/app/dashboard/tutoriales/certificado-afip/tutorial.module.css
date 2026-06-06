@@ -34,3 +34,9 @@
 .helpCard { padding: 1.25rem 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .helpTitle { font-weight: 700; margin-bottom: 0.2rem; }
 .helpDesc { font-size: 0.85rem; color: var(--text-muted); }
+
+@media (max-width: 768px) {
+  .helpCard { flex-direction: column; align-items: flex-start; }
+  .helpCard > * { width: 100%; }
+  .codeBlock { font-size: 0.7rem; white-space: pre-wrap; word-break: break-all; }
+}

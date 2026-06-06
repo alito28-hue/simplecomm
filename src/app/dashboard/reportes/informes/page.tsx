@@ -3,13 +3,23 @@
 import { useState } from 'react';
 import styles from './informes.module.css';
 
+function defaultFrom() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+}
+
+function defaultTo() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export default function InformesPage() {
-  const [from, setFrom] = useState('');
-  const [to, setTo] = useState('');
+  const [from, setFrom] = useState(defaultFrom());
+  const [to, setTo] = useState(defaultTo());
   const [tipo, setTipo] = useState('');
-  const [invoices, setInvoices] = useState<{ invoice_number: string; buyer_name: string; total_amount: number; status: string; created_at: string; source_app: string | null }[]>([]);
+  const [invoices, setInvoices] = useState<{ invoice_number: string; buyer_name: string; total_amount: number; status: string; created_at: string; source_app: string | null; cae?: string | null }[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   async function buscar() {
     setLoading(true); setSearched(true);
@@ -23,6 +33,24 @@ export default function InformesPage() {
       if (to) list = list.filter((i: { created_at: string }) => new Date(i.created_at) <= new Date(to + 'T23:59:59'));
       setInvoices(list);
     } finally { setLoading(false); }
+  }
+
+  async function descargarCsv() {
+    setDownloading(true);
+    try {
+      const params = new URLSearchParams();
+      if (from) params.set('from', from);
+      if (to) params.set('to', to);
+      const res = await fetch(`/api/reportes/export?${params}`);
+      if (!res.ok) { alert('Error al generar el CSV'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `facturas_${from || 'inicio'}_${to || 'hoy'}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally { setDownloading(false); }
   }
 
   const total = invoices.filter(i => i.status === 'issued').reduce((s, i) => s + i.total_amount, 0);
@@ -43,7 +71,12 @@ export default function InformesPage() {
               <option value="error">Con error</option>
             </select>
           </div>
-          <button className="btn btn-primary" style={{ alignSelf: 'flex-end' }} onClick={buscar}>Consultar</button>
+          <div className={styles.filterActions}>
+            <button className="btn btn-primary" onClick={buscar}>Consultar</button>
+            <button className="btn btn-ghost" onClick={descargarCsv} disabled={downloading}>
+              {downloading ? 'Descargando...' : '⬇ Descargar CSV'}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -65,7 +98,7 @@ export default function InformesPage() {
             <div className="table-wrap">
               <table className="table">
                 <thead>
-                  <tr><th>N° Factura</th><th>Fecha</th><th>Receptor</th><th>Origen</th><th>Monto</th><th>Estado</th></tr>
+                  <tr><th>N° Factura</th><th>Fecha</th><th>Receptor</th><th>Origen</th><th>Monto</th><th>Estado</th><th>CAE</th></tr>
                 </thead>
                 <tbody>
                   {invoices.map((inv, i) => (
@@ -75,7 +108,8 @@ export default function InformesPage() {
                       <td>{inv.buyer_name}</td>
                       <td><span className="badge badge-gray text-xs">{inv.source_app ?? 'manual'}</span></td>
                       <td><strong>${inv.total_amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong></td>
-                      <td><span className={`badge ${inv.status === 'issued' ? 'badge-success' : 'badge-error'}`}>{inv.status === 'issued' ? '✓' : '✗'}</span></td>
+                      <td><span className={`badge ${inv.status === 'issued' ? 'badge-success' : 'badge-error'}`}>{inv.status === 'issued' ? '✓ Emitida' : '✗ Error'}</span></td>
+                      <td className="mono text-sm">{inv.cae ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>

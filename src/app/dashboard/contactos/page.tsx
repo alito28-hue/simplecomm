@@ -41,12 +41,20 @@ function mapCSVRow(row: Record<string, string>) {
   };
 }
 
+interface HistorialInvoice {
+  invoice_id?: string;
+  invoice_number: string | null;
+  total_amount: number;
+  created_at: string;
+  status: string;
+}
+
 export default function ContactosPage() {
   const router = useRouter();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [modal, setModal] = useState<'none' | 'add' | 'edit' | 'import'>('none');
+  const [modal, setModal] = useState<'none' | 'add' | 'edit' | 'import' | 'historial'>('none');
   const [form, setForm] = useState<Omit<Contact, 'id'>>(EMPTY_FORM);
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -55,6 +63,9 @@ export default function ContactosPage() {
   const [importPreview, setImportPreview] = useState<ReturnType<typeof mapCSVRow>[]>([]);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
+  const [historialContact, setHistorialContact] = useState<Contact | null>(null);
+  const [historialInvoices, setHistorialInvoices] = useState<HistorialInvoice[]>([]);
+  const [historialLoading, setHistorialLoading] = useState(false);
 
   const fetchContacts = useCallback(async () => {
     setLoading(true);
@@ -130,6 +141,20 @@ export default function ContactosPage() {
     router.push(`/dashboard/facturacion/simplificada?${params.toString()}`);
   }
 
+  async function openHistorial(c: Contact) {
+    setHistorialContact(c);
+    setHistorialInvoices([]);
+    setHistorialLoading(true);
+    setModal('historial');
+    try {
+      const res = await fetch(`/api/clientes/${c.id}/facturas`);
+      const data = await res.json();
+      setHistorialInvoices(data.invoices ?? []);
+    } finally {
+      setHistorialLoading(false);
+    }
+  }
+
   return (
     <div className={styles.page}>
       <div className={styles.header}>
@@ -176,6 +201,7 @@ export default function ContactosPage() {
                   <td>
                     <div className={styles.rowActions}>
                       <button className="btn btn-primary btn-sm" onClick={() => emitirFactura(c)}>+ Factura</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => openHistorial(c)}>Historial</button>
                       <button className="btn btn-ghost btn-sm" onClick={() => openEdit(c)}>Editar</button>
                       <button className="btn btn-ghost btn-sm" style={{ color: 'var(--error)' }} onClick={() => setDeleteId(c.id)}>Eliminar</button>
                     </div>
@@ -235,6 +261,53 @@ export default function ContactosPage() {
             <div className={styles.modalActions}>
               <button className="btn btn-ghost" onClick={() => setDeleteId(null)}>Cancelar</button>
               <button className="btn btn-primary" style={{ background: 'var(--error)' }} onClick={() => deleteContact(deleteId)}>Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Historial de facturas modal */}
+      {modal === 'historial' && historialContact && (
+        <div className={styles.modalOverlay} onClick={() => setModal('none')}>
+          <div className={`${styles.modal} ${styles.modalWide}`} onClick={e => e.stopPropagation()} style={{ maxWidth: 680 }}>
+            <h2 className={styles.modalTitle}>Historial — {historialContact.businessName}</h2>
+            {historialLoading ? (
+              <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Cargando...</div>
+            ) : historialInvoices.length === 0 ? (
+              <div style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                Sin facturas emitidas para este contacto.
+              </div>
+            ) : (
+              <>
+                <div className="table-wrap">
+                  <table className="table">
+                    <thead>
+                      <tr><th>Fecha</th><th>N° Factura</th><th>Monto</th><th>Estado</th></tr>
+                    </thead>
+                    <tbody>
+                      {historialInvoices.map((inv, i) => (
+                        <tr key={inv.invoice_id ?? i}>
+                          <td className="text-sm text-muted">{new Date(inv.created_at).toLocaleDateString('es-AR')}</td>
+                          <td className="mono text-sm">{inv.invoice_number ?? '—'}</td>
+                          <td><strong>${inv.total_amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong></td>
+                          <td>
+                            {inv.status === 'issued' && <span className="badge badge-success">✓ Emitida</span>}
+                            {inv.status === 'pending' && <span className="badge badge-warning">⏳ Pendiente</span>}
+                            {inv.status === 'error' && <span className="badge badge-error">✗ Error</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ padding: '0.75rem 0', borderTop: '1px solid var(--border)', marginTop: '0.5rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+                  <span className="text-muted">{historialInvoices.length} comprobante{historialInvoices.length !== 1 ? 's' : ''}</span>
+                  <strong>Total: ${historialInvoices.filter(i => i.status === 'issued').reduce((s, i) => s + i.total_amount, 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong>
+                </div>
+              </>
+            )}
+            <div className={styles.modalActions}>
+              <button className="btn btn-ghost" onClick={() => setModal('none')}>Cerrar</button>
             </div>
           </div>
         </div>

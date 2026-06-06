@@ -127,3 +127,26 @@
   font-weight: 600;
 }
 .exploreLink:hover { text-decoration: underline; }
+
+.newInvoiceBar { display: flex; justify-content: flex-end; }
+
+/* Onboarding checklist */
+.onboardingCard { padding: 1.25rem 1.5rem; border: 1px solid var(--warning); background: color-mix(in srgb, var(--warning) 6%, var(--surface)); }
+.onboardingHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+.onboardingTitle { font-size: 0.95rem; font-weight: 700; font-family: var(--font-heading); }
+.onboardingProgress { font-size: 0.78rem; color: var(--text-muted); }
+.onboardingSteps { display: flex; flex-direction: column; gap: 0.5rem; }
+.onboardingStep { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border); }
+.onboardingStep:last-child { border-bottom: none; }
+.stepDone { opacity: 0.55; }
+.stepCheck { width: 20px; height: 20px; min-width: 20px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 0.75rem; font-weight: 700; border: 2px solid var(--border); color: var(--text-muted); }
+.stepDone .stepCheck { background: var(--success); border-color: var(--success); color: #fff; }
+.stepLabel { flex: 1; font-size: 0.875rem; }
+.stepLink { font-size: 0.78rem; color: var(--blue); font-weight: 600; white-space: nowrap; }
+.stepLink:hover { text-decoration: underline; }
+
+@media (max-width: 768px) {
+  .pageHeader { flex-direction: column; }
+  .newInvoiceBar { justify-content: stretch; }
+  .newInvoiceBar > * { width: 100%; text-align: center; }
+}

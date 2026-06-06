@@ -36,3 +36,11 @@
 .configField { display: flex; flex-direction: column; gap: 0.35rem; }
 .configField label { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); }
 .configActions { display: flex; justify-content: flex-end; gap: 0.75rem; padding-top: 0.5rem; }
+
+@media (max-width: 768px) {
+  .header { flex-direction: column; }
+  .connectedActions { flex-direction: column; width: 100%; }
+  .connectedActions > * { width: 100%; }
+  .configActions { flex-direction: column-reverse; }
+  .configActions > * { width: 100%; }
+}

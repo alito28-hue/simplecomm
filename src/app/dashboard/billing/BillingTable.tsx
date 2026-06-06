@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import styles from './billing.module.css';
 
+interface NcModal { invoiceId: string; invoiceNumber: string | null; amount: number; }
+
+
 interface Invoice {
   invoice_id: string;
   invoice_number: string | null;
@@ -35,6 +38,9 @@ export default function BillingTable() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [ncModal, setNcModal] = useState<NcModal | null>(null);
+  const [ncLoading, setNcLoading] = useState(false);
+  const [ncResult, setNcResult] = useState<string | null>(null);
   const limit = 20;
 
   useEffect(() => {
@@ -58,6 +64,23 @@ export default function BillingTable() {
       cancelled = true;
     };
   }, [page]);
+
+  async function emitirNC(invoiceId: string) {
+    setNcLoading(true);
+    setNcResult(null);
+    try {
+      const res = await fetch('/api/invoices/nota-credito', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ originalInvoiceId: invoiceId }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setNcResult(`Error: ${data.error}`); return; }
+      setNcResult(`✓ Nota de crédito emitida: ${data.invoiceNumber ?? ''}`);
+    } finally {
+      setNcLoading(false);
+    }
+  }
 
   async function downloadPdf(invoiceId: string, invoiceNumber: string) {
     const res = await fetch(`/api/facturas/${invoiceId}/pdf`);
@@ -140,15 +163,26 @@ export default function BillingTable() {
                   )}
                 </td>
                 <td>
-                  {inv.status === 'issued' && inv.invoice_number && (
-                    <button
-                      onClick={() => downloadPdf(inv.invoice_id, inv.invoice_number!)}
-                      className="btn btn-ghost btn-sm"
-                      title="Descargar PDF"
-                    >
-                      ⬇
-                    </button>
-                  )}
+                  <div style={{ display: 'flex', gap: '0.25rem' }}>
+                    {inv.status === 'issued' && inv.invoice_number && (
+                      <button
+                        onClick={() => downloadPdf(inv.invoice_id, inv.invoice_number!)}
+                        className="btn btn-ghost btn-sm"
+                        title="Descargar PDF"
+                      >
+                        ⬇
+                      </button>
+                    )}
+                    {inv.status === 'issued' && (
+                      <button
+                        onClick={() => { setNcModal({ invoiceId: inv.invoice_id, invoiceNumber: inv.invoice_number, amount: inv.total_amount }); setNcResult(null); }}
+                        className="btn btn-ghost btn-sm"
+                        title="Emitir Nota de Crédito"
+                      >
+                        NC
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -168,6 +202,36 @@ export default function BillingTable() {
             <button className="btn btn-ghost btn-sm" onClick={() => setPage(p => p+1)} disabled={page * limit >= total}>
               Sig.
             </button>
+          </div>
+        </div>
+      )}
+
+      {ncModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          onClick={() => !ncLoading && setNcModal(null)}>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', maxWidth: 420, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
+            onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.75rem' }}>Emitir Nota de Crédito</h2>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+              ¿Emitir Nota de Crédito por{' '}
+              <strong>${ncModal.amount.toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong>
+              {ncModal.invoiceNumber ? ` (factura ${ncModal.invoiceNumber})` : ''}?
+            </p>
+            {ncResult && (
+              <p style={{ fontSize: '0.85rem', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius)', marginBottom: '1rem',
+                background: ncResult.startsWith('✓') ? 'color-mix(in srgb, var(--success) 10%, transparent)' : 'color-mix(in srgb, var(--error) 10%, transparent)',
+                color: ncResult.startsWith('✓') ? 'var(--success)' : 'var(--error)' }}>
+                {ncResult}
+              </p>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => setNcModal(null)} disabled={ncLoading}>Cancelar</button>
+              {!ncResult?.startsWith('✓') && (
+                <button className="btn btn-primary btn-sm" onClick={() => emitirNC(ncModal.invoiceId)} disabled={ncLoading}>
+                  {ncLoading ? 'Emitiendo...' : 'Confirmar'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

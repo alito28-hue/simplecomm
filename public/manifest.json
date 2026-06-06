@@ -1,0 +1,9 @@
+{
+  "name": "SimpleComm",
+  "short_name": "SimpleComm",
+  "description": "Facturación electrónica para Argentina",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb"
+}

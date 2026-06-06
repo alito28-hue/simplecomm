@@ -31,3 +31,11 @@
 .helpTitle { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; }
 .helpLink { font-size: 0.83rem; color: var(--blue); text-decoration: none; display: block; }
 .helpLink:hover { text-decoration: underline; }
+
+@media (max-width: 768px) {
+  .tabs { flex-wrap: wrap; gap: 0.35rem; }
+  .actions { flex-wrap: wrap; }
+  .actions > * { flex: 1; min-width: 120px; }
+  .codeBlock { font-size: 0.7rem; }
+  .dropZone { padding: 1.5rem 1rem; }
+}

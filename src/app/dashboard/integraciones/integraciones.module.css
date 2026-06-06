@@ -66,3 +66,10 @@
 .apiNum { display: block; font-size: 1.4rem; font-weight: 800; color: var(--blue); font-family: var(--font-heading); }
 .apiLabel { font-size: 0.75rem; color: rgba(255,255,255,0.5); margin-top: 0.2rem; display: block; }
 .apiDivider { width: 1px; height: 40px; background: rgba(255,255,255,0.12); }
+
+@media (max-width: 768px) {
+  .apiBar { flex-wrap: wrap; gap: 1rem; }
+  .apiStat { flex: 1 1 40%; padding: 0 0.5rem; }
+  .apiDivider { display: none; }
+  .cardActions { flex-wrap: wrap; }
+}

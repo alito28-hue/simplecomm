@@ -3,25 +3,23 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import styles from './dashboard.module.css';
+import OnboardingChecklist from './OnboardingChecklist';
 
-interface Invoice {
-  invoice_id: string;
+interface LastInvoice {
+  invoice_id?: string;
   invoice_number: string | null;
-  status: string;
   buyer_name: string;
   total_amount: number;
-  cae: string | null;
-  source_app: string | null;
   created_at: string;
+  status: string;
 }
 
-interface Stats {
-  total: number;
-  issued: number;
-  pending: number;
-  errors: number;
-  totalAmount: number;
-  thisMonth: number;
+interface KPIs {
+  monthInvoices: number;
+  monthAmount: number;
+  monthVsLastAmount: number;
+  pendingCount: number;
+  lastInvoices: LastInvoice[];
 }
 
 function formatMoney(n: number) {
@@ -33,31 +31,13 @@ function formatDate(iso: string) {
 }
 
 export default function DashboardData() {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [stats, setStats] = useState<Stats>({ total: 0, issued: 0, pending: 0, errors: 0, totalAmount: 0, thisMonth: 0 });
+  const [kpis, setKpis] = useState<KPIs | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch('/api/facturas?page=1&limit=5')
+    fetch('/api/dashboard/kpis')
       .then(r => r.json())
-      .then(data => {
-        const list: Invoice[] = data.data ?? [];
-        setInvoices(list);
-
-        // Calcular métricas
-        const issued  = list.filter(i => i.status === 'issued').length;
-        const pending = list.filter(i => i.status === 'pending').length;
-        const errors  = list.filter(i => i.status === 'error').length;
-        const totalAmount = list.filter(i => i.status === 'issued').reduce((s, i) => s + i.total_amount, 0);
-
-        const now = new Date();
-        const thisMonth = list.filter(i => {
-          const d = new Date(i.created_at);
-          return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear() && i.status === 'issued';
-        }).reduce((s, i) => s + i.total_amount, 0);
-
-        setStats({ total: data.meta?.total ?? list.length, issued, pending, errors, totalAmount, thisMonth });
-      })
+      .then(data => setKpis(data))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -68,45 +48,56 @@ export default function DashboardData() {
     </div>
   );
 
+  const delta = kpis?.monthVsLastAmount ?? 0;
+  const isPositive = delta >= 0;
+
   return (
     <>
-      {/* Métricas */}
+      <div className={styles.newInvoiceBar}>
+        <Link href="/dashboard/facturacion/simplificada" className="btn btn-primary">
+          ⚡ Nueva factura
+        </Link>
+      </div>
+
+      <OnboardingChecklist />
+
       <div className={styles.statsGrid}>
         <div className="card">
           <div className={styles.statCard}>
-            <div className={styles.statLabel}>Total facturado (este mes)</div>
-            <div className={styles.statValue}>{formatMoney(stats.thisMonth)}</div>
+            <div className={styles.statLabel}>Facturas este mes</div>
+            <div className={styles.statValue}>{kpis?.monthInvoices ?? 0}</div>
           </div>
         </div>
         <div className="card">
           <div className={styles.statCard}>
-            <div className={styles.statLabel}>Comprobantes emitidos</div>
-            <div className={styles.statValue}>{stats.issued}</div>
+            <div className={styles.statLabel}>Monto este mes</div>
+            <div className={styles.statValue}>{formatMoney(kpis?.monthAmount ?? 0)}</div>
           </div>
         </div>
         <div className="card">
           <div className={styles.statCard}>
-            <div className={styles.statLabel}>Pendientes</div>
-            <div className={styles.statValue}>{stats.pending}</div>
-            {stats.pending > 0 && <div className={`${styles.statDelta} ${styles.negative}`}>Atención</div>}
+            <div className={styles.statLabel}>Variación vs mes anterior</div>
+            <div className={styles.statValue}>{isPositive ? '↑' : '↓'} {Math.abs(delta)}%</div>
+            <div className={`${styles.statDelta} ${isPositive ? styles.positive : styles.negative}`}>
+              {isPositive ? 'Por encima del mes anterior' : 'Por debajo del mes anterior'}
+            </div>
           </div>
         </div>
         <div className="card">
           <div className={styles.statCard}>
-            <div className={styles.statLabel}>Total acumulado</div>
-            <div className={styles.statValue}>{formatMoney(stats.totalAmount)}</div>
+            <div className={styles.statLabel}>Total emitidas (histórico)</div>
+            <div className={styles.statValue}>{kpis?.pendingCount ?? 0}</div>
           </div>
         </div>
       </div>
 
-      {/* Últimas facturas */}
       <div className={`card ${styles.tableCard}`}>
         <div className={styles.tableHeader}>
-          <h2 className={styles.sectionTitle}>Últimos comprobantes</h2>
-          <Link href="/dashboard/billing" className={styles.viewAll}>Ver todos →</Link>
+          <h2 className={styles.sectionTitle}>Últimas facturas</h2>
+          <Link href="/dashboard/billing" className={styles.viewAll}>Ver todas →</Link>
         </div>
 
-        {invoices.length === 0 ? (
+        {!kpis?.lastInvoices?.length ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
             <p>Sin comprobantes aún.</p>
             <Link href="/dashboard/facturacion/simplificada" style={{ color: 'var(--blue)', marginTop: '0.5rem', display: 'block' }}>
@@ -118,22 +109,20 @@ export default function DashboardData() {
             <table className="table">
               <thead>
                 <tr>
-                  <th>N° Comprobante</th>
+                  <th>N° Factura</th>
                   <th>Fecha</th>
                   <th>Receptor</th>
                   <th>Monto</th>
-                  <th>Origen</th>
                   <th>Estado</th>
                 </tr>
               </thead>
               <tbody>
-                {invoices.map(inv => (
-                  <tr key={inv.invoice_id}>
+                {kpis.lastInvoices.map((inv, i) => (
+                  <tr key={inv.invoice_id ?? i}>
                     <td><span className="mono text-sm">{inv.invoice_number ?? '—'}</span></td>
                     <td className="text-sm text-muted">{formatDate(inv.created_at)}</td>
                     <td>{inv.buyer_name}</td>
                     <td><strong>{formatMoney(inv.total_amount)}</strong></td>
-                    <td><span className="badge badge-gray text-xs">{inv.source_app ?? 'manual'}</span></td>
                     <td>
                       {inv.status === 'issued' && <span className="badge badge-success">✓ Emitida</span>}
                       {inv.status === 'pending' && <span className="badge badge-warning">⏳ Pendiente</span>}
@@ -147,12 +136,11 @@ export default function DashboardData() {
         )}
 
         <div className={styles.tablePagination}>
-          <span className="text-muted text-sm">Total: {stats.total} comprobantes</span>
+          <span className="text-muted text-sm">Total histórico: {kpis?.pendingCount ?? 0} comprobantes</span>
           <Link href="/dashboard/billing" className="btn btn-ghost btn-sm">Ver todos →</Link>
         </div>
       </div>
 
-      {/* Quick actions */}
       <div className={styles.bottomGrid}>
         <div className={`card ${styles.syncCard}`}>
           <h3 className={styles.sectionTitle}>Facturación rápida</h3>
