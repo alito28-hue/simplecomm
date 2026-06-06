@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { getPersona } from '../padron/client';
-import { getPersonaListByDocumento } from '../padron/clientA4';
+import { derivarCuils } from '../padron/cuil';
 import { getValidTicket } from '../wsaa/cache';
 import { endpoints } from '../config';
 import { authenticateApiKey } from '../middleware/apikey';
@@ -37,8 +37,9 @@ export async function padronRoutes(app: FastifyInstance): Promise<void> {
 
   /**
    * GET /v1/padron/por-dni/:dni
-   * Busca CUILs a partir de un DNI (ws_sr_padron_a4) y enriquece con datos de a5.
-   * Devuelve 0, 1 o 2 resultados (masculino/femenino).
+   * Deriva CUILs candidatos desde un DNI usando el algoritmo módulo 11,
+   * luego valida cada uno contra ws_sr_padron_a5.
+   * No requiere ws_sr_padron_a4 — solo usa a5 (ya autorizado).
    */
   app.get<{ Params: { dni: string } }>('/v1/padron/por-dni/:dni', {
     preHandler: authenticateApiKey,
@@ -52,20 +53,13 @@ export async function padronRoutes(app: FastifyInstance): Promise<void> {
       const tenant = await db.tenant.findUnique({ where: { id: request.tenantId } });
       if (!tenant) return reply.status(404).send({ error: 'Tenant no encontrado' });
 
-      // Paso 1: derivar CUILs desde el DNI via a4
-      const ticketA4 = await getValidTicket(request.tenantId, 'ws_sr_padron_a4');
-      const cuils = await getPersonaListByDocumento(endpoints.padronA4, ticketA4, tenant.cuit, clean);
+      const candidates = derivarCuils(clean);
+      const ticket = await getValidTicket(request.tenantId, 'ws_sr_padron_a5');
 
-      if (cuils.length === 0) {
-        return reply.status(404).send({ error: 'DNI no encontrado en el Padrón AFIP' });
-      }
-
-      // Paso 2: enriquecer con datos completos via a5
-      const ticketA5 = await getValidTicket(request.tenantId, 'ws_sr_padron_a5');
       const resultados = (
         await Promise.all(
-          cuils.map(cuil =>
-            getPersona(endpoints.padron, ticketA5, tenant.cuit, cuil).catch(() => null)
+          candidates.map(cuil =>
+            getPersona(endpoints.padron, ticket, tenant.cuit, cuil).catch(() => null)
           )
         )
       ).filter(Boolean);

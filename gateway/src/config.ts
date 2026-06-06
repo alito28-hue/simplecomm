@@ -26,16 +26,14 @@ export const config = parsed.data;
 // Endpoints AFIP por ambiente
 export const AFIP_ENDPOINTS = {
   production: {
-    wsaa:     'https://wsaa.afip.gov.ar/ws/services/LoginCms',
-    wsfe:     'https://servicios1.afip.gov.ar/wsfev1/service.asmx',
-    padron:   'https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5',
-    padronA4: 'https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA4',
+    wsaa:   'https://wsaa.afip.gov.ar/ws/services/LoginCms',
+    wsfe:   'https://servicios1.afip.gov.ar/wsfev1/service.asmx',
+    padron: 'https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5',
   },
   homologation: {
-    wsaa:     'https://wsaahomo.afip.gov.ar/ws/services/LoginCms',
-    wsfe:     'https://wswhomo.afip.gov.ar/wsfev1/service.asmx',
-    padron:   'https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5',
-    padronA4: 'https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA4',
+    wsaa:   'https://wsaahomo.afip.gov.ar/ws/services/LoginCms',
+    wsfe:   'https://wswhomo.afip.gov.ar/wsfev1/service.asmx',
+    padron: 'https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5',
   },
 } as const;
 
