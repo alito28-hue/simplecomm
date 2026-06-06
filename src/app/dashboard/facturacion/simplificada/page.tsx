@@ -15,9 +15,10 @@ const LETTER_INFO = {
 export default function FacturacionSimplificadaPage() {
   const [letter, setLetter] = useState<InvoiceLetter>('B');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ invoiceNumber: string; cae: string; caeDueDate: string; pdfBase64: string } | null>(null);
+  const [result, setResult] = useState<{ invoiceNumber: string; cae: string; caeDueDate: string; pdfBase64: string; emailSent?: boolean } | null>(null);
   const [error, setError] = useState('');
-  const [sendEmail, setSendEmail] = useState(false);
+  const [sendEmail, setSendEmail]       = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState('');
   const info = LETTER_INFO[letter];
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -42,6 +43,7 @@ export default function FacturacionSimplificadaPage() {
           amount, description, invoiceLetter: letter, ivaRate,
           docNumber: letter !== 'B' ? docNumber : undefined,
           docType: letter === 'A' ? 'CUIT' : (docNumber ? 'DNI' : 'CONSUMIDOR_FINAL'),
+          recipientEmail: sendEmail && recipientEmail ? recipientEmail : undefined,
         }),
       });
       const data = await res.json();
@@ -96,6 +98,11 @@ export default function FacturacionSimplificadaPage() {
                 <div className={styles.detailRow}><span>N° Comprobante</span><strong className="mono">{result.invoiceNumber}</strong></div>
                 <div className={styles.detailRow}><span>CAE</span><strong className="mono">{result.cae}</strong></div>
               </div>
+              {result.emailSent && (
+                <p style={{ fontSize: '0.85rem', color: 'var(--success)', marginTop: '0.75rem' }}>
+                  ✉ Comprobante enviado a {recipientEmail}
+                </p>
+              )}
               <div className={styles.successActions}>
                 <button className="btn btn-primary" onClick={downloadPdf}>⬇ Descargar PDF</button>
                 <button className="btn btn-outline" onClick={() => setResult(null)}>Emitir otra</button>
@@ -131,12 +138,25 @@ export default function FacturacionSimplificadaPage() {
                   className="input" required={letter === 'A'} />
               </div>
 
-              <div className={styles.emailRow}>
-                <span className={styles.emailLabel}>Enviar por email</span>
-                <label className={styles.toggle}>
-                  <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
-                  <span className={styles.slider} />
-                </label>
+              <div>
+                <div className={styles.emailRow}>
+                  <span className={styles.emailLabel}>Enviar por email</span>
+                  <label className={styles.toggle}>
+                    <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
+                    <span className={styles.slider} />
+                  </label>
+                </div>
+                {sendEmail && (
+                  <input
+                    type="email"
+                    value={recipientEmail}
+                    onChange={e => setRecipientEmail(e.target.value)}
+                    placeholder="email@destino.com"
+                    className="input"
+                    style={{ marginTop: '0.5rem' }}
+                    required
+                  />
+                )}
               </div>
 
               <button type="submit" className={`btn btn-primary ${styles.submitBtn}`} disabled={loading}>
