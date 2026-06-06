@@ -5,6 +5,13 @@ import styles from './manual.module.css';
 
 type InvoiceLetter = 'A' | 'B' | 'C';
 
+interface PadronData {
+  nombre: string;
+  tipoPersona: string;
+  estadoClave: string;
+  domicilio?: { localidad?: string; provincia?: string; };
+}
+
 const LETTER_INFO = {
   A: { label: 'Factura A', desc: 'Resp. Inscripto → Resp. Inscripto. IVA discriminado. Requiere CUIT del receptor.' },
   B: { label: 'Factura B', desc: 'Para consumidores finales o compradores con DNI/CUIL. IVA incluido.' },
@@ -21,9 +28,32 @@ const DOC_TYPES_BC = ['CUIT', 'CUIL', 'DNI', 'CONSUMIDOR_FINAL'];
 
 interface Item { description: string; quantity: number; unitPrice: number; ivaRate: string; }
 
+function PersonaCard({ data }: { data: PadronData }) {
+  const activo = data.estadoClave === 'ACTIVO';
+  const lugar = [data.domicilio?.localidad, data.domicilio?.provincia].filter(Boolean).join(', ');
+  return (
+    <div className={`${styles.personaCard} ${!activo ? styles.personaCardWarn : ''}`}>
+      <div className={styles.personaName}>
+        {activo ? '✓' : '⚠'} {data.nombre}
+      </div>
+      <div className={styles.personaMeta}>
+        <span>{data.tipoPersona === 'FISICA' ? 'Persona Física' : 'Persona Jurídica'}</span>
+        <span className={activo ? styles.metaActivo : styles.metaInactivo}>{data.estadoClave}</span>
+        {lugar && <span>{lugar}</span>}
+      </div>
+      {!activo && (
+        <p className={styles.personaWarnText}>
+          Este CUIL figura como {data.estadoClave} en AFIP. Verificá antes de emitir.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function FacturacionManualPage() {
   const [letter, setLetter] = useState<InvoiceLetter>('B');
   const [buyer, setBuyer] = useState({ fullName: '', docType: 'CONSUMIDOR_FINAL', docNumber: '', email: '' });
+  const [padronData, setPadronData] = useState<PadronData | null>(null);
   const [padronStatus, setPadronStatus] = useState<'idle' | 'loading' | 'found' | 'not_found' | 'error'>('idle');
   const [items, setItems] = useState<Item[]>([{ description: '', quantity: 1, unitPrice: 0, ivaRate: 'IVA_21' }]);
   const [concept, setConcept] = useState('1');
@@ -36,26 +66,26 @@ export default function FacturacionManualPage() {
 
   function changeLetter(l: InvoiceLetter) {
     setLetter(l);
-    setError('');
-    setResult(null);
-    setPadronStatus('idle');
+    setError(''); setResult(null);
+    setPadronData(null); setPadronStatus('idle');
     setBuyer(l === 'A'
       ? b => ({ ...b, docType: 'CUIT', docNumber: '', fullName: '' })
       : b => ({ ...b, docType: 'CONSUMIDOR_FINAL', docNumber: '', fullName: '' })
     );
   }
 
-  // Padrón auto-lookup cuando se ingresan 11 dígitos (CUIT/CUIL)
   useEffect(() => {
     const clean = buyer.docNumber.replace(/[-\s]/g, '');
     const isLookupable = letter === 'A' || buyer.docType === 'CUIT' || buyer.docType === 'CUIL';
 
     if (clean.length !== 11 || !isLookupable) {
       setPadronStatus('idle');
+      setPadronData(null);
       return;
     }
 
     setPadronStatus('loading');
+    setPadronData(null);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
@@ -63,6 +93,7 @@ export default function FacturacionManualPage() {
         const data = await res.json();
         if (res.ok && data.nombre) {
           setBuyer(b => ({ ...b, fullName: data.nombre }));
+          setPadronData(data);
           setPadronStatus('found');
         } else {
           setPadronStatus(res.status === 404 ? 'not_found' : 'error');
@@ -75,9 +106,7 @@ export default function FacturacionManualPage() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [buyer.docNumber, buyer.docType, letter]);
 
-  function addItem() {
-    setItems(prev => [...prev, { description: '', quantity: 1, unitPrice: 0, ivaRate: 'IVA_21' }]);
-  }
+  function addItem() { setItems(prev => [...prev, { description: '', quantity: 1, unitPrice: 0, ivaRate: 'IVA_21' }]); }
   function removeItem(i: number) { setItems(prev => prev.filter((_, idx) => idx !== i)); }
   function updateItem(i: number, field: keyof Item, value: string | number) {
     setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: value } : it));
@@ -108,15 +137,13 @@ export default function FacturacionManualPage() {
       setError('Factura A requiere el CUIT del receptor.'); return;
     }
     setLoading(true); setError('');
-
     try {
-      const total = calcTotal();
       const clean = buyer.docNumber.replace(/\D/g, '');
       const res = await fetch('/api/invoices/issue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount:         Math.round(total * 100) / 100,
+          amount:         Math.round(calcTotal() * 100) / 100,
           description:    items.map(it => `${it.description} x${it.quantity}`).join(', '),
           invoiceLetter:  letter,
           ivaRate:        letter === 'C' ? 0 : undefined,
@@ -143,6 +170,8 @@ export default function FacturacionManualPage() {
     const a = document.createElement('a'); a.href = url; a.download = `factura-${result.invoiceNumber}.pdf`; a.click();
     URL.revokeObjectURL(url);
   }
+
+  const isDni = letter !== 'A' && buyer.docType === 'DNI';
 
   if (result) return (
     <div className={styles.page}>
@@ -189,21 +218,19 @@ export default function FacturacionManualPage() {
         <h2 className={styles.sectionTitle}>Datos del receptor</h2>
 
         <div className={styles.grid3}>
-          {/* Tipo doc — solo para B/C */}
           {letter !== 'A' && (
             <div className={styles.field}>
               <label>Tipo documento</label>
               <select className="select" value={buyer.docType}
                 onChange={e => {
                   setBuyer(b => ({ ...b, docType: e.target.value, docNumber: '', fullName: '' }));
-                  setPadronStatus('idle');
+                  setPadronData(null); setPadronStatus('idle');
                 }}>
                 {DOC_TYPES_BC.map(d => <option key={d}>{d}</option>)}
               </select>
             </div>
           )}
 
-          {/* Número de documento con label dinámico */}
           <div className={styles.field}>
             <label>{getDocLabel()}</label>
             <input
@@ -214,26 +241,32 @@ export default function FacturacionManualPage() {
               disabled={buyer.docType === 'CONSUMIDOR_FINAL' && letter !== 'A'}
               required={letter === 'A'}
             />
+            {padronStatus === 'loading'   && <span className={styles.padronHint}>Consultando Padrón AFIP...</span>}
+            {padronStatus === 'not_found' && <span className={styles.padronWarn}>No encontrado en el Padrón AFIP</span>}
+            {padronStatus === 'error'     && <span className={styles.padronHint}>No se pudo consultar el Padrón</span>}
+            {isDni && <span className={styles.padronHint}>Con DNI la factura sale a nombre de Consumidor Final</span>}
           </div>
 
-          {/* Nombre — se autocompleta con padrón */}
+          {/* Nombre: auto-completado o manual */}
           <div className={styles.field}>
             <label>Nombre / Razón social{letter === 'A' ? ' *' : ''}</label>
             <input
               className="input"
               value={buyer.fullName}
               onChange={e => setBuyer(b => ({ ...b, fullName: e.target.value }))}
-              placeholder={padronStatus === 'loading' ? 'Consultando Padrón...' : 'Ej: GARCIA, MARTIN'}
+              placeholder="Ej: GARCIA, MARTIN"
               required={letter === 'A'}
+              disabled={buyer.docType === 'CONSUMIDOR_FINAL' && letter !== 'A'}
             />
-            {padronStatus === 'loading'   && <span className={styles.padronHint}>Consultando Padrón AFIP...</span>}
-            {padronStatus === 'found'     && <span className={styles.padronOk}>✓ Encontrado en Padrón</span>}
-            {padronStatus === 'not_found' && <span className={styles.padronWarn}>No encontrado en Padrón</span>}
-            {padronStatus === 'error'     && <span className={styles.padronHint}>No se pudo consultar el Padrón</span>}
           </div>
         </div>
 
-        <div className={styles.grid3}>
+        {/* Tarjeta de confirmación del padrón */}
+        {padronStatus === 'found' && padronData && (
+          <PersonaCard data={padronData} />
+        )}
+
+        <div className={styles.grid3} style={{ marginTop: '1rem' }}>
           <div className={styles.field}>
             <label>Concepto</label>
             <select className="select" value={concept} onChange={e => setConcept(e.target.value)}>
@@ -252,33 +285,27 @@ export default function FacturacionManualPage() {
           <div key={i} className={styles.itemRow}>
             <div className={styles.field} style={{ flex: 3 }}>
               <label>Descripción</label>
-              <input className="input" value={it.description}
-                onChange={e => updateItem(i, 'description', e.target.value)} />
+              <input className="input" value={it.description} onChange={e => updateItem(i, 'description', e.target.value)} />
             </div>
             <div className={styles.field} style={{ flex: 1 }}>
               <label>Cantidad</label>
-              <input className="input" type="number" min="1" value={it.quantity}
-                onChange={e => updateItem(i, 'quantity', parseFloat(e.target.value) || 1)} />
+              <input className="input" type="number" min="1" value={it.quantity} onChange={e => updateItem(i, 'quantity', parseFloat(e.target.value) || 1)} />
             </div>
             <div className={styles.field} style={{ flex: 1.5 }}>
               <label>Precio unitario</label>
-              <input className="input" type="number" step="0.01" min="0" value={it.unitPrice}
-                onChange={e => updateItem(i, 'unitPrice', parseFloat(e.target.value) || 0)} />
+              <input className="input" type="number" step="0.01" min="0" value={it.unitPrice} onChange={e => updateItem(i, 'unitPrice', parseFloat(e.target.value) || 0)} />
             </div>
             {letter !== 'C' && (
               <div className={styles.field} style={{ flex: 1.5 }}>
                 <label>IVA</label>
-                <select className="select" value={it.ivaRate}
-                  onChange={e => updateItem(i, 'ivaRate', e.target.value)}>
+                <select className="select" value={it.ivaRate} onChange={e => updateItem(i, 'ivaRate', e.target.value)}>
                   {IVA_RATES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
                 </select>
               </div>
             )}
             {items.length > 1 && (
-              <button type="button"
-                className="btn btn-ghost btn-sm"
-                style={{ alignSelf: 'flex-end', color: 'var(--error)' }}
-                onClick={() => removeItem(i)}>✕</button>
+              <button type="button" className="btn btn-ghost btn-sm"
+                style={{ alignSelf: 'flex-end', color: 'var(--error)' }} onClick={() => removeItem(i)}>✕</button>
             )}
           </div>
         ))}
@@ -299,15 +326,8 @@ export default function FacturacionManualPage() {
           </label>
         </div>
         {sendEmail && (
-          <input
-            type="email"
-            value={recipientEmail}
-            onChange={e => setRecipientEmail(e.target.value)}
-            placeholder="email@destino.com"
-            className="input"
-            style={{ marginTop: '0.5rem' }}
-            required
-          />
+          <input type="email" value={recipientEmail} onChange={e => setRecipientEmail(e.target.value)}
+            placeholder="email@destino.com" className="input" style={{ marginTop: '0.5rem' }} required />
         )}
       </div>
 

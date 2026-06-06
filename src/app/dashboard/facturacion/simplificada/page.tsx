@@ -6,11 +6,40 @@ import styles from './simplificada.module.css';
 
 type InvoiceLetter = 'A' | 'B' | 'C';
 
+interface PadronData {
+  nombre: string;
+  tipoPersona: string;
+  estadoClave: string;
+  domicilio?: { localidad?: string; provincia?: string; };
+}
+
 const LETTER_INFO = {
-  A: { label: 'Factura A', desc: 'Para clientes con CUIT (Resp. Inscripto → Resp. Inscripto). IVA discriminado.', requiresCuit: true, inputLabel: 'Monto neto (sin IVA)', code: '01' },
-  B: { label: 'Factura B', desc: 'Para consumidores finales. IVA incluido en el precio.', requiresCuit: false, inputLabel: 'Monto final (IVA incluido)', code: '06' },
-  C: { label: 'Factura C', desc: 'Para monotributistas. Sin IVA.', requiresCuit: false, inputLabel: 'Monto total', code: '11' },
+  A: { label: 'Factura A', desc: 'Para clientes con CUIT (Resp. Inscripto → Resp. Inscripto). IVA discriminado.', inputLabel: 'Monto neto (sin IVA)' },
+  B: { label: 'Factura B', desc: 'Para consumidores finales. IVA incluido en el precio.', inputLabel: 'Monto final (IVA incluido)' },
+  C: { label: 'Factura C', desc: 'Para monotributistas. Sin IVA.', inputLabel: 'Monto total' },
 };
+
+function PersonaCard({ data }: { data: PadronData }) {
+  const activo = data.estadoClave === 'ACTIVO';
+  const lugar = [data.domicilio?.localidad, data.domicilio?.provincia].filter(Boolean).join(', ');
+  return (
+    <div className={`${styles.personaCard} ${!activo ? styles.personaCardWarn : ''}`}>
+      <div className={styles.personaName}>
+        {activo ? '✓' : '⚠'} {data.nombre}
+      </div>
+      <div className={styles.personaMeta}>
+        <span>{data.tipoPersona === 'FISICA' ? 'Persona Física' : 'Persona Jurídica'}</span>
+        <span className={activo ? styles.metaActivo : styles.metaInactivo}>{data.estadoClave}</span>
+        {lugar && <span>{lugar}</span>}
+      </div>
+      {!activo && (
+        <p className={styles.personaWarnText}>
+          Este CUIL figura como {data.estadoClave} en AFIP. Verificá antes de emitir.
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function FacturacionSimplificadaPage() {
   const [letter, setLetter] = useState<InvoiceLetter>('B');
@@ -18,28 +47,28 @@ export default function FacturacionSimplificadaPage() {
   const [result, setResult] = useState<{ invoiceNumber: string; cae: string; caeDueDate: string; pdfBase64: string; emailSent?: boolean } | null>(null);
   const [error, setError] = useState('');
 
-  // Datos del receptor
   const [docNumber, setDocNumber] = useState('');
   const [buyerName, setBuyerName] = useState('');
+  const [padronData, setPadronData] = useState<PadronData | null>(null);
   const [padronStatus, setPadronStatus] = useState<'idle' | 'loading' | 'found' | 'not_found' | 'error'>('idle');
 
-  // Email
   const [sendEmail, setSendEmail] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const info = LETTER_INFO[letter];
 
-  // Auto-lookup padron when 11 digits are entered
   useEffect(() => {
     const clean = docNumber.replace(/[-\s]/g, '');
     if (clean.length !== 11) {
       setPadronStatus('idle');
+      setPadronData(null);
       return;
     }
 
     setPadronStatus('loading');
     setBuyerName('');
+    setPadronData(null);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
@@ -48,11 +77,10 @@ export default function FacturacionSimplificadaPage() {
         const data = await res.json();
         if (res.ok && data.nombre) {
           setBuyerName(data.nombre);
+          setPadronData(data);
           setPadronStatus('found');
-        } else if (res.status === 404) {
-          setPadronStatus('not_found');
         } else {
-          setPadronStatus('error');
+          setPadronStatus(res.status === 404 ? 'not_found' : 'error');
         }
       } catch {
         setPadronStatus('error');
@@ -62,11 +90,11 @@ export default function FacturacionSimplificadaPage() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [docNumber]);
 
-  // Reset on letter change
   function changeLetter(l: InvoiceLetter) {
     setLetter(l);
     setDocNumber('');
     setBuyerName('');
+    setPadronData(null);
     setPadronStatus('idle');
     setError('');
     setResult(null);
@@ -79,7 +107,6 @@ export default function FacturacionSimplificadaPage() {
     const amount = parseFloat(form.get('amount') as string);
     const description = form.get('description') as string;
     const ivaRate = parseFloat(form.get('ivaRate') as string || '21');
-
     const clean = docNumber.replace(/[-\s]/g, '');
 
     if (letter === 'A' && !clean) {
@@ -92,10 +119,7 @@ export default function FacturacionSimplificadaPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount,
-          description,
-          invoiceLetter: letter,
-          ivaRate,
+          amount, description, invoiceLetter: letter, ivaRate,
           docNumber: clean || undefined,
           docType: letter === 'A' ? 'CUIT' : (clean.length === 11 ? 'CUIL' : clean ? 'DNI' : 'CONSUMIDOR_FINAL'),
           buyerName: buyerName || undefined,
@@ -120,8 +144,8 @@ export default function FacturacionSimplificadaPage() {
     URL.revokeObjectURL(url);
   }
 
-  const docLabel = letter === 'A' ? 'CUIT del receptor *' : 'CUIL o DNI del receptor (opcional)';
-  const docPlaceholder = letter === 'A' ? '30-12345678-9' : 'CUIL o DNI (opcional)';
+  const cleanDoc = docNumber.replace(/\D/g, '');
+  const isDni = letter !== 'A' && cleanDoc.length >= 7 && cleanDoc.length < 11;
 
   return (
     <div className={styles.page}>
@@ -132,12 +156,9 @@ export default function FacturacionSimplificadaPage() {
 
       <div className={styles.layout}>
         <div className={`card ${styles.formCard}`}>
-          {/* Selector de tipo */}
           <div className={styles.letterSelector}>
             {(['A','B','C'] as InvoiceLetter[]).map(l => (
-              <button key={l}
-                type="button"
-                onClick={() => changeLetter(l)}
+              <button key={l} type="button" onClick={() => changeLetter(l)}
                 className={`${styles.letterBtn} ${letter === l ? styles.letterActive : ''}`}>
                 <span className={styles.letterCode}>{l}</span>
                 <span className={styles.letterName}>{LETTER_INFO[l].label}</span>
@@ -146,7 +167,6 @@ export default function FacturacionSimplificadaPage() {
           </div>
 
           <div className={styles.letterDesc}>{info.desc}</div>
-
           {error && <div className={styles.error}>{error}</div>}
 
           {result ? (
@@ -164,7 +184,7 @@ export default function FacturacionSimplificadaPage() {
               )}
               <div className={styles.successActions}>
                 <button className="btn btn-primary" onClick={downloadPdf}>⬇ Descargar PDF</button>
-                <button className="btn btn-outline" onClick={() => { setResult(null); setDocNumber(''); setBuyerName(''); setPadronStatus('idle'); }}>Emitir otra</button>
+                <button className="btn btn-outline" onClick={() => { setResult(null); setDocNumber(''); setBuyerName(''); setPadronData(null); setPadronStatus('idle'); }}>Emitir otra</button>
               </div>
             </div>
           ) : (
@@ -190,49 +210,39 @@ export default function FacturacionSimplificadaPage() {
               <textarea name="description" placeholder="¿Qué vendiste? (opcional)"
                 className={`input ${styles.descArea}`} rows={3} />
 
-              {/* Documento del receptor con lookup de Padrón */}
               <div className={styles.field}>
-                <label>{docLabel}</label>
+                <label>
+                  {letter === 'A' ? 'CUIT del receptor *' : 'CUIL o CUIT del receptor (opcional)'}
+                </label>
                 <input
                   type="text"
                   value={docNumber}
                   onChange={e => setDocNumber(e.target.value)}
-                  placeholder={docPlaceholder}
+                  placeholder={letter === 'A' ? '30-12345678-9' : '20-12345678-9'}
                   className="input"
                   required={letter === 'A'}
                 />
-                {/* Status del padrón */}
-                {padronStatus === 'loading' && (
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
-                    Consultando Padrón AFIP...
+
+                {isDni && (
+                  <p className={styles.dniHint}>
+                    Con DNI la factura sale a nombre de Consumidor Final. Usá el CUIL para auto-completar el nombre.
                   </p>
                 )}
-                {padronStatus === 'found' && (
-                  <p style={{ fontSize: '0.8rem', color: 'var(--success)', marginTop: '0.4rem' }}>
-                    ✓ {buyerName}
-                  </p>
-                )}
-                {padronStatus === 'not_found' && (
-                  <p style={{ fontSize: '0.8rem', color: 'var(--warning)', marginTop: '0.4rem' }}>
-                    CUIL no encontrado en Padrón
-                  </p>
-                )}
-                {padronStatus === 'error' && (
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
-                    No se pudo consultar el Padrón. Podés ingresar el nombre manualmente.
-                  </p>
-                )}
+                {padronStatus === 'loading' && <p className={styles.padronLoading}>Consultando Padrón AFIP...</p>}
+                {padronStatus === 'found' && padronData && <PersonaCard data={padronData} />}
+                {padronStatus === 'not_found' && <p className={styles.padronWarn}>CUIL no encontrado en el Padrón AFIP</p>}
+                {padronStatus === 'error' && <p className={styles.padronHint}>No se pudo consultar el Padrón. Podés ingresar el nombre manualmente.</p>}
               </div>
 
-              {/* Nombre del receptor — visible siempre para Factura A, o cuando hay resultado de padrón */}
-              {(letter === 'A' || padronStatus !== 'idle') && (
+              {/* Nombre editable: siempre para A, o cuando padron no encontró / error */}
+              {(letter === 'A' || (padronStatus !== 'idle' && padronStatus !== 'found')) && (
                 <div className={styles.field}>
-                  <label>Nombre / Razón social{letter !== 'A' ? ' (opcional)' : ' *'}</label>
+                  <label>Nombre / Razón social{letter === 'A' ? ' *' : ' (opcional)'}</label>
                   <input
                     type="text"
                     value={buyerName}
                     onChange={e => setBuyerName(e.target.value)}
-                    placeholder={padronStatus === 'found' ? '' : 'Ej: GARCIA, MARTIN'}
+                    placeholder="Ej: GARCIA, MARTIN"
                     className="input"
                     required={letter === 'A'}
                   />
@@ -248,15 +258,8 @@ export default function FacturacionSimplificadaPage() {
                   </label>
                 </div>
                 {sendEmail && (
-                  <input
-                    type="email"
-                    value={recipientEmail}
-                    onChange={e => setRecipientEmail(e.target.value)}
-                    placeholder="email@destino.com"
-                    className="input"
-                    style={{ marginTop: '0.5rem' }}
-                    required
-                  />
+                  <input type="email" value={recipientEmail} onChange={e => setRecipientEmail(e.target.value)}
+                    placeholder="email@destino.com" className="input" style={{ marginTop: '0.5rem' }} required />
                 )}
               </div>
 
@@ -277,8 +280,9 @@ export default function FacturacionSimplificadaPage() {
             </div>
           </div>
           <div className={`card ${styles.infoCard}`}>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-              Al ingresar un CUIL de 11 dígitos, consultamos el Padrón AFIP automáticamente para completar el nombre del receptor.
+            <p className={styles.infoText}>
+              Ingresá el CUIL o CUIT (11 dígitos) para buscar automáticamente los datos del receptor en el Padrón AFIP.
+              Con solo DNI la factura sale a nombre de Consumidor Final.
             </p>
           </div>
           <div className={`card ${styles.infoCard}`}>

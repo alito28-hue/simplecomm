@@ -21,9 +21,28 @@
 .field label { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); }
 
 /* Padrón hints */
-.padronHint { font-size: 0.78rem; color: var(--text-muted); }
-.padronOk   { font-size: 0.78rem; color: var(--success); }
-.padronWarn { font-size: 0.78rem; color: var(--warning); }
+.padronHint { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.3rem; }
+.padronWarn { font-size: 0.78rem; color: var(--warning);    margin-top: 0.3rem; }
+
+/* Persona card (resultado padrón) */
+.personaCard {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--success);
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.personaCardWarn { border-color: var(--warning); background: color-mix(in srgb, var(--warning) 8%, transparent); }
+.personaName { font-weight: 700; font-size: 0.95rem; color: var(--navy); }
+.personaMeta { display: flex; gap: 0.5rem; flex-wrap: wrap; font-size: 0.78rem; color: var(--text-muted); }
+.personaMeta span::after { content: '·'; margin-left: 0.5rem; }
+.personaMeta span:last-child::after { content: ''; }
+.metaActivo   { color: var(--success) !important; font-weight: 600; }
+.metaInactivo { color: var(--warning) !important; font-weight: 600; }
+.personaWarnText { font-size: 0.78rem; color: var(--warning); margin-top: 0.15rem; }
 
 .itemRow { display: flex; gap: 0.75rem; align-items: flex-start; margin-bottom: 0.75rem; flex-wrap: wrap; }
 .total { display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 1rem; }

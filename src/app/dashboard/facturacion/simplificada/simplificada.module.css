@@ -112,6 +112,41 @@
 
 .submitBtn { width: 100%; padding: 0.75rem; font-size: 0.95rem; }
 
+/* Padrón hints */
+.padronLoading { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem; }
+.padronWarn    { font-size: 0.78rem; color: var(--warning);    margin-top: 0.4rem; }
+.padronHint    { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem; }
+.dniHint       { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem; font-style: italic; }
+
+/* Persona card (resultado padrón) */
+.personaCard {
+  margin-top: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--success);
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.personaCardWarn {
+  border-color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+}
+.personaName { font-weight: 700; font-size: 0.95rem; color: var(--navy); }
+.personaMeta {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+.personaMeta span::after { content: '·'; margin-left: 0.5rem; }
+.personaMeta span:last-child::after { content: ''; margin-left: 0; }
+.metaActivo   { color: var(--success) !important; font-weight: 600; }
+.metaInactivo { color: var(--warning) !important; font-weight: 600; }
+.personaWarnText { font-size: 0.78rem; color: var(--warning); margin-top: 0.15rem; }
+
 /* Success */
 .success { text-align: center; padding: 1.5rem 0; }
 .successIcon { font-size: 2.5rem; margin-bottom: 0.75rem; }
