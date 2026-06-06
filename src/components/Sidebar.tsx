@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/auth/actions';
 import { LogoWhite } from './Logo';
-import { useI18n } from '@/lib/i18n/context';
 import styles from './Sidebar.module.css';
 
 interface SidebarProps {
@@ -35,7 +34,6 @@ const NAV = [
 
 export default function Sidebar({ orgName = 'Mi Organización', userEmail, mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
-  const { locale, setLocale } = useI18n();
   const isFacturacion = pathname.startsWith('/dashboard/facturacion');
   const [facturacionOpen, setFacturacionOpen] = useState(isFacturacion);
   const [afipConfigured, setAfipConfigured] = useState<boolean | null>(null);
@@ -107,11 +105,6 @@ export default function Sidebar({ orgName = 'Mi Organización', userEmail, mobil
       </nav>
 
       <div className={styles.bottom}>
-        <div className={styles.langToggle}>
-          <button onClick={() => setLocale('es')} className={`${styles.langBtn} ${locale === 'es' ? styles.langActive : ''}`}>ES</button>
-          <button onClick={() => setLocale('en')} className={`${styles.langBtn} ${locale === 'en' ? styles.langActive : ''}`}>EN</button>
-        </div>
-
         <div className={styles.upgradeBanner}>
           <div className={styles.upgradeTitle}>Mejorar Plan</div>
           <div className={styles.upgradeText}>Desbloqueá todas las funciones</div>

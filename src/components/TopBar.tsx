@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { useI18n } from '@/lib/i18n/context';
 import NotificationBell from './NotificationBell';
 import styles from './TopBar.module.css';
 
@@ -33,7 +32,6 @@ interface SearchResults {
 }
 
 export default function TopBar({ userInitials = 'U', userName, onHamburger }: TopBarProps) {
-  const { t } = useI18n();
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResults | null>(null);
@@ -89,7 +87,7 @@ export default function TopBar({ userInitials = 'U', userName, onHamburger }: To
         <span className={styles.searchIcon}>{searching ? '⏳' : '🔍'}</span>
         <input
           type="text"
-          placeholder={t.topbar.search}
+          placeholder="Buscar facturas o contactos..."
           className={styles.search}
           value={query}
           onChange={e => setQuery(e.target.value)}
