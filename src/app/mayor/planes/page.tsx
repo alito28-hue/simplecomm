@@ -1,98 +1,219 @@
-import { createClient } from '@/lib/supabase/server';
-import Link from 'next/link';
-import { PLANS, getPlan, type PlanId } from '@/lib/usage';
+'use client';
+
+import { useEffect, useState } from 'react';
 import styles from '../mayor.module.css';
 
-async function getStats() {
-  const supabase = await createClient();
-  const { data: orgs } = await supabase
-    .from('organizations')
-    .select('id, name, cuit, planId, invoiceCountMonth, invoiceCountResetAt, subscriptionStatus');
-
-  return orgs ?? [];
+interface Plan {
+  id: string;
+  name: string;
+  monthlyLimit: number;
+  priceARS: number;
+  isActive: boolean;
+  description: string | null;
+  createdAt: string;
 }
 
-export default async function PlanesPage() {
-  const orgs = await getStats();
+const EMPTY_FORM = { name: '', monthlyLimit: '', priceARS: '', description: '' };
 
-  const now = new Date();
+export default function PlanesPage() {
+  const [plans, setPlans]       = useState<Plan[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editPlan, setEditPlan] = useState<Plan | null>(null);
+  const [form, setForm]         = useState(EMPTY_FORM);
+  const [saving, setSaving]     = useState(false);
+  const [error, setError]       = useState('');
+  const [deleting, setDeleting] = useState<string | null>(null);
 
-  const byPlan = (Object.keys(PLANS) as PlanId[]).map(pid => ({
-    planId:  pid,
-    plan:    PLANS[pid],
-    clients: orgs.filter(o => (o.planId ?? 'plan_starter') === pid),
-  }));
+  async function load() {
+    setLoading(true);
+    const res = await fetch('/api/admin/planes');
+    const data = await res.json();
+    setPlans(Array.isArray(data) ? data : []);
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  function openNew() {
+    setEditPlan(null);
+    setForm(EMPTY_FORM);
+    setError('');
+    setShowForm(true);
+  }
+
+  function openEdit(p: Plan) {
+    setEditPlan(p);
+    setForm({ name: p.name, monthlyLimit: String(p.monthlyLimit), priceARS: String(p.priceARS), description: p.description ?? '' });
+    setError('');
+    setShowForm(true);
+  }
+
+  async function handleSave() {
+    setError('');
+    if (!form.name || !form.monthlyLimit || !form.priceARS) { setError('Nombre, límite y precio son requeridos.'); return; }
+    setSaving(true);
+    const url    = editPlan ? `/api/admin/planes/${editPlan.id}` : '/api/admin/planes';
+    const method = editPlan ? 'PUT' : 'POST';
+    const res  = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...form, monthlyLimit: Number(form.monthlyLimit), priceARS: Number(form.priceARS) }),
+    });
+    const data = await res.json();
+    if (!res.ok) { setError(data.error ?? 'Error al guardar'); setSaving(false); return; }
+    setShowForm(false);
+    setSaving(false);
+    load();
+  }
+
+  async function togglePause(p: Plan) {
+    await fetch(`/api/admin/planes/${p.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isActive: !p.isActive }),
+    });
+    load();
+  }
+
+  async function handleDelete(p: Plan) {
+    if (!confirm(`¿Eliminar el plan "${p.name}"? Esta acción no se puede deshacer.`)) return;
+    setDeleting(p.id);
+    const res  = await fetch(`/api/admin/planes/${p.id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error ?? 'Error al eliminar'); }
+    setDeleting(null);
+    load();
+  }
+
+  function money(n: number) { return `$${n.toLocaleString('es-AR')}`; }
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Planes</h1>
-        <p className={styles.subtitle}>Distribución de clientes por plan y uso mensual.</p>
-      </div>
+      {/* Modal */}
+      {showForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="card" style={{ padding: '2rem', maxWidth: 460, width: '90%' }}>
+            <h2 style={{ fontWeight: 700, marginBottom: '1.25rem' }}>{editPlan ? 'Editar plan' : 'Nuevo plan'}</h2>
+            {error && <p style={{ color: 'var(--error)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{error}</p>}
 
-      {/* Resumen de planes */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-        {byPlan.map(({ planId, plan, clients }) => (
-          <div key={planId} className="card" style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '2rem', fontWeight: 800 }}>{clients.length}</div>
-            <div style={{ fontWeight: 600, margin: '0.25rem 0' }}>{plan.label}</div>
-            <div className="text-sm text-muted">Límite: {plan.monthlyLimit} facturas/mes</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Nombre del plan *</label>
+                <input className="input" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ej: Pack 300" />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Comprobantes / mes *</label>
+                  <input className="input" type="number" min="1" value={form.monthlyLimit} onChange={e => setForm(f => ({ ...f, monthlyLimit: e.target.value }))} placeholder="300" />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Precio ARS / mes *</label>
+                  <input className="input" type="number" min="0" value={form.priceARS} onChange={e => setForm(f => ({ ...f, priceARS: e.target.value }))} placeholder="14990" />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Descripción (opcional)</label>
+                <input className="input" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Para e-commerce de alto volumen" />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+              <button className="btn btn-ghost" onClick={() => setShowForm(false)} disabled={saving}>Cancelar</button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                {saving ? 'Guardando...' : editPlan ? 'Guardar cambios' : 'Crear plan'}
+              </button>
+            </div>
           </div>
-        ))}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1 className={styles.title}>Planes</h1>
+          <p className={styles.subtitle}>Gestioná los planes disponibles para los clientes.</p>
+        </div>
+        <button className="btn btn-primary" onClick={openNew}>+ Nuevo plan</button>
       </div>
 
-      {/* Tabla de todos los clientes con su plan y uso */}
-      <div className="card">
-        <h2 className={styles.sectionTitle} style={{ marginBottom: '1rem' }}>Uso actual por cliente</h2>
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Cliente</th>
-                <th>Plan</th>
-                <th>Estado</th>
-                <th>Uso este mes</th>
-                <th>%</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {orgs.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Sin clientes</td></tr>
-              ) : orgs.map(org => {
-                const plan = getPlan(org.planId);
-                const resetAt = org.invoiceCountResetAt ? new Date(org.invoiceCountResetAt) : new Date(0);
-                const stale = now.getFullYear() !== resetAt.getFullYear() || now.getMonth() !== resetAt.getMonth();
-                const count = stale ? 0 : (org.invoiceCountMonth ?? 0);
-                const pct   = Math.min(100, Math.round((count / plan.monthlyLimit) * 100));
-
-                return (
-                  <tr key={org.id}>
-                    <td><strong>{org.name || '(sin nombre)'}</strong><br /><span className="text-sm text-muted mono">{org.cuit || '—'}</span></td>
-                    <td><span className="badge badge-blue">{plan.label}</span></td>
-                    <td>
-                      <span className={`badge ${
-                        org.subscriptionStatus === 'ACTIVE'    ? 'badge-success' :
-                        org.subscriptionStatus === 'TRIAL'     ? 'badge-warning' :
-                        org.subscriptionStatus === 'CANCELLED' ? 'badge-error'   : 'badge-gray'
-                      }`}>{org.subscriptionStatus}</span>
-                    </td>
-                    <td>
-                      <strong style={{ color: pct >= 90 ? 'var(--error)' : 'inherit' }}>{count}</strong>
-                      <span className="text-muted"> / {plan.monthlyLimit}</span>
-                    </td>
-                    <td>
-                      <div style={{ background: 'var(--border)', borderRadius: 4, height: 6, width: 80 }}>
-                        <div style={{ width: `${pct}%`, background: pct >= 90 ? 'var(--error)' : 'var(--blue)', height: '100%', borderRadius: 4 }} />
-                      </div>
-                    </td>
-                    <td><Link href={`/mayor/clientes/${org.id}`} className="btn btn-ghost btn-sm">Ver →</Link></td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {/* Cards de resumen */}
+      {!loading && plans.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+          {plans.filter(p => p.isActive).map(p => (
+            <div key={p.id} className="card" style={{ padding: '1.25rem', textAlign: 'center' }}>
+              <div style={{ fontSize: '1.75rem', fontWeight: 800 }}>{p.monthlyLimit}</div>
+              <div style={{ fontWeight: 600, margin: '0.15rem 0' }}>{p.name}</div>
+              <div className="text-sm text-muted">{money(p.priceARS)}/mes</div>
+            </div>
+          ))}
         </div>
+      )}
+
+      {/* Tabla de planes */}
+      <div className="card">
+        <table className="table" style={{ width: '100%' }}>
+          <thead>
+            <tr>
+              <th>Plan</th>
+              <th>Límite</th>
+              <th>Precio</th>
+              <th>Descripción</th>
+              <th>Estado</th>
+              <th style={{ textAlign: 'right' }}>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)' }}>Cargando...</td></tr>
+            ) : plans.length === 0 ? (
+              <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                No hay planes configurados.{' '}
+                <button className="btn btn-ghost btn-sm" onClick={openNew}>Crear el primero →</button>
+              </td></tr>
+            ) : plans.map(p => (
+              <tr key={p.id}>
+                <td>
+                  <strong>{p.name}</strong>
+                  <br /><span className="text-sm text-muted mono" style={{ fontSize: '0.75rem' }}>{p.id}</span>
+                </td>
+                <td><span className="badge badge-blue">{p.monthlyLimit} / mes</span></td>
+                <td><strong>{money(p.priceARS)}</strong></td>
+                <td className="text-sm text-muted">{p.description || '—'}</td>
+                <td>
+                  <span className={`badge ${p.isActive ? 'badge-success' : 'badge-gray'}`}>
+                    {p.isActive ? 'Activo' : 'Pausado'}
+                  </span>
+                </td>
+                <td>
+                  <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(p)}>✏ Editar</button>
+                    <button
+                      className={`btn btn-sm ${p.isActive ? 'btn-outline' : 'btn-ghost'}`}
+                      onClick={() => togglePause(p)}
+                      title={p.isActive ? 'Pausar' : 'Reactivar'}
+                    >
+                      {p.isActive ? '⏸ Pausar' : '▶ Activar'}
+                    </button>
+                    <button
+                      className="btn btn-sm"
+                      style={{ color: 'var(--error)', border: '1px solid var(--error)' }}
+                      onClick={() => handleDelete(p)}
+                      disabled={deleting === p.id}
+                    >
+                      {deleting === p.id ? '...' : '🗑'}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--surface-low)' }}>
+        <p className="text-sm text-muted">
+          <strong>Nota:</strong> No podés eliminar un plan que tenga clientes activos. Pausar un plan lo oculta de la selección en el onboarding pero no afecta a los clientes ya suscriptos.
+        </p>
       </div>
     </div>
   );
