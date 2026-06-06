@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import ContactPicker, { type ContactOption } from '@/components/ContactPicker';
 import styles from './simplificada.module.css';
 
 type InvoiceLetter = 'A' | 'B' | 'C';
@@ -54,10 +56,30 @@ export default function FacturacionSimplificadaPage() {
   const [recipientEmail, setRecipientEmail] = useState('');
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipPadronRef = useRef(false);
+  const searchParams = useSearchParams();
   const info = LETTER_INFO[letter];
+
+  // Pre-fill from contact "Emitir factura" link
+  useEffect(() => {
+    const name = searchParams.get('name');
+    const dt   = searchParams.get('docType');
+    const dn   = searchParams.get('docNumber');
+    const em   = searchParams.get('email');
+    if (name || dn) {
+      skipPadronRef.current = true;
+      if (name) setBuyerName(name);
+      if (dn)   setDocNumber(dn);
+      if (em)   { setRecipientEmail(em); setSendEmail(true); }
+      setPadronStatus('idle');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const clean = docNumber.replace(/[-\s]/g, '');
+
+    if (skipPadronRef.current) { skipPadronRef.current = false; return; }
 
     if (clean.length < 7) {
       setPadronStatus('idle'); setPadronData(null);
@@ -114,6 +136,14 @@ export default function FacturacionSimplificadaPage() {
 
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [docNumber, letter]);
+
+  function handleContactSelect(c: ContactOption) {
+    skipPadronRef.current = true;
+    setDocNumber(c.docNumber);
+    setBuyerName(c.businessName);
+    if (c.emailContact) { setRecipientEmail(c.emailContact); setSendEmail(true); }
+    setPadronData(null); setPadronCandidates([]); setResolvedCuil(null); setPadronStatus('idle');
+  }
 
   function selectCandidate(c: PadronData) {
     setBuyerName(c.nombre);
@@ -251,7 +281,10 @@ export default function FacturacionSimplificadaPage() {
                 className={`input ${styles.descArea}`} rows={3} />
 
               <div className={styles.field}>
-                <label>{letter === 'A' ? 'CUIT del receptor *' : 'CUIL, CUIT o DNI del receptor (opcional)'}</label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                  <label style={{ margin: 0 }}>{letter === 'A' ? 'CUIT del receptor *' : 'CUIL, CUIT o DNI del receptor (opcional)'}</label>
+                  <ContactPicker onSelect={handleContactSelect} />
+                </div>
                 <input
                   type="text"
                   value={docNumber}

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
+import ContactPicker, { type ContactOption } from '@/components/ContactPicker';
 import styles from './manual.module.css';
 
 type InvoiceLetter = 'A' | 'B' | 'C';
@@ -61,6 +63,21 @@ export default function FacturacionManualPage() {
   const [result, setResult] = useState<{ invoiceNumber: string; cae: string; pdfBase64: string; emailSent?: boolean } | null>(null);
   const [error, setError] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipPadronRef = useRef(false);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const name = searchParams.get('name');
+    const docType = searchParams.get('docType');
+    const docNumber = searchParams.get('docNumber');
+    const email = searchParams.get('email');
+    if (name || docNumber) {
+      skipPadronRef.current = true;
+      setBuyer(b => ({ ...b, fullName: name ?? b.fullName, docType: docType ?? b.docType, docNumber: docNumber ?? b.docNumber }));
+      if (email) { setRecipientEmail(email); setSendEmail(true); }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function resetPadron() {
     setPadronData(null); setPadronCandidates([]); setResolvedCuil(null); setPadronStatus('idle');
@@ -74,7 +91,15 @@ export default function FacturacionManualPage() {
     );
   }
 
+  function handleContactSelect(c: ContactOption) {
+    skipPadronRef.current = true;
+    setBuyer(b => ({ ...b, fullName: c.businessName, docType: c.docType, docNumber: c.docNumber }));
+    if (c.emailContact) { setRecipientEmail(c.emailContact); setSendEmail(true); }
+    setPadronData(null); setPadronCandidates([]); setResolvedCuil(null); setPadronStatus('idle');
+  }
+
   useEffect(() => {
+    if (skipPadronRef.current) { skipPadronRef.current = false; return; }
     const clean = buyer.docNumber.replace(/[-\s]/g, '');
     const isCuil = clean.length === 11;
     const isDni  = clean.length >= 7 && clean.length <= 8 && (letter === 'A' || buyer.docType === 'CUIT' || buyer.docType === 'CUIL' || buyer.docType === 'DNI');
@@ -257,7 +282,10 @@ export default function FacturacionManualPage() {
           )}
 
           <div className={styles.field}>
-            <label>{getDocLabel()}</label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {getDocLabel()}
+              <ContactPicker onSelect={handleContactSelect} />
+            </label>
             <input
               className="input"
               value={buyer.docNumber}

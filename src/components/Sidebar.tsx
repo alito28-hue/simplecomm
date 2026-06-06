@@ -23,6 +23,7 @@ const FACTURACION_ITEMS = [
 
 const NAV = [
   { href: '/dashboard/billing',       label: 'Comprobantes', icon: '🧾' },
+  { href: '/dashboard/contactos',     label: 'Contactos',    icon: '👤' },
   { href: '/dashboard/cobranzas',     label: 'Cobranzas',    icon: '💰' },
   { href: '/dashboard/integraciones', label: 'Integraciones', icon: '🔗' },
   { href: '/dashboard/ads',           label: 'Publicidad',   icon: '📈' },
