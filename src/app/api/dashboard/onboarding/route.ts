@@ -9,19 +9,23 @@ export async function GET() {
 
   const { data: org } = await supabase
     .from('organizations')
-    .select('name, cuit, afipConfigured, gatewayTenantId, ptoVta')
+    .select('name, businessName, cuit, afipConfigured, gatewayTenantId, gatewayApiKey, ptoVta')
     .eq('id', user.id)
     .maybeSingle();
 
-  const empresaConfigurada = !!(org?.name?.trim());
-  const afipConfigurado = !!(org?.afipConfigured || org?.gatewayTenantId);
-  const puntoDeVenta = !!(org?.ptoVta);
+  const empresaConfigurada = !!(org?.businessName?.trim() || org?.name?.trim());
+
+  // AFIP y pto_vta: configurados si la org tiene su propio key, o si tiene
+  // afipConfigured/gatewayTenantId, o si existe el key global de fallback.
+  // El key global cubre al tenant 1 (Club Sorteos) que se configuró directamente.
+  const gatewayKey = await getGatewayKey(user.id);
+  const afipConfigurado = !!(org?.afipConfigured || org?.gatewayTenantId || org?.gatewayApiKey || gatewayKey);
+  const puntoDeVenta = !!(org?.ptoVta || org?.gatewayTenantId || org?.gatewayApiKey || gatewayKey);
 
   let primeraFactura = false;
   try {
-    const apiKey = await getGatewayKey(user.id);
     const res = await fetch(`${GATEWAY_URL}/v1/invoices?limit=1&page=1`, {
-      headers: { 'Authorization': `Bearer ${apiKey}` },
+      headers: { 'Authorization': `Bearer ${gatewayKey}` },
       signal: AbortSignal.timeout(10_000),
     });
     if (res.ok) {
