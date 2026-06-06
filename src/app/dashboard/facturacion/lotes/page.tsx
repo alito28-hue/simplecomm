@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import styles from './lotes.module.css';
 
 interface ParsedRow { buyerName: string; amount: number; docType: string; docNumber: string; description: string; }
@@ -12,7 +12,21 @@ export default function LotesPage() {
   const [processing, setProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [tab, setTab] = useState<'upload' | 'api' | 'historial'>('upload');
+  const [prefillBanner, setPrefillBanner] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem('simplecomm_lote_prefill');
+    if (!raw) return;
+    try {
+      const prefill: ParsedRow[] = JSON.parse(raw);
+      if (Array.isArray(prefill) && prefill.length > 0) {
+        setRows(prefill);
+        setPrefillBanner(`${prefill.length} fila(s) pre-cargadas desde el extracto bancario`);
+        sessionStorage.removeItem('simplecomm_lote_prefill');
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   async function parseFile(file: File) {
     const text = await file.text();
@@ -78,6 +92,13 @@ export default function LotesPage() {
         <button className={`${styles.tab} ${tab === 'api' ? styles.active : ''}`} onClick={() => setTab('api')}>🔌 API Batch</button>
         <button className={`${styles.tab} ${tab === 'historial' ? styles.active : ''}`} onClick={() => setTab('historial')}>🕐 Historial</button>
       </div>
+
+      {prefillBanner && (
+        <div style={{ padding: '0.65rem 1rem', background: 'color-mix(in srgb, var(--blue) 12%, transparent)', color: 'var(--blue)', borderRadius: 'var(--radius)', fontSize: '0.875rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span>📋 {prefillBanner}</span>
+          <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1rem' }} onClick={() => setPrefillBanner('')}>✕</button>
+        </div>
+      )}
 
       {tab === 'upload' && (
         <div className={`card ${styles.uploadCard}`}>

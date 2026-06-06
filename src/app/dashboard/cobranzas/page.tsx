@@ -4,7 +4,20 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './cobranzas.module.css';
 
-type Tab = 'mp' | 'historial';
+type Tab = 'mp' | 'extracto' | 'historial';
+
+type Bank = 'galicia' | 'santander';
+
+interface BankTransaction {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  payerName: string;
+  payerCuit: string;
+  reference: string;
+  bank: Bank;
+}
 
 interface MpPayment {
   id: string;
@@ -42,6 +55,16 @@ export default function CobranzasPage() {
   const [mpNotConnected, setMpNotConnected] = useState(false);
   const [dateRange, setDateRange] = useState(currentMonthRange);
   const [markingId, setMarkingId] = useState<string | null>(null);
+
+  // --- Extracto bancario state ---
+  const [extBank, setExtBank] = useState<Bank>('galicia');
+  const [extFile, setExtFile] = useState<File | null>(null);
+  const [extLoading, setExtLoading] = useState(false);
+  const [extError, setExtError] = useState('');
+  const [extTransactions, setExtTransactions] = useState<BankTransaction[]>([]);
+  const [extSelected, setExtSelected] = useState<Set<string>>(new Set());
+  const [emitting, setEmitting] = useState(false);
+  const [emitResults, setEmitResults] = useState<{ id: string; ok: boolean; invoiceNumber?: string; error?: string }[]>([]);
 
   // --- Historial state ---
   const [search, setSearch] = useState('');
@@ -106,6 +129,72 @@ export default function CobranzasPage() {
     setMpPayments(prev => prev.map(x => x.id === p.id ? { ...x, invoiced: true } : x));
   }
 
+  async function uploadExtracto() {
+    if (!extFile) return;
+    setExtLoading(true); setExtError(''); setExtTransactions([]); setExtSelected(new Set()); setEmitResults([]);
+    const form = new FormData();
+    form.append('file', extFile);
+    form.append('bank', extBank);
+    try {
+      const res = await fetch('/api/cobranzas/extracto', { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) { setExtError(data.error ?? 'Error al procesar el archivo'); return; }
+      const txns: BankTransaction[] = data.transactions ?? [];
+      setExtTransactions(txns);
+      setExtSelected(new Set(txns.map(t => t.id)));
+    } catch { setExtError('Error de conexión'); }
+    finally { setExtLoading(false); }
+  }
+
+  function toggleExtRow(id: string) {
+    setExtSelected(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+  }
+
+  function toggleAllExt() {
+    if (extSelected.size === extTransactions.length) { setExtSelected(new Set()); }
+    else { setExtSelected(new Set(extTransactions.map(t => t.id))); }
+  }
+
+  function enviarALotes() {
+    const selected = extTransactions.filter(t => extSelected.has(t.id));
+    const rows = selected.map(t => ({
+      amount: t.amount,
+      description: 'Honorarios / Servicios',
+      buyerName: t.payerName !== 'Desconocido' ? t.payerName : 'Consumidor Final',
+      docType: t.payerCuit ? 'CUIT' : 'CONSUMIDOR_FINAL',
+      docNumber: t.payerCuit || '0',
+    }));
+    sessionStorage.setItem('simplecomm_lote_prefill', JSON.stringify(rows));
+    router.push('/dashboard/facturacion/lotes');
+  }
+
+  async function emitirTodo() {
+    const selected = extTransactions.filter(t => extSelected.has(t.id));
+    setEmitting(true);
+    setEmitResults([]);
+    const results: typeof emitResults = [];
+    for (const t of selected) {
+      try {
+        const res = await fetch('/api/invoices/issue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: t.amount,
+            description: 'Honorarios / Servicios',
+            buyerName: t.payerName !== 'Desconocido' ? t.payerName : undefined,
+            docType: t.payerCuit ? 'CUIT' : undefined,
+            docNumber: t.payerCuit || undefined,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok) { results.push({ id: t.id, ok: true, invoiceNumber: data.invoiceNumber }); }
+        else { results.push({ id: t.id, ok: false, error: data.error ?? 'Error' }); }
+      } catch { results.push({ id: t.id, ok: false, error: 'Error de red' }); }
+    }
+    setEmitResults(results);
+    setEmitting(false);
+  }
+
   async function buscarHistorial() {
     if (!search.trim()) return;
     setHistorialLoading(true); setHistorialSearched(true);
@@ -131,6 +220,9 @@ export default function CobranzasPage() {
       <div className={styles.tabs}>
         <button className={`${styles.tab} ${tab === 'mp' ? styles.tabActive : ''}`} onClick={() => setTab('mp')}>
           💳 Cobros Mercado Pago
+        </button>
+        <button className={`${styles.tab} ${tab === 'extracto' ? styles.tabActive : ''}`} onClick={() => setTab('extracto')}>
+          🏦 Extracto bancario
         </button>
         <button className={`${styles.tab} ${tab === 'historial' ? styles.tabActive : ''}`} onClick={() => setTab('historial')}>
           🧾 Historial de facturas
@@ -241,6 +333,113 @@ export default function CobranzasPage() {
                 )}
               </div>
             </>
+          )}
+        </div>
+      )}
+
+      {tab === 'extracto' && (
+        <div className={styles.tabContent}>
+          <div className="card" style={{ padding: '1.25rem' }}>
+            <div className={styles.extUploadRow}>
+              <div className={styles.dateGroup}>
+                <label>Banco</label>
+                <select className="input input-sm" value={extBank} onChange={e => { setExtBank(e.target.value as Bank); setExtFile(null); setExtTransactions([]); setEmitResults([]); }}>
+                  <option value="galicia">Banco Galicia (CSV)</option>
+                  <option value="santander">Banco Santander (PDF)</option>
+                </select>
+              </div>
+              <div className={styles.dateGroup}>
+                <label>Archivo</label>
+                <input type="file" className={styles.fileInput}
+                  accept={extBank === 'galicia' ? '.csv' : '.pdf'}
+                  onChange={e => { setExtFile(e.target.files?.[0] ?? null); setExtTransactions([]); setEmitResults([]); }} />
+              </div>
+              <button className="btn btn-primary btn-sm" onClick={uploadExtracto} disabled={!extFile || extLoading}>
+                {extLoading ? 'Procesando...' : 'Procesar extracto'}
+              </button>
+            </div>
+            {extBank === 'galicia' && (
+              <p className={styles.extHint}>Descargá el extracto desde Galicia Empresas → Cuenta Corriente → Movimientos → Exportar CSV</p>
+            )}
+            {extBank === 'santander' && (
+              <p className={styles.extHint}>Descargá el resumen desde Santander Online → Mi resumen de cuenta → PDF</p>
+            )}
+          </div>
+
+          {extError && <div className={styles.errorBox}>{extError}</div>}
+
+          {extTransactions.length > 0 && emitResults.length === 0 && (
+            <div className="card">
+              <div className={styles.extHeader}>
+                <div>
+                  <strong>{extTransactions.length} crédito(s) encontrado(s)</strong>
+                  <span className="text-muted text-sm" style={{ marginLeft: '0.75rem' }}>
+                    {extSelected.size} seleccionado(s) — ${fmt(extTransactions.filter(t => extSelected.has(t.id)).reduce((s, t) => s + t.amount, 0))}
+                  </span>
+                </div>
+                <div className={styles.rowActions}>
+                  <button className="btn btn-primary btn-sm" onClick={emitirTodo} disabled={extSelected.size === 0 || emitting}>
+                    {emitting ? 'Emitiendo...' : `⚡ Emitir ${extSelected.size} factura(s)`}
+                  </button>
+                  <button className="btn btn-ghost btn-sm" onClick={enviarALotes} disabled={extSelected.size === 0}>
+                    📋 Revisar en Lotes
+                  </button>
+                </div>
+              </div>
+
+              <div className="table-wrap">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th><input type="checkbox" checked={extSelected.size === extTransactions.length} onChange={toggleAllExt} /></th>
+                      <th>Fecha</th>
+                      <th>Descripción</th>
+                      <th>Remitente</th>
+                      <th>CUIT</th>
+                      <th>Monto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {extTransactions.map(t => (
+                      <tr key={t.id} className={extSelected.has(t.id) ? '' : styles.rowInvoiced}>
+                        <td><input type="checkbox" checked={extSelected.has(t.id)} onChange={() => toggleExtRow(t.id)} /></td>
+                        <td className="text-sm text-muted">{new Date(t.date).toLocaleDateString('es-AR')}</td>
+                        <td className="text-sm">{t.description}</td>
+                        <td><strong>{t.payerName}</strong></td>
+                        <td className="mono text-sm">{t.payerCuit || <span className="text-muted">—</span>}</td>
+                        <td><strong>${fmt(t.amount)}</strong></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {emitResults.length > 0 && (
+            <div className="card" style={{ padding: '1.25rem' }}>
+              <h3 style={{ marginBottom: '1rem', fontWeight: 700 }}>Resultados de emisión</h3>
+              {emitResults.map((r, i) => {
+                const t = extTransactions.find(x => x.id === r.id);
+                return (
+                  <div key={i} className={`${styles.emitResult} ${r.ok ? styles.emitOk : styles.emitErr}`}>
+                    {r.ok ? `✓ Factura ${r.invoiceNumber} — ${t?.payerName} — $${fmt(t?.amount ?? 0)}` : `✗ ${t?.payerName}: ${r.error}`}
+                  </div>
+                );
+              })}
+              <button className="btn btn-ghost btn-sm" style={{ marginTop: '1rem' }} onClick={() => { setExtTransactions([]); setEmitResults([]); setExtFile(null); }}>
+                Procesar otro extracto
+              </button>
+            </div>
+          )}
+
+          {extTransactions.length === 0 && !extLoading && !extError && (
+            <div className="card">
+              <div className={styles.empty}>
+                Seleccioná el banco, subí el extracto y presioná &ldquo;Procesar&rdquo;.<br />
+                Solo se mostrarán los créditos (ingresos) del período.
+              </div>
+            </div>
           )}
         </div>
       )}
