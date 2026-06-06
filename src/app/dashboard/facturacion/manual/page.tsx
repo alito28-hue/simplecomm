@@ -1,21 +1,83 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import styles from './manual.module.css';
 
+type InvoiceLetter = 'A' | 'B' | 'C';
+
+const LETTER_INFO = {
+  A: { label: 'Factura A', desc: 'Resp. Inscripto → Resp. Inscripto. IVA discriminado. Requiere CUIT del receptor.' },
+  B: { label: 'Factura B', desc: 'Para consumidores finales o compradores con DNI/CUIL. IVA incluido.' },
+  C: { label: 'Factura C', desc: 'Para monotributistas. Sin IVA.' },
+};
+
+const IVA_RATES = [
+  { id: 'IVA_21',   label: 'IVA 21%',   rate: 0.21 },
+  { id: 'IVA_10_5', label: 'IVA 10,5%', rate: 0.105 },
+  { id: 'EXENTO',   label: 'Exento',    rate: 0 },
+];
+
+const DOC_TYPES_BC = ['CUIT', 'CUIL', 'DNI', 'CONSUMIDOR_FINAL'];
+
 interface Item { description: string; quantity: number; unitPrice: number; ivaRate: string; }
-const IVA_RATES = [{ id: 'IVA_21', label: 'IVA 21%', rate: 0.21 }, { id: 'IVA_10_5', label: 'IVA 10.5%', rate: 0.105 }, { id: 'EXENTO', label: 'Exento', rate: 0 }];
-const DOC_TYPES = ['CUIT','CUIL','DNI','CONSUMIDOR_FINAL'];
 
 export default function FacturacionManualPage() {
-  const [buyer, setBuyer] = useState({ fullName: '', docType: 'CONSUMIDOR_FINAL', docNumber: '0', email: '' });
+  const [letter, setLetter] = useState<InvoiceLetter>('B');
+  const [buyer, setBuyer] = useState({ fullName: '', docType: 'CONSUMIDOR_FINAL', docNumber: '', email: '' });
+  const [padronStatus, setPadronStatus] = useState<'idle' | 'loading' | 'found' | 'not_found' | 'error'>('idle');
   const [items, setItems] = useState<Item[]>([{ description: '', quantity: 1, unitPrice: 0, ivaRate: 'IVA_21' }]);
   const [concept, setConcept] = useState('1');
+  const [sendEmail, setSendEmail] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ invoiceNumber: string; cae: string; pdfBase64: string } | null>(null);
+  const [result, setResult] = useState<{ invoiceNumber: string; cae: string; pdfBase64: string; emailSent?: boolean } | null>(null);
   const [error, setError] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  function addItem() { setItems(prev => [...prev, { description: '', quantity: 1, unitPrice: 0, ivaRate: 'IVA_21' }]); }
+  function changeLetter(l: InvoiceLetter) {
+    setLetter(l);
+    setError('');
+    setResult(null);
+    setPadronStatus('idle');
+    setBuyer(l === 'A'
+      ? b => ({ ...b, docType: 'CUIT', docNumber: '', fullName: '' })
+      : b => ({ ...b, docType: 'CONSUMIDOR_FINAL', docNumber: '', fullName: '' })
+    );
+  }
+
+  // Padrón auto-lookup cuando se ingresan 11 dígitos (CUIT/CUIL)
+  useEffect(() => {
+    const clean = buyer.docNumber.replace(/[-\s]/g, '');
+    const isLookupable = letter === 'A' || buyer.docType === 'CUIT' || buyer.docType === 'CUIL';
+
+    if (clean.length !== 11 || !isLookupable) {
+      setPadronStatus('idle');
+      return;
+    }
+
+    setPadronStatus('loading');
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/padron/${clean}`);
+        const data = await res.json();
+        if (res.ok && data.nombre) {
+          setBuyer(b => ({ ...b, fullName: data.nombre }));
+          setPadronStatus('found');
+        } else {
+          setPadronStatus(res.status === 404 ? 'not_found' : 'error');
+        }
+      } catch {
+        setPadronStatus('error');
+      }
+    }, 600);
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [buyer.docNumber, buyer.docType, letter]);
+
+  function addItem() {
+    setItems(prev => [...prev, { description: '', quantity: 1, unitPrice: 0, ivaRate: 'IVA_21' }]);
+  }
   function removeItem(i: number) { setItems(prev => prev.filter((_, idx) => idx !== i)); }
   function updateItem(i: number, field: keyof Item, value: string | number) {
     setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: value } : it));
@@ -23,28 +85,46 @@ export default function FacturacionManualPage() {
 
   function calcTotal() {
     return items.reduce((sum, it) => {
-      const rate = IVA_RATES.find(r => r.id === it.ivaRate)?.rate ?? 0.21;
+      const rate = letter === 'C' ? 0 : (IVA_RATES.find(r => r.id === it.ivaRate)?.rate ?? 0.21);
       return sum + (it.quantity * it.unitPrice * (1 + rate));
     }, 0);
+  }
+
+  function getDocLabel() {
+    if (letter === 'A') return 'N° CUIT *';
+    switch (buyer.docType) {
+      case 'CUIT': return 'N° CUIT';
+      case 'CUIL': return 'N° CUIL';
+      case 'DNI':  return 'N° DNI';
+      default:     return 'N° documento';
+    }
   }
 
   async function submit() {
     if (!items.some(it => it.description && it.unitPrice > 0)) {
       setError('Agregá al menos un ítem con descripción y precio.'); return;
     }
+    if (letter === 'A' && !buyer.docNumber.replace(/\D/g, '')) {
+      setError('Factura A requiere el CUIT del receptor.'); return;
+    }
     setLoading(true); setError('');
+
     try {
       const total = calcTotal();
+      const clean = buyer.docNumber.replace(/\D/g, '');
       const res = await fetch('/api/invoices/issue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount: Math.round(total * 100) / 100,
-          description: items.map(it => `${it.description} x${it.quantity}`).join(', '),
-          docNumber: buyer.docType !== 'CONSUMIDOR_FINAL' ? buyer.docNumber : undefined,
-          docType: buyer.docType,
-          buyerName: buyer.fullName || 'Consumidor Final',
-          concept: parseInt(concept),
+          amount:         Math.round(total * 100) / 100,
+          description:    items.map(it => `${it.description} x${it.quantity}`).join(', '),
+          invoiceLetter:  letter,
+          ivaRate:        letter === 'C' ? 0 : undefined,
+          docNumber:      buyer.docType !== 'CONSUMIDOR_FINAL' ? clean : undefined,
+          docType:        letter === 'A' ? 'CUIT' : buyer.docType,
+          buyerName:      buyer.fullName || 'Consumidor Final',
+          concept:        parseInt(concept),
+          recipientEmail: sendEmail && recipientEmail ? recipientEmail : undefined,
         }),
       });
       const data = await res.json();
@@ -72,6 +152,11 @@ export default function FacturacionManualPage() {
           <div><span>N° Comprobante</span><strong className="mono">{result.invoiceNumber}</strong></div>
           <div><span>CAE</span><strong className="mono">{result.cae}</strong></div>
         </div>
+        {result.emailSent && (
+          <p style={{ fontSize: '0.85rem', color: 'var(--success)', marginBottom: '1rem' }}>
+            ✉ Comprobante enviado a {recipientEmail}
+          </p>
+        )}
         <div className={styles.successActions}>
           <button className="btn btn-primary" onClick={downloadPdf}>⬇ Descargar PDF</button>
           <button className="btn btn-outline" onClick={() => setResult(null)}>Emitir otra</button>
@@ -85,21 +170,72 @@ export default function FacturacionManualPage() {
       <h1 className={styles.pageTitle}>Comprobante Manual</h1>
       {error && <div className={styles.error}>{error}</div>}
 
+      {/* Selector de tipo */}
+      <div className="card" style={{ padding: '1.25rem' }}>
+        <div className={styles.letterSelector}>
+          {(['A', 'B', 'C'] as InvoiceLetter[]).map(l => (
+            <button key={l} type="button" onClick={() => changeLetter(l)}
+              className={`${styles.letterBtn} ${letter === l ? styles.letterActive : ''}`}>
+              <span className={styles.letterCode}>{l}</span>
+              <span className={styles.letterName}>{LETTER_INFO[l].label}</span>
+            </button>
+          ))}
+        </div>
+        <p className={styles.letterDesc}>{LETTER_INFO[letter].desc}</p>
+      </div>
+
       {/* Receptor */}
       <div className={`card ${styles.section}`}>
         <h2 className={styles.sectionTitle}>Datos del receptor</h2>
+
         <div className={styles.grid3}>
-          <div className={styles.field}><label>Nombre / Razón social</label><input className="input" value={buyer.fullName} onChange={e => setBuyer(b => ({ ...b, fullName: e.target.value }))} placeholder="Consumidor Final" /></div>
-          <div className={styles.field}><label>Tipo documento</label>
-            <select className="select" value={buyer.docType} onChange={e => setBuyer(b => ({ ...b, docType: e.target.value }))}>
-              {DOC_TYPES.map(d => <option key={d}>{d}</option>)}
-            </select>
+          {/* Tipo doc — solo para B/C */}
+          {letter !== 'A' && (
+            <div className={styles.field}>
+              <label>Tipo documento</label>
+              <select className="select" value={buyer.docType}
+                onChange={e => {
+                  setBuyer(b => ({ ...b, docType: e.target.value, docNumber: '', fullName: '' }));
+                  setPadronStatus('idle');
+                }}>
+                {DOC_TYPES_BC.map(d => <option key={d}>{d}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Número de documento con label dinámico */}
+          <div className={styles.field}>
+            <label>{getDocLabel()}</label>
+            <input
+              className="input"
+              value={buyer.docNumber}
+              onChange={e => setBuyer(b => ({ ...b, docNumber: e.target.value }))}
+              placeholder={letter === 'A' ? '30-12345678-9' : 'Número'}
+              disabled={buyer.docType === 'CONSUMIDOR_FINAL' && letter !== 'A'}
+              required={letter === 'A'}
+            />
           </div>
-          <div className={styles.field}><label>N° documento</label><input className="input" value={buyer.docNumber} onChange={e => setBuyer(b => ({ ...b, docNumber: e.target.value }))} disabled={buyer.docType === 'CONSUMIDOR_FINAL'} /></div>
+
+          {/* Nombre — se autocompleta con padrón */}
+          <div className={styles.field}>
+            <label>Nombre / Razón social{letter === 'A' ? ' *' : ''}</label>
+            <input
+              className="input"
+              value={buyer.fullName}
+              onChange={e => setBuyer(b => ({ ...b, fullName: e.target.value }))}
+              placeholder={padronStatus === 'loading' ? 'Consultando Padrón...' : 'Ej: GARCIA, MARTIN'}
+              required={letter === 'A'}
+            />
+            {padronStatus === 'loading'   && <span className={styles.padronHint}>Consultando Padrón AFIP...</span>}
+            {padronStatus === 'found'     && <span className={styles.padronOk}>✓ Encontrado en Padrón</span>}
+            {padronStatus === 'not_found' && <span className={styles.padronWarn}>No encontrado en Padrón</span>}
+            {padronStatus === 'error'     && <span className={styles.padronHint}>No se pudo consultar el Padrón</span>}
+          </div>
         </div>
+
         <div className={styles.grid3}>
-          <div className={styles.field}><label>Email (opcional)</label><input className="input" type="email" value={buyer.email} onChange={e => setBuyer(b => ({ ...b, email: e.target.value }))} /></div>
-          <div className={styles.field}><label>Concepto</label>
+          <div className={styles.field}>
+            <label>Concepto</label>
             <select className="select" value={concept} onChange={e => setConcept(e.target.value)}>
               <option value="1">Productos</option>
               <option value="2">Servicios</option>
@@ -111,31 +247,73 @@ export default function FacturacionManualPage() {
 
       {/* Ítems */}
       <div className={`card ${styles.section}`}>
-        <h2 className={styles.sectionTitle}>Detalle</h2>
+        <h2 className={styles.sectionTitle}>Detalle de ítems</h2>
         {items.map((it, i) => (
           <div key={i} className={styles.itemRow}>
-            <div className={styles.field} style={{ flex: 3 }}><label>Descripción</label><input className="input" value={it.description} onChange={e => updateItem(i, 'description', e.target.value)} /></div>
-            <div className={styles.field} style={{ flex: 1 }}><label>Cantidad</label><input className="input" type="number" min="1" value={it.quantity} onChange={e => updateItem(i, 'quantity', parseFloat(e.target.value) || 1)} /></div>
-            <div className={styles.field} style={{ flex: 1.5 }}><label>Precio unitario</label><input className="input" type="number" step="0.01" value={it.unitPrice} onChange={e => updateItem(i, 'unitPrice', parseFloat(e.target.value) || 0)} /></div>
-            <div className={styles.field} style={{ flex: 1.5 }}><label>IVA</label>
-              <select className="select" value={it.ivaRate} onChange={e => updateItem(i, 'ivaRate', e.target.value)}>
-                {IVA_RATES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
-              </select>
+            <div className={styles.field} style={{ flex: 3 }}>
+              <label>Descripción</label>
+              <input className="input" value={it.description}
+                onChange={e => updateItem(i, 'description', e.target.value)} />
             </div>
-            {items.length > 1 && <button className="btn btn-ghost btn-sm" style={{ alignSelf: 'flex-end', color: 'var(--error)' }} onClick={() => removeItem(i)}>✕</button>}
+            <div className={styles.field} style={{ flex: 1 }}>
+              <label>Cantidad</label>
+              <input className="input" type="number" min="1" value={it.quantity}
+                onChange={e => updateItem(i, 'quantity', parseFloat(e.target.value) || 1)} />
+            </div>
+            <div className={styles.field} style={{ flex: 1.5 }}>
+              <label>Precio unitario</label>
+              <input className="input" type="number" step="0.01" min="0" value={it.unitPrice}
+                onChange={e => updateItem(i, 'unitPrice', parseFloat(e.target.value) || 0)} />
+            </div>
+            {letter !== 'C' && (
+              <div className={styles.field} style={{ flex: 1.5 }}>
+                <label>IVA</label>
+                <select className="select" value={it.ivaRate}
+                  onChange={e => updateItem(i, 'ivaRate', e.target.value)}>
+                  {IVA_RATES.map(r => <option key={r.id} value={r.id}>{r.label}</option>)}
+                </select>
+              </div>
+            )}
+            {items.length > 1 && (
+              <button type="button"
+                className="btn btn-ghost btn-sm"
+                style={{ alignSelf: 'flex-end', color: 'var(--error)' }}
+                onClick={() => removeItem(i)}>✕</button>
+            )}
           </div>
         ))}
-        <button className="btn btn-ghost btn-sm" onClick={addItem}>+ Agregar ítem</button>
-
+        <button type="button" className="btn btn-ghost btn-sm" onClick={addItem}>+ Agregar ítem</button>
         <div className={styles.total}>
-          <strong>Total estimado:</strong>
+          <strong>Total{letter === 'C' ? '' : ' (con IVA)'}:</strong>
           <strong>${calcTotal().toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong>
         </div>
       </div>
 
+      {/* Email */}
+      <div className="card" style={{ padding: '1.25rem' }}>
+        <div className={styles.emailRow}>
+          <span className={styles.emailLabel}>Enviar comprobante por email</span>
+          <label className={styles.toggle}>
+            <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
+            <span className={styles.slider} />
+          </label>
+        </div>
+        {sendEmail && (
+          <input
+            type="email"
+            value={recipientEmail}
+            onChange={e => setRecipientEmail(e.target.value)}
+            placeholder="email@destino.com"
+            className="input"
+            style={{ marginTop: '0.5rem' }}
+            required
+          />
+        )}
+      </div>
+
       <div className={styles.formActions}>
         <button className="btn btn-primary btn-lg" onClick={submit} disabled={loading}>
-          {loading ? 'Emitiendo...' : 'Emitir Factura B'}
+          {loading ? 'Emitiendo...' : `Emitir ${LETTER_INFO[letter].label}`}
         </button>
       </div>
     </div>
