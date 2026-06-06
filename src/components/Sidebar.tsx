@@ -25,10 +25,10 @@ const NAV = [
   { href: '/dashboard/billing',       label: 'Comprobantes', icon: '🧾' },
   { href: '/dashboard/contactos',     label: 'Contactos',    icon: '👤' },
   { href: '/dashboard/cobranzas',     label: 'Cobranzas',    icon: '💰' },
-  { href: '/dashboard/integraciones', label: 'Integraciones', icon: '🔗' },
   { href: '/dashboard/ads',           label: 'Publicidad',   icon: '📈' },
   { href: '/dashboard/tutoriales',    label: 'Tutoriales',   icon: '📚' },
   { href: '/dashboard/soporte',       label: 'Soporte',      icon: '🎫' },
+  { href: '/dashboard/integraciones', label: 'Integraciones', icon: '🔗' },
   { href: '/dashboard/cuenta',        label: 'Mi cuenta',     icon: '💳' },
   { href: '/dashboard/organizacion',  label: 'Configuración', icon: '⚙' },
 ];
