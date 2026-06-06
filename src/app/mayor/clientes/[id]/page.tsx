@@ -1,11 +1,11 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getPlan, PLANS, type PlanId } from '@/lib/usage';
 import styles from '../../mayor.module.css';
 
 async function getOrgDetail(id: string) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const [
     { data: org },

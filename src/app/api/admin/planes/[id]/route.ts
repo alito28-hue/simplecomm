@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'alito28@gmail.com';
 
@@ -7,7 +8,7 @@ async function requireAdmin() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user || user.email !== ADMIN_EMAIL) return null;
-  return { supabase, user };
+  return { db: createAdminClient(), user };
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -19,13 +20,13 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   const { name, monthlyLimit, priceARS, description, isActive } = body;
 
   const update: Record<string, unknown> = { updatedAt: new Date().toISOString() };
-  if (name        !== undefined) update.name         = name;
+  if (name         !== undefined) update.name         = name;
   if (monthlyLimit !== undefined) update.monthlyLimit = Number(monthlyLimit);
-  if (priceARS    !== undefined) update.priceARS     = Number(priceARS);
-  if (description !== undefined) update.description  = description;
-  if (isActive    !== undefined) update.isActive      = isActive;
+  if (priceARS     !== undefined) update.priceARS     = Number(priceARS);
+  if (description  !== undefined) update.description  = description;
+  if (isActive     !== undefined) update.isActive     = isActive;
 
-  const { data, error } = await ctx.supabase
+  const { data, error } = await ctx.db
     .from('plans')
     .update(update)
     .eq('id', id)
@@ -42,8 +43,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
   const { id } = await params;
 
-  // Check if any org is using this plan before deleting
-  const { count } = await ctx.supabase
+  const { count } = await ctx.db
     .from('organizations')
     .select('*', { count: 'exact', head: true })
     .eq('planId', id);
@@ -55,7 +55,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     );
   }
 
-  const { error } = await ctx.supabase.from('plans').delete().eq('id', id);
+  const { error } = await ctx.db.from('plans').delete().eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
