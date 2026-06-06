@@ -45,7 +45,13 @@ export default function LotesPage() {
         const r = await fetch('/api/invoices/issue', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount: row.amount, description: row.description }),
+          body: JSON.stringify({
+            amount:      row.amount,
+            description: row.description,
+            buyerName:   row.buyerName !== 'Consumidor Final' ? row.buyerName : undefined,
+            docType:     row.docType !== 'CONSUMIDOR_FINAL' ? row.docType : undefined,
+            docNumber:   row.docNumber !== '0' ? row.docNumber : undefined,
+          }),
         });
         const data = await r.json();
         res.push({ row: i+1, status: r.ok ? 'ok' : 'error', invoiceNumber: data.invoiceNumber, cae: data.cae, error: data.error });
@@ -91,10 +97,16 @@ export default function LotesPage() {
               <p className={styles.previewInfo}>✓ {rows.length} filas detectadas</p>
               <div className="table-wrap">
                 <table className="table">
-                  <thead><tr><th>#</th><th>Receptor</th><th>Monto</th><th>Descripción</th></tr></thead>
+                  <thead><tr><th>#</th><th>Receptor</th><th>Documento</th><th>Monto</th><th>Descripción</th></tr></thead>
                   <tbody>
                     {rows.slice(0,5).map((r,i) => (
-                      <tr key={i}><td>{i+1}</td><td>{r.buyerName}</td><td>${r.amount.toLocaleString('es-AR',{minimumFractionDigits:2})}</td><td>{r.description}</td></tr>
+                      <tr key={i}>
+                        <td>{i+1}</td>
+                        <td>{r.buyerName}</td>
+                        <td>{r.docType !== 'CONSUMIDOR_FINAL' ? `${r.docType} ${r.docNumber}` : '—'}</td>
+                        <td>${r.amount.toLocaleString('es-AR',{minimumFractionDigits:2})}</td>
+                        <td>{r.description}</td>
+                      </tr>
                     ))}
                     {rows.length > 5 && <tr><td colSpan={4} className="text-muted text-sm" style={{textAlign:'center'}}>... y {rows.length-5} más</td></tr>}
                   </tbody>
@@ -123,7 +135,7 @@ export default function LotesPage() {
             </button>
             <button className="btn btn-ghost" onClick={() => {setRows([]); setResults([]);}}>Limpiar</button>
             <button className="btn btn-ghost btn-sm" onClick={() => {
-              const csv = 'nombre,monto,tipo_doc,numero_doc,descripcion\nJuan Pérez,1210.00,DNI,12345678,Servicio\nConsumidor Final,550.00,CONSUMIDOR_FINAL,,Producto';
+              const csv = 'nombre,monto,tipo_doc,numero_doc,descripcion\nJuan Pérez,1210.00,DNI,12345678,Participación sorteo\nMaría García,850.00,DNI,87654321,Participación sorteo\nConsumidor Final,550.00,CONSUMIDOR_FINAL,,Venta general';
               const blob = new Blob([csv],{type:'text/csv'});
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a'); a.href=url; a.download='plantilla_lote.csv'; a.click(); URL.revokeObjectURL(url);
