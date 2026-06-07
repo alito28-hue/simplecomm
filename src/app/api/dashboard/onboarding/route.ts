@@ -9,11 +9,11 @@ export async function GET() {
 
   const { data: org } = await supabase
     .from('organizations')
-    .select('name, businessName, cuit, afipConfigured, gatewayTenantId, gatewayApiKey, ptoVta')
+    .select('name, cuit, afipConfigured, gatewayTenantId, gatewayApiKey, ptoVta')
     .eq('id', user.id)
     .maybeSingle();
 
-  const empresaConfigurada = !!(org?.businessName?.trim() || org?.name?.trim());
+  const empresaConfigurada = !!org?.name?.trim();
 
   // AFIP y pto_vta: configurados si la org tiene su propio key, o si tiene
   // afipConfigured/gatewayTenantId, o si existe el key global de fallback.
