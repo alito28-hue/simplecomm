@@ -99,7 +99,9 @@ export function parseSantanderPDF(pdfText: string): BankTransaction[] {
     if (shouldSkip(description)) continue;
 
     // Try to extract CUIT and payer name from description
-    // Strip comprobante number (pure number at start of description)
+    // Leading number in the description is the comprobante / operation code
+    const compMatch = description.match(/^(\d+)\s+/);
+    const reference = compMatch ? compMatch[1] : '';
     const descClean = description.replace(/^\d+\s+/, '').trim();
     const cuit = extractCuit(descClean);
     const payerName = extractPayerName(descClean.toLowerCase(), cuit) || descClean;
@@ -111,7 +113,7 @@ export function parseSantanderPDF(pdfText: string): BankTransaction[] {
       amount: firstAmount,
       payerName: payerName || 'Desconocido',
       payerCuit: cuit,
-      reference: '',
+      reference,
       bank: 'santander',
     });
   }

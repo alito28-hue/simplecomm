@@ -22,6 +22,12 @@ interface KPIs {
   lastInvoices: LastInvoice[];
 }
 
+interface PublicidadResumen {
+  totalInvertido: number;
+  ingresoTotal: number;
+  roas: number | null;
+}
+
 function formatMoney(n: number) {
   return `$${n.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 }
@@ -33,6 +39,7 @@ function formatDate(iso: string) {
 export default function DashboardData() {
   const [kpis, setKpis] = useState<KPIs | null>(null);
   const [loading, setLoading] = useState(true);
+  const [publicidad, setPublicidad] = useState<PublicidadResumen | null>(null);
 
   useEffect(() => {
     fetch('/api/dashboard/kpis')
@@ -40,6 +47,11 @@ export default function DashboardData() {
       .then(data => setKpis(data))
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    fetch('/api/publicidad/resumen')
+      .then(r => r.json())
+      .then(data => setPublicidad(data))
+      .catch(() => {});
   }, []);
 
   if (loading) return (
@@ -139,6 +151,42 @@ export default function DashboardData() {
           <span className="text-muted text-sm">Total histórico: {kpis?.pendingCount ?? 0} comprobantes</span>
           <Link href="/dashboard/billing" className="btn btn-ghost btn-sm">Ver todos →</Link>
         </div>
+      </div>
+
+      <div className={`card ${styles.tableCard}`}>
+        <div className={styles.tableHeader}>
+          <h2 className={styles.sectionTitle}>Publicidad — este mes</h2>
+          <Link href="/dashboard/ads" className={styles.viewAll}>Ver módulo →</Link>
+        </div>
+        {publicidad && (publicidad.totalInvertido > 0 || publicidad.ingresoTotal > 0) ? (
+          <div className={styles.statsGrid} style={{ padding: '0 1.25rem 1.25rem' }}>
+            <div className="card">
+              <div className={styles.statCard}>
+                <div className={styles.statLabel}>Invertido en campañas</div>
+                <div className={styles.statValue}>{formatMoney(publicidad.totalInvertido)}</div>
+              </div>
+            </div>
+            <div className="card">
+              <div className={styles.statCard}>
+                <div className={styles.statLabel}>Ingreso total (facturado + otras fuentes)</div>
+                <div className={styles.statValue}>{formatMoney(publicidad.ingresoTotal)}</div>
+              </div>
+            </div>
+            <div className="card">
+              <div className={styles.statCard}>
+                <div className={styles.statLabel}>ROAS real</div>
+                <div className={styles.statValue}>{publicidad.roas != null ? `${publicidad.roas.toFixed(2)}x` : '—'}</div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <p>Todavía no registraste campañas ni inversión publicitaria este mes.</p>
+            <Link href="/dashboard/ads" style={{ color: 'var(--blue)', marginTop: '0.5rem', display: 'block' }}>
+              Registrar tu primera campaña →
+            </Link>
+          </div>
+        )}
       </div>
 
       <div className={styles.bottomGrid}>

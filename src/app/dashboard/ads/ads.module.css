@@ -53,4 +53,19 @@
 .distFill { height: 100%; border-radius: var(--radius-full); }
 .distLabels { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-secondary); }
 
-.tableHeader { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+.tableHeader { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+
+.filterRow { display: flex; align-items: flex-end; gap: 0.75rem; flex-wrap: wrap; }
+.dateGroup { display: flex; flex-direction: column; gap: 0.25rem; }
+.dateGroup label { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); }
+
+.empty { text-align: center; padding: 3rem; color: var(--text-muted); font-style: italic; }
+.rowActions { display: flex; gap: 0.35rem; justify-content: flex-end; white-space: nowrap; }
+
+.inlineForm { padding: 1.1rem 1.25rem; border-bottom: 1px solid var(--border); background: var(--surface-low); }
+.formGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.85rem; }
+@media (max-width: 800px) { .formGrid { grid-template-columns: 1fr 1fr; } }
+.field { display: flex; flex-direction: column; gap: 0.3rem; }
+.field label { font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); }
+.span2 { grid-column: span 2; }
+.formActions { display: flex; gap: 0.5rem; margin-top: 0.85rem; }

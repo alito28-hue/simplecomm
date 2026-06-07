@@ -17,6 +17,9 @@ interface BankTransaction {
   payerCuit: string;
   reference: string;
   bank: Bank;
+  operationRef: string;
+  alreadyInvoiced: boolean;
+  invoiceNumber: string | null;
 }
 
 interface MpPayment {
@@ -141,7 +144,7 @@ export default function CobranzasPage() {
       if (!res.ok) { setExtError(data.error ?? 'Error al procesar el archivo'); return; }
       const txns: BankTransaction[] = data.transactions ?? [];
       setExtTransactions(txns);
-      setExtSelected(new Set(txns.map(t => t.id)));
+      setExtSelected(new Set(txns.filter(t => !t.alreadyInvoiced).map(t => t.id)));
     } catch { setExtError('Error de conexión'); }
     finally { setExtLoading(false); }
   }
@@ -151,8 +154,26 @@ export default function CobranzasPage() {
   }
 
   function toggleAllExt() {
-    if (extSelected.size === extTransactions.length) { setExtSelected(new Set()); }
-    else { setExtSelected(new Set(extTransactions.map(t => t.id))); }
+    const selectable = extTransactions.filter(t => !t.alreadyInvoiced);
+    if (extSelected.size === selectable.length) { setExtSelected(new Set()); }
+    else { setExtSelected(new Set(selectable.map(t => t.id))); }
+  }
+
+  async function registrarVinculo(t: BankTransaction, invoiceNumber?: string, cae?: string) {
+    await fetch('/api/cobranzas/extracto/marcar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bank: t.bank,
+        operationRef: t.operationRef,
+        transactionDate: t.date,
+        amount: t.amount,
+        payerName: t.payerName,
+        payerCuit: t.payerCuit,
+        invoiceNumber,
+        cae,
+      }),
+    });
   }
 
   function enviarALotes() {
@@ -187,8 +208,12 @@ export default function CobranzasPage() {
           }),
         });
         const data = await res.json();
-        if (res.ok) { results.push({ id: t.id, ok: true, invoiceNumber: data.invoiceNumber }); }
-        else { results.push({ id: t.id, ok: false, error: data.error ?? 'Error' }); }
+        if (res.ok) {
+          results.push({ id: t.id, ok: true, invoiceNumber: data.invoiceNumber });
+          await registrarVinculo(t, data.invoiceNumber, data.cae);
+        } else {
+          results.push({ id: t.id, ok: false, error: data.error ?? 'Error' });
+        }
       } catch { results.push({ id: t.id, ok: false, error: 'Error de red' }); }
     }
     setEmitResults(results);
@@ -376,6 +401,11 @@ export default function CobranzasPage() {
                   <span className="text-muted text-sm" style={{ marginLeft: '0.75rem' }}>
                     {extSelected.size} seleccionado(s) — ${fmt(extTransactions.filter(t => extSelected.has(t.id)).reduce((s, t) => s + t.amount, 0))}
                   </span>
+                  {extTransactions.some(t => t.alreadyInvoiced) && (
+                    <span className="text-muted text-sm" style={{ marginLeft: '0.75rem' }}>
+                      · {extTransactions.filter(t => t.alreadyInvoiced).length} ya facturado(s) anteriormente (omitidos)
+                    </span>
+                  )}
                 </div>
                 <div className={styles.rowActions}>
                   <button className="btn btn-primary btn-sm" onClick={emitirTodo} disabled={extSelected.size === 0 || emitting}>
@@ -391,23 +421,32 @@ export default function CobranzasPage() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th><input type="checkbox" checked={extSelected.size === extTransactions.length} onChange={toggleAllExt} /></th>
+                      <th><input type="checkbox" checked={extSelected.size > 0 && extSelected.size === extTransactions.filter(t => !t.alreadyInvoiced).length} onChange={toggleAllExt} /></th>
                       <th>Fecha</th>
                       <th>Descripción</th>
                       <th>Remitente</th>
                       <th>CUIT</th>
                       <th>Monto</th>
+                      <th>Estado</th>
                     </tr>
                   </thead>
                   <tbody>
                     {extTransactions.map(t => (
                       <tr key={t.id} className={extSelected.has(t.id) ? '' : styles.rowInvoiced}>
-                        <td><input type="checkbox" checked={extSelected.has(t.id)} onChange={() => toggleExtRow(t.id)} /></td>
+                        <td>
+                          <input type="checkbox" checked={extSelected.has(t.id)} disabled={t.alreadyInvoiced}
+                            onChange={() => toggleExtRow(t.id)} />
+                        </td>
                         <td className="text-sm text-muted">{new Date(t.date).toLocaleDateString('es-AR')}</td>
                         <td className="text-sm">{t.description}</td>
                         <td><strong>{t.payerName}</strong></td>
                         <td className="mono text-sm">{t.payerCuit || <span className="text-muted">—</span>}</td>
                         <td><strong>${fmt(t.amount)}</strong></td>
+                        <td>
+                          {t.alreadyInvoiced
+                            ? <span className="badge badge-success">✓ Ya facturado{t.invoiceNumber ? ` #${t.invoiceNumber}` : ''}</span>
+                            : <span className="badge badge-warning">Pendiente</span>}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

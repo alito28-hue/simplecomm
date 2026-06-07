@@ -2,6 +2,38 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { parseGaliciaCSV } from '@/lib/parsers/galicia';
 import { parseSantanderPDF } from '@/lib/parsers/santander';
+import { BankTransaction, transactionRef } from '@/lib/parsers/types';
+
+async function withDuplicateFlags(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+  bank: string,
+  transactions: BankTransaction[],
+) {
+  if (transactions.length === 0) return [];
+
+  const refs = transactions.map(transactionRef);
+  const { data: existing } = await supabase
+    .from('bank_transaction_invoices')
+    .select('operationRef, invoiceNumber')
+    .eq('organizationId', organizationId)
+    .eq('bank', bank)
+    .in('operationRef', refs);
+
+  const existingMap = new Map(
+    (existing ?? []).map((r: { operationRef: string; invoiceNumber: string | null }) => [r.operationRef, r.invoiceNumber])
+  );
+
+  return transactions.map(t => {
+    const ref = transactionRef(t);
+    return {
+      ...t,
+      operationRef: ref,
+      alreadyInvoiced: existingMap.has(ref),
+      invoiceNumber: existingMap.get(ref) ?? null,
+    };
+  });
+}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -25,7 +57,7 @@ export async function POST(req: NextRequest) {
       const buffer = await file.arrayBuffer();
       // Try UTF-8 first (Galicia files have BOM + UTF-8 content)
       const text = new TextDecoder('utf-8').decode(buffer);
-      const transactions = parseGaliciaCSV(text);
+      const transactions = await withDuplicateFlags(supabase, user.id, bank, parseGaliciaCSV(text));
       return NextResponse.json({ transactions });
     }
 
@@ -34,7 +66,7 @@ export async function POST(req: NextRequest) {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const pdfParse = require('pdf-parse') as (buf: Buffer) => Promise<{ text: string }>;
       const result = await pdfParse(buffer);
-      const transactions = parseSantanderPDF(result.text);
+      const transactions = await withDuplicateFlags(supabase, user.id, bank, parseSantanderPDF(result.text));
       return NextResponse.json({ transactions });
     }
 
