@@ -12,7 +12,7 @@ export default function EmpresaPage() {
     name: '', cuit: '', fiscalTreatment: 'RESPONSABLE_INSCRIPTO',
     address: '', province: '', city: '', zipCode: '',
     phone: '', emailAlerts: '', emailAccountant: '', iibb: '', cbu: '',
-    enableMessaging: false, validateVouchers: true,
+    validateVouchers: true,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -123,10 +123,6 @@ export default function EmpresaPage() {
             <label className={styles.checkLabel}>
               <input type="checkbox" checked={form.validateVouchers} onChange={e => update('validateVouchers', e.target.checked)} />
               <span>Validación de comprobantes</span>
-            </label>
-            <label className={styles.checkLabel}>
-              <input type="checkbox" checked={form.enableMessaging} onChange={e => update('enableMessaging', e.target.checked)} />
-              <span>Habilitar mensajería</span>
             </label>
           </div>
         </section>
