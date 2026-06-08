@@ -1,9 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Logo from '@/components/Logo';
 import styles from './onboarding.module.css';
+
+type PadronStatus = 'idle' | 'loading' | 'found' | 'not_found' | 'error';
+
+interface PadronData {
+  cuil: string;
+  nombre: string;
+  tipoPersona: string;
+  estadoClave: string;
+  domicilio?: { localidad?: string; provincia?: string };
+}
 
 const STEPS = ['Tu cuenta', 'Empresa', 'Conectar ARCA', 'Listo'];
 const PROVINCES = ['Buenos Aires','Ciudad Autónoma de Buenos Aires','Córdoba','Santa Fe','Mendoza','Tucumán','Salta','Entre Ríos','Misiones','Chaco','Corrientes','Santiago del Estero','San Juan','Jujuy','Río Negro','Neuquén','Formosa','La Pampa','Catamarca','La Rioja','San Luis','Santa Cruz','Chubut','Tierra del Fuego'];
@@ -24,6 +34,44 @@ export default function OnboardingPage() {
     authMethod: 'delegation' as 'delegation' | 'certificate',
     certPem: '', keyPem: '', chainPem: '',
   });
+
+  const [padronStatus, setPadronStatus] = useState<PadronStatus>('idle');
+  const [padronData, setPadronData] = useState<PadronData | null>(null);
+
+  // Al cargar un CUIT/CUIL válido, consultamos el Padrón de ARCA y completamos
+  // nombre, provincia y localidad automáticamente (sin pisar lo que el usuario ya escribió).
+  useEffect(() => {
+    const clean = data.cuit.replace(/\D/g, '');
+    if (clean.length !== 11) { setPadronStatus('idle'); setPadronData(null); return; }
+
+    setPadronStatus('loading');
+    const handle = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/padron/${clean}`);
+        if (!res.ok) {
+          setPadronStatus(res.status === 404 ? 'not_found' : 'error');
+          setPadronData(null);
+          return;
+        }
+        const info: PadronData = await res.json();
+        setPadronData(info);
+        setPadronStatus('found');
+        setData(d => ({
+          ...d,
+          name: d.name.trim() ? d.name : info.nombre,
+          city: d.city.trim() ? d.city : (info.domicilio?.localidad ?? d.city),
+          province: (!d.city.trim() && info.domicilio?.provincia && PROVINCES.includes(info.domicilio.provincia))
+            ? info.domicilio.provincia
+            : d.province,
+        }));
+      } catch {
+        setPadronStatus('error');
+        setPadronData(null);
+      }
+    }, 600);
+
+    return () => clearTimeout(handle);
+  }, [data.cuit]);
 
   const progress = ((step + 1) / STEPS.length) * 100;
 
@@ -129,14 +177,31 @@ export default function OnboardingPage() {
           {step === 1 && (
             <div className={styles.form}>
               <h2 className={styles.stepTitle}>Datos de tu empresa</h2>
-              <p className={styles.stepDesc}>Completá los datos fiscales de tu organización.</p>
+              <p className={styles.stepDesc}>Ingresá tu CUIT o CUIL: consultamos el Padrón de ARCA y completamos el resto por vos.</p>
               {error && <div className={styles.formError}>{error}</div>}
-              <div className={styles.field}><label>Razón social *</label>
-                <input className="input" value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))} placeholder="Acme S.A." />
+
+              <div className={styles.field}><label>CUIT / CUIL *</label>
+                <input className="input" value={data.cuit} onChange={e => setData(d => ({ ...d, cuit: e.target.value }))} placeholder="30-00000000-0 ó 20-00000000-0" />
+                {padronStatus === 'loading'   && <p className={styles.padronLoading}>Consultando Padrón ARCA...</p>}
+                {padronStatus === 'not_found' && <p className={styles.padronWarn}>No encontramos ese CUIT/CUIL en el Padrón. Completá los datos manualmente.</p>}
+                {padronStatus === 'error'     && <p className={styles.padronHint}>No pudimos consultar el Padrón ahora. Completá los datos manualmente.</p>}
+                {padronStatus === 'found' && padronData && (
+                  <div className={`${styles.personaCard} ${padronData.estadoClave !== 'ACTIVO' ? styles.personaCardWarn : ''}`}>
+                    <div className={styles.personaName}>{padronData.estadoClave === 'ACTIVO' ? '✓' : '⚠'} {padronData.nombre}</div>
+                    <div className={styles.personaMeta}>
+                      <span>{padronData.tipoPersona === 'FISICA' ? 'Persona Física' : 'Persona Jurídica'}</span>
+                      <span className={padronData.estadoClave === 'ACTIVO' ? styles.metaActivo : styles.metaInactivo}>{padronData.estadoClave}</span>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className={styles.field}><label>CUIT *</label>
-                <input className="input" value={data.cuit} onChange={e => setData(d => ({ ...d, cuit: e.target.value }))} placeholder="30-00000000-0" />
+
+              <div className={styles.field}>
+                <label>{padronData ? (padronData.tipoPersona === 'FISICA' ? 'Nombre y Apellido *' : 'Razón social *') : 'Nombre / Razón social *'}</label>
+                <input className="input" value={data.name} onChange={e => setData(d => ({ ...d, name: e.target.value }))}
+                  placeholder={padronData?.tipoPersona === 'FISICA' ? 'Juan Pérez' : 'Acme S.A.'} />
               </div>
+
               <div className={styles.field}><label>Condición fiscal</label>
                 <select className="select" value={data.fiscalTreatment} onChange={e => setData(d => ({ ...d, fiscalTreatment: e.target.value }))}>
                   <option value="RESPONSABLE_INSCRIPTO">IVA Responsable Inscripto</option>
