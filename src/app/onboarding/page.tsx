@@ -12,11 +12,28 @@ interface PadronData {
   nombre: string;
   tipoPersona: string;
   estadoClave: string;
-  domicilio?: { localidad?: string; provincia?: string };
+  domicilio?: { direccion?: string; provincia?: string; codPostal?: string };
 }
 
 const STEPS = ['Tu cuenta', 'Empresa', 'Conectar ARCA', 'Listo'];
 const PROVINCES = ['Buenos Aires','Ciudad Autónoma de Buenos Aires','Córdoba','Santa Fe','Mendoza','Tucumán','Salta','Entre Ríos','Misiones','Chaco','Corrientes','Santiago del Estero','San Juan','Jujuy','Río Negro','Neuquén','Formosa','La Pampa','Catamarca','La Rioja','San Luis','Santa Cruz','Chubut','Tierra del Fuego'];
+
+// El Padrón de ARCA devuelve la provincia en mayúsculas y sin acentos
+// (ej. "CIUDAD AUTONOMA BUENOS AIRES"), por eso la normalizamos para
+// poder mapearla a una opción del <select> de provincias.
+function normalizeProvincia(s: string) {
+  return s
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toUpperCase()
+    .replace(/\bDE\b/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function matchProvincia(raw: string): string | null {
+  const target = normalizeProvincia(raw);
+  return PROVINCES.find(p => normalizeProvincia(p) === target) ?? null;
+}
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -39,7 +56,7 @@ export default function OnboardingPage() {
   const [padronData, setPadronData] = useState<PadronData | null>(null);
 
   // Al cargar un CUIT/CUIL válido, consultamos el Padrón de ARCA y completamos
-  // nombre, provincia y localidad automáticamente (sin pisar lo que el usuario ya escribió).
+  // nombre, domicilio y provincia automáticamente (sin pisar lo que el usuario ya escribió).
   useEffect(() => {
     const clean = data.cuit.replace(/\D/g, '');
     if (clean.length !== 11) { setPadronStatus('idle'); setPadronData(null); return; }
@@ -59,9 +76,9 @@ export default function OnboardingPage() {
         setData(d => ({
           ...d,
           name: d.name.trim() ? d.name : info.nombre,
-          city: d.city.trim() ? d.city : (info.domicilio?.localidad ?? d.city),
-          province: (!d.city.trim() && info.domicilio?.provincia && PROVINCES.includes(info.domicilio.provincia))
-            ? info.domicilio.provincia
+          address: d.address.trim() ? d.address : (info.domicilio?.direccion ?? d.address),
+          province: (!d.address.trim() && info.domicilio?.provincia)
+            ? (matchProvincia(info.domicilio.provincia) ?? d.province)
             : d.province,
         }));
       } catch {

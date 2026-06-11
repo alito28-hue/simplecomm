@@ -96,7 +96,7 @@ export const es = {
     trialSubtitle:   '15 días gratis. Sin tarjeta de crédito.',
     firstName:       'Nombre',
     lastName:        'Apellido',
-    company:         'Empresa / Organización',
+    company:         'Empresa / Persona física',
     workEmail:       'Email de trabajo',
     confirmPassword: 'Confirmá la contraseña',
     creating:        'Creando cuenta...',

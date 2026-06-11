@@ -92,7 +92,7 @@ export const en: Translations = {
     trialSubtitle:   '15-day free trial. No credit card required.',
     firstName:       'First name',
     lastName:        'Last name',
-    company:         'Company / Organization',
+    company:         'Company / Individual',
     workEmail:       'Work email',
     confirmPassword: 'Confirm password',
     creating:        'Creating account...',
