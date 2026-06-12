@@ -56,6 +56,7 @@ export default function OnboardingPage() {
   const [padronStatus, setPadronStatus] = useState<PadronStatus>('idle');
   const [padronData, setPadronData] = useState<PadronData | null>(null);
   const [padronError, setPadronError] = useState<string | null>(null);
+  const [padronCountdown, setPadronCountdown] = useState(15);
 
   // El link de confirmación de email llega a /onboarding con la sesión en el
   // hash de la URL (#access_token=...&refresh_token=...). Si no la activamos
@@ -75,6 +76,17 @@ export default function OnboardingPage() {
       window.history.replaceState(null, '', window.location.pathname);
     });
   }, []);
+
+  // Cuenta regresiva para la consulta al Padrón: la consulta a ARCA puede
+  // tardar varios segundos, así que mostramos un contador para que el
+  // usuario sepa que sigue en curso y no se impaciente.
+  useEffect(() => {
+    if (padronStatus !== 'loading') { setPadronCountdown(15); return; }
+    const interval = setInterval(() => {
+      setPadronCountdown(c => (c > 0 ? c - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [padronStatus]);
 
   // Al cargar un CUIT/CUIL válido, consultamos el Padrón de ARCA y completamos
   // nombre, domicilio y provincia automáticamente (sin pisar lo que el usuario ya escribió).
@@ -225,7 +237,7 @@ export default function OnboardingPage() {
 
               <div className={styles.field}><label>CUIT / CUIL *</label>
                 <input className="input" value={data.cuit} onChange={e => setData(d => ({ ...d, cuit: e.target.value }))} placeholder="30-00000000-0 ó 20-00000000-0" />
-                {padronStatus === 'loading'   && <p className={styles.padronLoading}>Consultando Padrón ARCA...</p>}
+                {padronStatus === 'loading'   && <p className={styles.padronLoading}>Consultando Padrón ARCA... ({padronCountdown}s)</p>}
                 {padronStatus === 'not_found' && <p className={styles.padronWarn}>No encontramos ese CUIT/CUIL en el Padrón. Completá los datos manualmente.</p>}
                 {padronStatus === 'error'     && (
                   <p className={styles.padronHint}>
@@ -316,7 +328,7 @@ export default function OnboardingPage() {
                     <li>Ir a <strong>Administrador de Relaciones de Clave Fiscal</strong></li>
                     <li>Seleccionar <strong>Nueva Relación</strong></li>
                     <li>CUIT del representante: <strong>30715371622</strong> (Mocla SA / SimpleComm)</li>
-                    <li>Servicio: <strong>wsfe</strong> (Facturación Electrónica)</li>
+                    <li>Webservice: <strong>wsfe</strong> (Facturación Electrónica)</li>
                     <li>Confirmar y volver acá</li>
                   </ol>
                   <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml" target="_blank" className={`btn btn-outline btn-sm ${styles.arcaBtn}`}>

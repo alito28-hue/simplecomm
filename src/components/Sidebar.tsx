@@ -17,6 +17,7 @@ interface SidebarProps {
 const FACTURACION_ITEMS = [
   { href: '/dashboard/facturacion/simplificada', label: '⚡ Facturación Rápida' },
   { href: '/dashboard/facturacion/manual',       label: '📄 Comprobante Manual' },
+  { href: '/dashboard/facturacion/programadas',  label: '🗓 Facturas Programadas' },
   { href: '/dashboard/facturacion/lotes',        label: '📦 Facturación Masiva' },
 ];
 
