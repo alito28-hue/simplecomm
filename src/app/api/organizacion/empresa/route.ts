@@ -37,6 +37,14 @@ export async function PUT(req: NextRequest) {
       .select().single();
   }
 
-  if (result.error) return NextResponse.json({ error: result.error.message }, { status: 500 });
+  if (result.error) {
+    if (result.error.code === '23505' && result.error.message.includes('cuit')) {
+      return NextResponse.json(
+        { error: 'Ese CUIT/CUIL ya está registrado en otra cuenta. Si es un error, contactanos para resolverlo.' },
+        { status: 409 },
+      );
+    }
+    return NextResponse.json({ error: result.error.message }, { status: 500 });
+  }
   return NextResponse.json(result.data);
 }
