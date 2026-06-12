@@ -54,19 +54,24 @@ export default function OnboardingPage() {
 
   const [padronStatus, setPadronStatus] = useState<PadronStatus>('idle');
   const [padronData, setPadronData] = useState<PadronData | null>(null);
+  const [padronError, setPadronError] = useState<string | null>(null);
 
   // Al cargar un CUIT/CUIL válido, consultamos el Padrón de ARCA y completamos
   // nombre, domicilio y provincia automáticamente (sin pisar lo que el usuario ya escribió).
   useEffect(() => {
     const clean = data.cuit.replace(/\D/g, '');
-    if (clean.length !== 11) { setPadronStatus('idle'); setPadronData(null); return; }
+    if (clean.length !== 11) { setPadronStatus('idle'); setPadronData(null); setPadronError(null); return; }
 
     setPadronStatus('loading');
+    setPadronError(null);
     const handle = setTimeout(async () => {
       try {
         const res = await fetch(`/api/padron/${clean}`);
         if (!res.ok) {
+          let detail = '';
+          try { const body = await res.json(); detail = body?.error ?? ''; } catch {}
           setPadronStatus(res.status === 404 ? 'not_found' : 'error');
+          setPadronError(`HTTP ${res.status}${detail ? ` – ${detail}` : ''}`);
           setPadronData(null);
           return;
         }
@@ -81,9 +86,10 @@ export default function OnboardingPage() {
             ? (matchProvincia(info.domicilio.provincia) ?? d.province)
             : d.province,
         }));
-      } catch {
+      } catch (err) {
         setPadronStatus('error');
         setPadronData(null);
+        setPadronError(err instanceof Error ? err.message : 'fetch failed');
       }
     }, 600);
 
@@ -201,7 +207,12 @@ export default function OnboardingPage() {
                 <input className="input" value={data.cuit} onChange={e => setData(d => ({ ...d, cuit: e.target.value }))} placeholder="30-00000000-0 ó 20-00000000-0" />
                 {padronStatus === 'loading'   && <p className={styles.padronLoading}>Consultando Padrón ARCA...</p>}
                 {padronStatus === 'not_found' && <p className={styles.padronWarn}>No encontramos ese CUIT/CUIL en el Padrón. Completá los datos manualmente.</p>}
-                {padronStatus === 'error'     && <p className={styles.padronHint}>No pudimos consultar el Padrón ahora. Completá los datos manualmente.</p>}
+                {padronStatus === 'error'     && (
+                  <p className={styles.padronHint}>
+                    No pudimos consultar el Padrón ahora. Completá los datos manualmente.
+                    {padronError && <><br /><span style={{ opacity: 0.6 }}>({padronError})</span></>}
+                  </p>
+                )}
                 {padronStatus === 'found' && padronData && (
                   <div className={`${styles.personaCard} ${padronData.estadoClave !== 'ACTIVO' ? styles.personaCardWarn : ''}`}>
                     <div className={styles.personaName}>{padronData.estadoClave === 'ACTIVO' ? '✓' : '⚠'} {padronData.nombre}</div>

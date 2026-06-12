@@ -19,6 +19,7 @@ export async function PUT(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
+  if (typeof body.cuit === 'string') body.cuit = body.cuit.replace(/\D/g, '');
   const now = new Date().toISOString();
 
   // Verificar si ya existe
