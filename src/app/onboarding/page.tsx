@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
 import Logo from '@/components/Logo';
 import styles from './onboarding.module.css';
 
@@ -55,6 +56,25 @@ export default function OnboardingPage() {
   const [padronStatus, setPadronStatus] = useState<PadronStatus>('idle');
   const [padronData, setPadronData] = useState<PadronData | null>(null);
   const [padronError, setPadronError] = useState<string | null>(null);
+
+  // El link de confirmación de email llega a /onboarding con la sesión en el
+  // hash de la URL (#access_token=...&refresh_token=...). Si no la activamos
+  // acá, el servidor nunca ve la sesión y todas las llamadas a /api/* terminan
+  // redirigidas a /login.
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash.includes('access_token')) return;
+
+    const params = new URLSearchParams(hash.slice(1));
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    if (!access_token || !refresh_token) return;
+
+    const supabase = createClient();
+    supabase.auth.setSession({ access_token, refresh_token }).then(() => {
+      window.history.replaceState(null, '', window.location.pathname);
+    });
+  }, []);
 
   // Al cargar un CUIT/CUIL válido, consultamos el Padrón de ARCA y completamos
   // nombre, domicilio y provincia automáticamente (sin pisar lo que el usuario ya escribió).
