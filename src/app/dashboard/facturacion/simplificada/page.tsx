@@ -272,27 +272,6 @@ export default function FacturacionSimplificadaPage() {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className={styles.form}>
-              <div className={styles.amountField}>
-                <span className={styles.currencySign}>$</span>
-                <input name="amount" type="number" step="0.01" min="0.01" required
-                  placeholder={info.inputLabel} className={styles.amountInput} />
-              </div>
-
-              {letter === 'A' && (
-                <div className={styles.field}>
-                  <label>Alícuota IVA</label>
-                  <select name="ivaRate" className="select">
-                    <option value="21">21%</option>
-                    <option value="10.5">10,5%</option>
-                    <option value="27">27%</option>
-                    <option value="0">Exento</option>
-                  </select>
-                </div>
-              )}
-
-              <textarea name="description" placeholder="¿Qué vendiste? (opcional)"
-                className={`input ${styles.descArea}`} rows={3} />
-
               <div className={styles.field}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                   <label style={{ margin: 0 }}>{letter === 'A' ? 'CUIT del receptor *' : 'CUIL, CUIT o DNI del receptor (opcional)'}</label>
@@ -326,6 +305,27 @@ export default function FacturacionSimplificadaPage() {
 
                 {padronStatus === 'found' && padronData && <PersonaCard data={padronData} />}
               </div>
+
+              <div className={styles.amountField}>
+                <span className={styles.currencySign}>$</span>
+                <input name="amount" type="number" step="0.01" min="0.01" required
+                  placeholder={info.inputLabel} className={styles.amountInput} />
+              </div>
+
+              {letter === 'A' && (
+                <div className={styles.field}>
+                  <label>Alícuota IVA</label>
+                  <select name="ivaRate" className="select">
+                    <option value="21">21%</option>
+                    <option value="10.5">10,5%</option>
+                    <option value="27">27%</option>
+                    <option value="0">Exento</option>
+                  </select>
+                </div>
+              )}
+
+              <textarea name="description" placeholder="¿Qué vendiste? (opcional)"
+                className={`input ${styles.descArea}`} rows={3} />
 
               {/* Nombre editable: siempre para A, o cuando padron no encontró / error */}
               {(letter === 'A' || (padronStatus !== 'idle' && padronStatus !== 'found' && padronStatus !== 'multiple')) && (
