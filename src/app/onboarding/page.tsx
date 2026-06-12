@@ -207,21 +207,11 @@ export default function OnboardingPage() {
             <div>
               <h2 className={styles.stepTitle}>¡Bienvenido a SimpleComm!</h2>
               <p className={styles.stepDesc}>
-                Tu cuenta fue creada. Antes de continuar, <strong>revisá tu email</strong> y
-                confirmá tu dirección. Luego volvé para configurar tu empresa.
+                Confirmamos tu email. Ahora completá los datos de tu empresa para empezar a facturar.
               </p>
-              <div className={styles.emailAlert}>
-                <span className={styles.emailAlertIcon}>📧</span>
-                <div>
-                  <div className={styles.emailAlertTitle}>Confirmá tu email</div>
-                  <div className={styles.emailAlertDesc}>
-                    Hacé clic en el enlace que te enviamos y después iniciá sesión para continuar.
-                  </div>
-                </div>
-              </div>
               <div className={styles.checkList}>
                 <div className={styles.checkItem}><span>✅</span><span>Cuenta creada</span></div>
-                <div className={styles.checkItem}><span>⬜</span><span>Email confirmado</span></div>
+                <div className={styles.checkItem}><span>✅</span><span>Email confirmado</span></div>
                 <div className={styles.checkItem}><span>⬜</span><span>Datos de empresa</span></div>
                 <div className={styles.checkItem}><span>⬜</span><span>Conexión con ARCA</span></div>
                 <div className={styles.checkItem}><span>🎁</span><span>10 comprobantes gratis para empezar</span></div>

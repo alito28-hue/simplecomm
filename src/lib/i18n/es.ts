@@ -106,6 +106,8 @@ export const es = {
     signInLink:      'Iniciá sesión',
     minChars:        'Mín. 8 caracteres',
     passwordsMatch:  'Las contraseñas no coinciden.',
+    checkEmailTitle: 'Confirmá tu email',
+    checkEmailDesc:  'Te enviamos un correo para verificar tu cuenta. Hacé clic en el enlace y después iniciá sesión para continuar.',
   },
   // Integrations
   integrations: {

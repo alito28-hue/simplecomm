@@ -102,6 +102,8 @@ export const en: Translations = {
     signInLink:      'Sign in',
     minChars:        'Min. 8 characters',
     passwordsMatch:  'Passwords do not match.',
+    checkEmailTitle: 'Confirm your email',
+    checkEmailDesc:  "We sent you an email to verify your account. Click the link, then sign in to continue.",
   },
   integrations: {
     title:      'External Platforms',

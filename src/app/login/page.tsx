@@ -1,11 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { login } from '@/app/auth/actions';
 import Logo from '@/components/Logo';
 import { useI18n } from '@/lib/i18n/context';
 import styles from './login.module.css';
+
+function CheckEmailBanner() {
+  const { t } = useI18n();
+  const searchParams = useSearchParams();
+  if (searchParams.get('registered') !== '1') return null;
+  return (
+    <div className={styles.emailAlert}>
+      <span className={styles.emailAlertIcon}>📧</span>
+      <div>
+        <div className={styles.emailAlertTitle}>{t.auth.checkEmailTitle}</div>
+        <div className={styles.emailAlertDesc}>{t.auth.checkEmailDesc}</div>
+      </div>
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const { t, locale, setLocale } = useI18n();
@@ -35,6 +51,10 @@ export default function LoginPage() {
 
         <h1 className={styles.title}>{t.auth.welcomeBack}</h1>
         <p className={styles.subtitle}>{t.auth.signInSubtitle}</p>
+
+        <Suspense fallback={null}>
+          <CheckEmailBanner />
+        </Suspense>
 
         {error && <div className={styles.error}>{error}</div>}
 
