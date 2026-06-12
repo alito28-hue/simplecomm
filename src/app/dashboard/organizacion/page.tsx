@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import styles from './organizacion.module.css';
 
@@ -10,6 +13,15 @@ const SECCIONES = [
 ];
 
 export default function OrganizacionPage() {
+  const [personType, setPersonType] = useState('');
+
+  useEffect(() => {
+    fetch('/api/organizacion/empresa')
+      .then(r => r.json())
+      .then(data => setPersonType(data?.personType ?? ''))
+      .catch(() => {});
+  }, []);
+
   return (
     <div className={styles.page}>
       <div className={styles.pageHeader}>
@@ -20,7 +32,9 @@ export default function OrganizacionPage() {
         {SECCIONES.map((s) => (
           <Link key={s.href} href={s.href} className={`card ${styles.settingCard}`}>
             <div className={styles.settingIcon}>{s.icon}</div>
-            <h3 className={styles.settingTitle}>{s.title}</h3>
+            <h3 className={styles.settingTitle}>
+              {s.href === '/dashboard/organizacion/empresa' && personType === 'FISICA' ? 'Persona Física' : s.title}
+            </h3>
             <p className={styles.settingDesc}>{s.desc}</p>
             <span className={styles.settingArrow}>→</span>
           </Link>

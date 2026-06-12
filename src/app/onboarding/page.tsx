@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import Logo from '@/components/Logo';
+import { suggestFiscalTreatment } from '@/lib/fiscal';
 import styles from './onboarding.module.css';
 
 type PadronStatus = 'idle' | 'loading' | 'found' | 'not_found' | 'error';
@@ -14,6 +15,8 @@ interface PadronData {
   tipoPersona: string;
   estadoClave: string;
   domicilio?: { direccion?: string; provincia?: string; codPostal?: string };
+  monotributo?: boolean;
+  ivaCondition?: 'INSCRIPTO' | 'EXENTO' | null;
 }
 
 const STEPS = ['Tu cuenta', 'Empresa', 'Conectar ARCA', 'Listo'];
@@ -44,8 +47,13 @@ export default function OnboardingPage() {
 
   const [data, setData] = useState({
     name: '', cuit: '', address: '', province: 'Buenos Aires',
-    city: '', fiscalTreatment: 'RESPONSABLE_INSCRIPTO',
+    city: '', fiscalTreatment: 'RESPONSABLE_INSCRIPTO', personType: '',
   });
+
+  // Si el usuario ya tocó manualmente "Condición fiscal", no la pisamos
+  // con la sugerencia del Padrón de ARCA.
+  const fiscalTouchedRef = useRef(false);
+  const [fiscalSuggested, setFiscalSuggested] = useState(false);
 
   const [afip, setAfip] = useState({
     ptoVta: '',
@@ -110,6 +118,8 @@ export default function OnboardingPage() {
         const info: PadronData = await res.json();
         setPadronData(info);
         setPadronStatus('found');
+        const suggestion = suggestFiscalTreatment({ monotributo: info.monotributo, ivaCondition: info.ivaCondition });
+        if (suggestion && !fiscalTouchedRef.current) setFiscalSuggested(true);
         setData(d => ({
           ...d,
           name: d.name.trim() ? d.name : info.nombre,
@@ -117,6 +127,8 @@ export default function OnboardingPage() {
           province: (!d.address.trim() && info.domicilio?.provincia)
             ? (matchProvincia(info.domicilio.provincia) ?? d.province)
             : d.province,
+          personType: info.tipoPersona || d.personType,
+          fiscalTreatment: (suggestion && !fiscalTouchedRef.current) ? suggestion : d.fiscalTreatment,
         }));
       } catch (err) {
         setPadronStatus('error');
@@ -253,11 +265,19 @@ export default function OnboardingPage() {
               </div>
 
               <div className={styles.field}><label>Condición fiscal</label>
-                <select className="select" value={data.fiscalTreatment} onChange={e => setData(d => ({ ...d, fiscalTreatment: e.target.value }))}>
+                <select className="select" value={data.fiscalTreatment} onChange={e => {
+                  fiscalTouchedRef.current = true;
+                  setFiscalSuggested(false);
+                  const value = e.target.value;
+                  setData(d => ({ ...d, fiscalTreatment: value }));
+                }}>
                   <option value="RESPONSABLE_INSCRIPTO">IVA Responsable Inscripto</option>
                   <option value="MONOTRIBUTISTA">Monotributista</option>
                   <option value="EXENTO">Exento</option>
                 </select>
+                {fiscalSuggested && (
+                  <p className={styles.padronHint}>Pre-completado según tu inscripción en ARCA. Podés cambiarlo si no es correcto.</p>
+                )}
               </div>
               <div className={styles.field}><label>Domicilio fiscal</label>
                 <input className="input" value={data.address} onChange={e => setData(d => ({ ...d, address: e.target.value }))} />

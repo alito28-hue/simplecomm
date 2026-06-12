@@ -16,6 +16,10 @@ export interface PersonaResult {
     provincia?: string;
     codPostal?: string;
   };
+  /** true si el padrón indica inscripción vigente en Monotributo */
+  monotributo?: boolean;
+  /** Condición frente al IVA del Régimen General, si el padrón la informa */
+  ivaCondition?: 'INSCRIPTO' | 'EXENTO' | null;
 }
 
 async function soapCall(padronUrl: string, body: string): Promise<string> {
@@ -48,6 +52,29 @@ async function soapCall(padronUrl: string, body: string): Promise<string> {
   }
 
   return text;
+}
+
+function toArray<T>(value: T | T[] | undefined | null): T[] {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+/**
+ * Extrae la condición frente al IVA del Régimen General a partir de
+ * `datosRegimenGeneral.impuesto[]`. idImpuesto 30 = IVA Responsable Inscripto,
+ * 32 = IVA Exento (tabla de impuestos de AFIP).
+ */
+function parseIvaCondition(datosRegimenGeneral: unknown): 'INSCRIPTO' | 'EXENTO' | null {
+  if (!datosRegimenGeneral) return null;
+  const impuestos = toArray((datosRegimenGeneral as Record<string, unknown>).impuesto);
+  for (const imp of impuestos) {
+    const data = imp as Record<string, unknown>;
+    const idImpuesto = String(data.idImpuesto ?? '');
+    const descripcion = String(data.descripcionImpuesto ?? '').toUpperCase();
+    if (idImpuesto === '30' || descripcion.includes('IVA INSCRIPTO')) return 'INSCRIPTO';
+    if (idImpuesto === '32' || descripcion.includes('IVA EXENTO')) return 'EXENTO';
+  }
+  return null;
 }
 
 function parseDomicilioFiscal(domicilios: unknown): PersonaResult['domicilio'] {
@@ -106,6 +133,8 @@ export async function getPersona(
     tipoPersona: ret.tipoPersona ?? 'FISICA',
     estadoClave: ret.estadoClave ?? 'DESCONOCIDO',
     domicilio: parseDomicilioFiscal(ret.domicilio),
+    monotributo: !!ret.datosMonotributo,
+    ivaCondition: parseIvaCondition(ret.datosRegimenGeneral),
   };
 }
 

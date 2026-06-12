@@ -9,7 +9,7 @@ const PROVINCES = ['Buenos Aires', 'Ciudad Autónoma de Buenos Aires', 'Córdoba
 
 export default function EmpresaPage() {
   const [form, setForm] = useState({
-    name: '', cuit: '', fiscalTreatment: 'RESPONSABLE_INSCRIPTO',
+    name: '', cuit: '', personType: '', fiscalTreatment: 'RESPONSABLE_INSCRIPTO',
     address: '', province: '', city: '', zipCode: '',
     phone: '', emailAlerts: '', emailAccountant: '', iibb: '', cbu: '',
     validateVouchers: true,
@@ -50,7 +50,7 @@ export default function EmpresaPage() {
   return (
     <div className={styles.page}>
       <BackButton href="/dashboard/organizacion" label="← Configuración" />
-      <h1 className={styles.pageTitle}>Empresa</h1>
+      <h1 className={styles.pageTitle}>{form.personType === 'FISICA' ? 'Persona Física' : 'Empresa'}</h1>
 
       {error && <div className={styles.error}>{error}</div>}
       {saved && <div className={styles.success}>✓ Datos guardados correctamente</div>}
@@ -60,7 +60,7 @@ export default function EmpresaPage() {
           <h2 className={styles.sectionTitle}>Datos generales</h2>
           <div className={styles.grid3}>
             <div className={styles.field}>
-              <label>Razón social</label>
+              <label>{form.personType === 'FISICA' ? 'Nombre y Apellido' : 'Razón social'}</label>
               <input className="input" value={form.name} onChange={e => update('name', e.target.value)} required />
             </div>
             <div className={styles.field}>
