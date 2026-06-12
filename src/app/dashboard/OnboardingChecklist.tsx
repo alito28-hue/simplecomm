@@ -41,7 +41,9 @@ export default function OnboardingChecklist() {
             <span className={styles.stepCheck}>{step.done ? '✓' : '○'}</span>
             <span className={styles.stepLabel}>{step.label}</span>
             {!step.done && (
-              <Link href={step.href} className={styles.stepLink}>Configurar →</Link>
+              <Link href={step.href} className={styles.stepLink}>
+                {step.id === 'factura' ? 'Emitir →' : 'Configurar →'}
+              </Link>
             )}
           </div>
         ))}

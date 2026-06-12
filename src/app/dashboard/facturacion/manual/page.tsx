@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ContactPicker, { type ContactOption } from '@/components/ContactPicker';
+import { getAllowedInvoiceLetters, getDefaultInvoiceLetter, type InvoiceLetter } from '@/lib/fiscal';
 import styles from './manual.module.css';
 
-type InvoiceLetter = 'A' | 'B' | 'C';
 type PadronStatus = 'idle' | 'loading' | 'found' | 'multiple' | 'not_found' | 'error';
 
 interface PadronData {
@@ -50,6 +50,7 @@ function PersonaCard({ data }: { data: PadronData }) {
 
 export default function FacturacionManualPage() {
   const [letter, setLetter] = useState<InvoiceLetter>('B');
+  const [allowedLetters, setAllowedLetters] = useState<InvoiceLetter[]>(['A', 'B', 'C']);
   const [buyer, setBuyer] = useState({ fullName: '', docType: 'CONSUMIDOR_FINAL', docNumber: '' });
   const [padronData, setPadronData] = useState<PadronData | null>(null);
   const [padronCandidates, setPadronCandidates] = useState<PadronData[]>([]);
@@ -65,6 +66,18 @@ export default function FacturacionManualPage() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipPadronRef = useRef(false);
   const searchParams = useSearchParams();
+
+  // Filtrar tipos de comprobante según la condición fiscal de la organización
+  useEffect(() => {
+    fetch('/api/organizacion/empresa')
+      .then(r => r.json())
+      .then(data => {
+        const allowed = getAllowedInvoiceLetters(data?.fiscalTreatment);
+        setAllowedLetters(allowed);
+        setLetter(prev => allowed.includes(prev) ? prev : getDefaultInvoiceLetter(data?.fiscalTreatment));
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const name = searchParams.get('name');
@@ -253,7 +266,7 @@ export default function FacturacionManualPage() {
 
       <div className="card" style={{ padding: '1.25rem' }}>
         <div className={styles.letterSelector}>
-          {(['A', 'B', 'C'] as InvoiceLetter[]).map(l => (
+          {allowedLetters.map(l => (
             <button key={l} type="button" onClick={() => changeLetter(l)}
               className={`${styles.letterBtn} ${letter === l ? styles.letterActive : ''}`}>
               <span className={styles.letterCode}>{l}</span>

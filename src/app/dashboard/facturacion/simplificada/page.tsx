@@ -4,9 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import ContactPicker, { type ContactOption } from '@/components/ContactPicker';
+import { getAllowedInvoiceLetters, getDefaultInvoiceLetter, type InvoiceLetter } from '@/lib/fiscal';
 import styles from './simplificada.module.css';
 
-type InvoiceLetter = 'A' | 'B' | 'C';
 type PadronStatus = 'idle' | 'loading' | 'found' | 'multiple' | 'not_found' | 'error';
 
 interface PadronData {
@@ -41,6 +41,7 @@ function PersonaCard({ data }: { data: PadronData }) {
 
 export default function FacturacionSimplificadaPage() {
   const [letter, setLetter] = useState<InvoiceLetter>('B');
+  const [allowedLetters, setAllowedLetters] = useState<InvoiceLetter[]>(['A', 'B', 'C']);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ invoiceNumber: string; cae: string; caeDueDate: string; pdfBase64: string; emailSent?: boolean } | null>(null);
   const [error, setError] = useState('');
@@ -59,6 +60,18 @@ export default function FacturacionSimplificadaPage() {
   const skipPadronRef = useRef(false);
   const searchParams = useSearchParams();
   const info = LETTER_INFO[letter];
+
+  // Filtrar tipos de comprobante según la condición fiscal de la organización
+  useEffect(() => {
+    fetch('/api/organizacion/empresa')
+      .then(r => r.json())
+      .then(data => {
+        const allowed = getAllowedInvoiceLetters(data?.fiscalTreatment);
+        setAllowedLetters(allowed);
+        setLetter(prev => allowed.includes(prev) ? prev : getDefaultInvoiceLetter(data?.fiscalTreatment));
+      })
+      .catch(() => {});
+  }, []);
 
   // Pre-fill from contact "Emitir factura" link
   useEffect(() => {
@@ -227,7 +240,7 @@ export default function FacturacionSimplificadaPage() {
       <div className={styles.layout}>
         <div className={`card ${styles.formCard}`}>
           <div className={styles.letterSelector}>
-            {(['A','B','C'] as InvoiceLetter[]).map(l => (
+            {allowedLetters.map(l => (
               <button key={l} type="button" onClick={() => changeLetter(l)}
                 className={`${styles.letterBtn} ${letter === l ? styles.letterActive : ''}`}>
                 <span className={styles.letterCode}>{l}</span>

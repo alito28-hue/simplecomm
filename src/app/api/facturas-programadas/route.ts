@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { effectiveDateForMonth, monthKey } from '@/lib/scheduled-invoices/schedule';
+import { getAllowedInvoiceLetters } from '@/lib/fiscal';
 
 export async function GET() {
   const supabase = await createClient();
@@ -35,6 +36,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'La primera emisión no puede estar en el pasado' }, { status: 400 });
   }
 
+  const { data: org } = await supabase.from('organizations')
+    .select('fiscalTreatment').eq('id', user.id).maybeSingle();
+
+  const allowedLetters = getAllowedInvoiceLetters(org?.fiscalTreatment);
+  const invoiceLetter = body.invoiceLetter ?? 'B';
+  if (!allowedLetters.includes(invoiceLetter)) {
+    return NextResponse.json({
+      error: `Tu condición fiscal no permite emitir Factura ${invoiceLetter}. Tipos permitidos: ${allowedLetters.map(l => `Factura ${l}`).join(', ')}.`,
+    }, { status: 400 });
+  }
+
   const modelDay = Number(String(body.firstDate).slice(8, 10));
   const now = new Date().toISOString();
   const { data, error } = await supabase.from('scheduled_invoices').insert({
@@ -46,7 +58,7 @@ export async function POST(req: NextRequest) {
     docNumber: String(body.docNumber).replace(/\D/g, '') || '0',
     description: body.description.trim(),
     amount: Number(body.amount),
-    invoiceLetter: body.invoiceLetter ?? 'B',
+    invoiceLetter,
     ivaRate: Number(body.ivaRate ?? 21),
     concept: Number(body.concept ?? 1),
     recipientEmail: body.recipientEmail.trim(),

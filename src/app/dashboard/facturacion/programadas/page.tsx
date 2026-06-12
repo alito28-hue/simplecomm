@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import ContactPicker, { type ContactOption } from '@/components/ContactPicker';
+import { getAllowedInvoiceLetters, getDefaultInvoiceLetter, type InvoiceLetter } from '@/lib/fiscal';
 import styles from './programadas.module.css';
 
 interface Schedule {
@@ -24,6 +25,7 @@ function money(value: number) {
 export default function ProgramadasPage() {
   const [items, setItems] = useState<Schedule[]>([]);
   const [form, setForm] = useState(EMPTY);
+  const [allowedLetters, setAllowedLetters] = useState<InvoiceLetter[]>(['A', 'B', 'C']);
   const [creating, setCreating] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState('');
@@ -35,6 +37,20 @@ export default function ProgramadasPage() {
   }
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, []);
+
+  // Filtrar tipos de comprobante según la condición fiscal de la organización
+  useEffect(() => {
+    fetch('/api/organizacion/empresa')
+      .then(r => r.json())
+      .then(data => {
+        const allowed = getAllowedInvoiceLetters(data?.fiscalTreatment);
+        setAllowedLetters(allowed);
+        setForm(current => allowed.includes(current.invoiceLetter as InvoiceLetter)
+          ? current
+          : { ...current, invoiceLetter: getDefaultInvoiceLetter(data?.fiscalTreatment) });
+      })
+      .catch(() => {});
+  }, []);
 
   function update(key: string, value: string) {
     setForm(current => ({ ...current, [key]: value }));
@@ -93,7 +109,7 @@ export default function ProgramadasPage() {
           <div className={styles.field}><label>Documento *</label><div className={styles.actions}><input className="input" value={form.docNumber} onChange={e => update('docNumber', e.target.value)} required /><button type="button" className="btn btn-ghost btn-sm" onClick={lookupPadron}>Padrón</button></div></div>
           <div className={`${styles.field} ${styles.wide}`}><label>Descripción repetitiva *</label><input className="input" value={form.description} onChange={e => update('description', e.target.value)} required /></div>
           <div className={styles.field}><label>Monto *</label><input className="input" type="number" min="0.01" step="0.01" value={form.amount} onChange={e => update('amount', e.target.value)} required /></div>
-          <div className={styles.field}><label>Tipo de factura</label><select className="input" value={form.invoiceLetter} onChange={e => update('invoiceLetter', e.target.value)}><option value="A">Factura A</option><option value="B">Factura B</option><option value="C">Factura C</option></select></div>
+          <div className={styles.field}><label>Tipo de factura</label><select className="input" value={form.invoiceLetter} onChange={e => update('invoiceLetter', e.target.value)}>{allowedLetters.map(l => <option key={l} value={l}>Factura {l}</option>)}</select></div>
           <div className={styles.field}><label>IVA</label><select className="input" value={form.ivaRate} onChange={e => update('ivaRate', e.target.value)}><option value="21">21%</option><option value="10.5">10,5%</option><option value="0">0%</option></select></div>
           <div className={styles.field}><label>Email receptor *</label><input className="input" type="email" value={form.recipientEmail} onChange={e => update('recipientEmail', e.target.value)} required /></div>
           <div className={styles.field}><label>Primera emisión *</label><input className="input" type="date" value={form.firstDate} onChange={e => update('firstDate', e.target.value)} required /></div>

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { randomUUID } from 'crypto';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
+import { getAllowedInvoiceLetters } from '@/lib/fiscal';
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -28,6 +29,16 @@ export async function POST(req: NextRequest) {
 
   if (!amount || amount <= 0) {
     return NextResponse.json({ error: 'Monto inválido' }, { status: 400 });
+  }
+
+  const { data: org } = await supabase.from('organizations')
+    .select('fiscalTreatment').eq('id', user.id).maybeSingle();
+
+  const allowedLetters = getAllowedInvoiceLetters(org?.fiscalTreatment);
+  if (!allowedLetters.includes(invoiceLetter)) {
+    return NextResponse.json({
+      error: `Tu condición fiscal no permite emitir Factura ${invoiceLetter}. Tipos permitidos: ${allowedLetters.map(l => `Factura ${l}`).join(', ')}.`,
+    }, { status: 400 });
   }
 
   const finalDocType = invoiceLetter === 'A'

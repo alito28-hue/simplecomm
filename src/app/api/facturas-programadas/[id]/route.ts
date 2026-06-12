@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getAllowedInvoiceLetters } from '@/lib/fiscal';
 
 export async function GET(_: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
@@ -24,6 +25,18 @@ export async function PUT(req: NextRequest, context: { params: Promise<{ id: str
   const body = await req.json();
   const allowed = ['buyerName', 'docType', 'docNumber', 'description', 'amount', 'invoiceLetter', 'ivaRate', 'concept', 'recipientEmail', 'mode', 'endType', 'endValue'];
   const changes = Object.fromEntries(Object.entries(body).filter(([key]) => allowed.includes(key)));
+
+  if (typeof changes.invoiceLetter === 'string') {
+    const { data: org } = await supabase.from('organizations')
+      .select('fiscalTreatment').eq('id', user.id).maybeSingle();
+    const allowedLetters: string[] = getAllowedInvoiceLetters(org?.fiscalTreatment);
+    if (!allowedLetters.includes(changes.invoiceLetter)) {
+      return NextResponse.json({
+        error: `Tu condición fiscal no permite emitir Factura ${changes.invoiceLetter}. Tipos permitidos: ${allowedLetters.map(l => `Factura ${l}`).join(', ')}.`,
+      }, { status: 400 });
+    }
+  }
+
   changes.updatedAt = new Date().toISOString();
   const { data, error } = await supabase.from('scheduled_invoices').update(changes)
     .eq('id', id).eq('organizationId', user.id).select().single();
