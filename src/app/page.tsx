@@ -36,6 +36,12 @@ const modules = [
     bullets: ['Importación de pedidos en bloque', 'Hasta cientos de comprobantes por corrida', 'Resumen de emitidas, pendientes y errores'],
   },
   {
+    kicker: 'Conciliación y cobros',
+    title: 'Facturas desde movimientos bancarios',
+    body: 'Importá los movimientos de tu banco y generá facturas de manera semi automática directamente sobre los ingresos acreditados en tu cuenta.',
+    bullets: ['Evitá olvidar facturar cobros por transferencia', 'Creación de comprobantes a un clic', 'Conciliación bancaria integrada'],
+  },
+  {
     kicker: 'Próxima capa',
     title: 'Meta Ads explicado como negocio',
     body: 'No queremos replicar Ads Manager. Queremos mostrar si la inversión está ayudando a vender o solo consumiendo margen.',
@@ -91,6 +97,7 @@ export default function Home() {
         <div className={styles.navLinks}>
           <a href="#facturacion">Facturación</a>
           <a href="#lotes">Lotes</a>
+          <a href="#bancos">Bancos</a>
           <a href="#anuncios">Anuncios</a>
           <a href="#planes">Planes</a>
           <a href="#diferencia">Diferencia</a>
@@ -188,7 +195,7 @@ export default function Home() {
         {modules.map((module, index) => (
           <article
             className={styles.module}
-            id={index === 0 ? 'facturacion' : index === 1 ? 'lotes' : 'anuncios'}
+            id={index === 0 ? 'facturacion' : index === 1 ? 'lotes' : index === 2 ? 'bancos' : 'anuncios'}
             key={module.title}
           >
             <div>
