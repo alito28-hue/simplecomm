@@ -38,10 +38,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Gateway admin no configurado' }, { status: 503 });
   }
 
-  // Obtener datos de la organización para el nombre
+  // Obtener datos de la organización para el nombre y los datos fiscales
   const { data: org } = await supabase
     .from('organizations')
-    .select('id, name, cuit')
+    .select('id, name, cuit, address, iibb, startDate')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -54,6 +54,9 @@ export async function POST(req: NextRequest) {
     cuit:    cleanCuit,
     pto_vta: body.ptoVta,
     environment: 'production',
+    address: org.address ?? undefined,
+    iibb:    org.iibb ?? undefined,
+    activity_start_date: org.startDate ?? undefined,
   };
 
   if (body.authMethod === 'certificate') {
@@ -74,8 +77,15 @@ export async function POST(req: NextRequest) {
 
   const gwData = await gwRes.json();
 
-  // Si ya existe el tenant (CUIT duplicado), usar el ID existente
+  // Si ya existe el tenant (CUIT duplicado), usar el ID existente y sincronizar sus datos fiscales
   if (gwRes.status === 409 && gwData.tenant_id) {
+    await fetch(`${GATEWAY_URL}/v1/admin/tenants/${gwData.tenant_id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GATEWAY_ADMIN_SECRET}` },
+      body: JSON.stringify({ name: gatewayPayload.name, address: gatewayPayload.address, iibb: gatewayPayload.iibb, activity_start_date: gatewayPayload.activity_start_date }),
+      signal: AbortSignal.timeout(30_000),
+    }).catch(() => {});
+
     await supabase.from('organizations').update({
       gatewayTenantId: gwData.tenant_id,
       ptoVta: body.ptoVta,

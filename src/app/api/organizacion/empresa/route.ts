@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+const GATEWAY_URL          = process.env.GATEWAY_URL          ?? 'https://simplecomm-production.up.railway.app';
+const GATEWAY_ADMIN_SECRET = process.env.GATEWAY_ADMIN_SECRET ?? '';
+
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -46,5 +49,22 @@ export async function PUT(req: NextRequest) {
     }
     return NextResponse.json({ error: result.error.message }, { status: 500 });
   }
+
+  // Si ya tiene un tenant en el Gateway, sincronizar los datos fiscales para que
+  // las próximas facturas salgan con el domicilio/IIBB/fecha de inicio al día.
+  if (result.data?.gatewayTenantId && GATEWAY_ADMIN_SECRET) {
+    await fetch(`${GATEWAY_URL}/v1/admin/tenants/${result.data.gatewayTenantId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GATEWAY_ADMIN_SECRET}` },
+      body: JSON.stringify({
+        name: result.data.name,
+        address: result.data.address ?? undefined,
+        iibb: result.data.iibb ?? undefined,
+        activity_start_date: result.data.startDate ?? undefined,
+      }),
+      signal: AbortSignal.timeout(30_000),
+    }).catch(() => {});
+  }
+
   return NextResponse.json(result.data);
 }

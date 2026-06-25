@@ -12,6 +12,7 @@ export default function EmpresaPage() {
     name: '', cuit: '', personType: '', fiscalTreatment: 'RESPONSABLE_INSCRIPTO',
     address: '', province: '', city: '', zipCode: '',
     phone: '', emailAlerts: '', emailAccountant: '', iibb: '', cbu: '',
+    startDate: '',
     validateVouchers: true,
   });
   const [loading, setLoading] = useState(true);
@@ -22,7 +23,11 @@ export default function EmpresaPage() {
   useEffect(() => {
     fetch('/api/organizacion/empresa')
       .then(r => r.json())
-      .then(data => { if (data && data.name) setForm(f => ({ ...f, ...data })); })
+      .then(data => {
+        if (data && data.name) {
+          setForm(f => ({ ...f, ...data, startDate: data.startDate ? data.startDate.slice(0, 10) : '' }));
+        }
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -103,6 +108,12 @@ export default function EmpresaPage() {
             <div className={styles.field}>
               <label>IIBB</label>
               <input className="input" value={form.iibb} onChange={e => update('iibb', e.target.value)} />
+            </div>
+          </div>
+          <div className={styles.grid3}>
+            <div className={styles.field}>
+              <label>Fecha de inicio de actividades</label>
+              <input className="input" type="date" value={form.startDate} onChange={e => update('startDate', e.target.value)} />
             </div>
           </div>
           <div className={styles.grid3}>

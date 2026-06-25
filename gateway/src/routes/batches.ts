@@ -119,7 +119,7 @@ export async function batchRoutes(app: FastifyInstance): Promise<void> {
     for (let i = 0; i < items.length; i += CONCURRENCY) {
       const chunk = items.slice(i, i + CONCURRENCY);
 
-      const chunkResults = await Promise.all(chunk.map(async (item) => {
+      const chunkResults = await Promise.all(chunk.map(async (item): Promise<BatchResult> => {
         const idempotencyKey = `batch:${batchId}:item:${item.batchItemId}`;
 
         // Verificar idempotencia — si ya existe, devolver el resultado guardado
