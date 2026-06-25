@@ -25,10 +25,19 @@ export async function POST(req: NextRequest) {
     ivaRate = 21,
     buyerCuit,
     recipientEmail,
+    serviceDateFrom,
+    serviceDateTo,
+    paymentDueDate,
   } = await req.json();
 
   if (!amount || amount <= 0) {
     return NextResponse.json({ error: 'Monto inválido' }, { status: 400 });
+  }
+
+  if (concept && concept !== 1 && (!serviceDateFrom || !serviceDateTo || !paymentDueDate)) {
+    return NextResponse.json({
+      error: 'Facturas de Servicios o Productos y Servicios requieren período facturado (desde/hasta) y fecha de vencimiento para el pago.',
+    }, { status: 400 });
   }
 
   const { data: org } = await supabase.from('organizations')
@@ -64,6 +73,9 @@ export async function POST(req: NextRequest) {
       iva_rate:       ivaRate,
       concept:        concept ?? 1,
       description:    description ?? 'Venta',
+      service_date_from: serviceDateFrom,
+      service_date_to:   serviceDateTo,
+      payment_due_date:  paymentDueDate,
     },
     buyer: {
       full_name:  buyerName ?? 'Consumidor Final',

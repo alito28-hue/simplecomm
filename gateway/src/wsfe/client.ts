@@ -31,6 +31,9 @@ export interface InvoiceRequest {
   impIVA: number;
   impTrib: number;        // Otros tributos
   ivaItems: IvaItem[];
+  fchServDesde?: string;  // YYYYMMDD — obligatorio si concept es 2 o 3
+  fchServHasta?: string;  // YYYYMMDD — obligatorio si concept es 2 o 3
+  fchVtoPago?: string;    // YYYYMMDD — obligatorio si concept es 2 o 3
 }
 
 export interface IvaItem {
@@ -185,6 +188,9 @@ export async function feCAESolicitar(
           <ar:ImpOpEx>${formatAmount(req.impOpEx)}</ar:ImpOpEx>
           <ar:ImpIVA>${formatAmount(req.impIVA)}</ar:ImpIVA>
           <ar:ImpTrib>${formatAmount(req.impTrib)}</ar:ImpTrib>
+          ${req.fchServDesde ? `<ar:FchServDesde>${req.fchServDesde}</ar:FchServDesde>` : ''}
+          ${req.fchServHasta ? `<ar:FchServHasta>${req.fchServHasta}</ar:FchServHasta>` : ''}
+          ${req.fchVtoPago ? `<ar:FchVtoPago>${req.fchVtoPago}</ar:FchVtoPago>` : ''}
           <ar:MonId>PES</ar:MonId>
           <ar:MonCotiz>1.00</ar:MonCotiz>
           <ar:Iva>${ivaXml}

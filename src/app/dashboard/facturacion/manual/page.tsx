@@ -58,6 +58,9 @@ export default function FacturacionManualPage() {
   const [resolvedCuil, setResolvedCuil] = useState<string | null>(null);
   const [items, setItems] = useState<Item[]>([{ description: '', quantity: 1, unitPrice: 0, ivaRate: 'IVA_21' }]);
   const [concept, setConcept] = useState('1');
+  const [serviceDateFrom, setServiceDateFrom] = useState('');
+  const [serviceDateTo, setServiceDateTo] = useState('');
+  const [paymentDueDate, setPaymentDueDate] = useState('');
   const [sendEmail, setSendEmail] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -202,6 +205,9 @@ export default function FacturacionManualPage() {
     if (letter === 'A' && !buyer.docNumber.replace(/\D/g, '')) {
       setError('Factura A requiere el CUIT del receptor.'); return;
     }
+    if (concept !== '1' && (!serviceDateFrom || !serviceDateTo || !paymentDueDate)) {
+      setError('Facturas de Servicios o Productos y Servicios requieren el período facturado y la fecha de vencimiento para el pago.'); return;
+    }
     setLoading(true); setError('');
     try {
       const clean = buyer.docNumber.replace(/\D/g, '');
@@ -222,6 +228,9 @@ export default function FacturacionManualPage() {
           docType:        effectiveType,
           buyerName:      buyer.fullName || 'Consumidor Final',
           concept:        parseInt(concept),
+          serviceDateFrom: concept !== '1' ? serviceDateFrom : undefined,
+          serviceDateTo:   concept !== '1' ? serviceDateTo : undefined,
+          paymentDueDate:  concept !== '1' ? paymentDueDate : undefined,
           recipientEmail: sendEmail && recipientEmail ? recipientEmail : undefined,
         }),
       });
@@ -352,6 +361,23 @@ export default function FacturacionManualPage() {
             </select>
           </div>
         </div>
+
+        {concept !== '1' && (
+          <div className={styles.grid3} style={{ marginTop: '1rem' }}>
+            <div className={styles.field}>
+              <label>Período facturado desde *</label>
+              <input className="input" type="date" value={serviceDateFrom} onChange={e => setServiceDateFrom(e.target.value)} required />
+            </div>
+            <div className={styles.field}>
+              <label>Período facturado hasta *</label>
+              <input className="input" type="date" value={serviceDateTo} onChange={e => setServiceDateTo(e.target.value)} required />
+            </div>
+            <div className={styles.field}>
+              <label>Vencimiento para el pago *</label>
+              <input className="input" type="date" value={paymentDueDate} onChange={e => setPaymentDueDate(e.target.value)} required />
+            </div>
+          </div>
+        )}
       </div>
 
       <div className={`card ${styles.section}`}>

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { db } from '../db/client';
 import { getValidTicket, invalidateTicket } from '../wsaa/cache';
 import { feCompUltimoAutorizado, feCAESolicitar } from '../wsfe/client';
-import { calculateByType, CBTE_TYPE, toAfipDate, docTypeToAfipId, formatInvoiceNumber, parseIvaRate, type InvoiceLetterType, type IvaRateId } from './calculate';
+import { calculateByType, CBTE_TYPE, toAfipDate, isoToAfipDate, docTypeToAfipId, formatInvoiceNumber, parseIvaRate, type InvoiceLetterType, type IvaRateId } from './calculate';
 import { generateInvoicePdf } from './pdf';
 import { endpoints } from '../config';
 
@@ -22,6 +22,9 @@ export interface IssueRequest {
     ivaRate?: number;       // 21, 10.5, 27, 0 (default 21)
     concept?: number;       // 1=Productos, 2=Servicios, 3=Ambos (default 1)
     description?: string;
+    serviceDateFrom?: string;  // YYYY-MM-DD — obligatorio si concept es 2 o 3
+    serviceDateTo?: string;    // YYYY-MM-DD — obligatorio si concept es 2 o 3
+    paymentDueDate?: string;   // YYYY-MM-DD — obligatorio si concept es 2 o 3
   };
   externalRef?: string;
   sourceApp?: string;
@@ -86,6 +89,14 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
   const cbteFch = toAfipDate();
   const concept = req.invoice.concept ?? 1;
 
+  // Facturas de servicios (concept 2 o 3) requieren período facturado y vencimiento de pago
+  if (concept !== 1 && (!req.invoice.serviceDateFrom || !req.invoice.serviceDateTo || !req.invoice.paymentDueDate)) {
+    throw new Error('Facturas de servicios requieren fecha desde, fecha hasta y vencimiento de pago del período facturado');
+  }
+  const fchServDesde = req.invoice.serviceDateFrom ? isoToAfipDate(req.invoice.serviceDateFrom) : undefined;
+  const fchServHasta = req.invoice.serviceDateTo ? isoToAfipDate(req.invoice.serviceDateTo) : undefined;
+  const fchVtoPago = req.invoice.paymentDueDate ? isoToAfipDate(req.invoice.paymentDueDate) : undefined;
+
   // ── Crear o actualizar registro en DB ────────────────────────────────────
   const dbInvoice = existing
     ? await db.invoice.update({
@@ -142,6 +153,9 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
       impIVA: amounts.impIVA,
       impTrib: amounts.impTrib,
       ivaItems: amounts.ivaItems,
+      fchServDesde,
+      fchServHasta,
+      fchVtoPago,
     });
 
     // ── Generar PDF ───────────────────────────────────────────────────────
@@ -156,6 +170,9 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
       description: req.invoice.description,
       cae: result.cae,
       caeDueDate: result.caeFchVto,
+      serviceDateFrom: fchServDesde,
+      serviceDateTo: fchServHasta,
+      paymentDueDate: fchVtoPago,
     });
 
     // ── Persistir resultado ───────────────────────────────────────────────

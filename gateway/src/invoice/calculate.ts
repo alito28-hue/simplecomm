@@ -162,6 +162,11 @@ export function toAfipDate(date: Date = new Date()): string {
   return `${y}${m}${d}`;
 }
 
+/** Convierte una fecha ISO "YYYY-MM-DD" al formato AFIP "YYYYMMDD". */
+export function isoToAfipDate(iso: string): string {
+  return iso.replace(/-/g, '');
+}
+
 export function docTypeToAfipId(docType: string): number {
   const map: Record<string, number> = {
     CUIT: 80, CUIL: 86, CDI: 87, DNI: 96,

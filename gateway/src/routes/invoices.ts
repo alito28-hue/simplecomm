@@ -13,6 +13,9 @@ const issueSchema = z.object({
     concept: z.number().int().min(1).max(3).optional(),
     description: z.string().optional(),
     pto_vta: z.number().int().positive().optional(),
+    service_date_from: z.string().optional(),  // YYYY-MM-DD, requerido si concept es 2 o 3
+    service_date_to: z.string().optional(),    // YYYY-MM-DD, requerido si concept es 2 o 3
+    payment_due_date: z.string().optional(),   // YYYY-MM-DD, requerido si concept es 2 o 3
   }),
   buyer: z.object({
     full_name: z.string().min(1),
@@ -65,6 +68,9 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
           ivaRate: body.invoice.iva_rate,
           concept: body.invoice.concept,
           description: body.invoice.description,
+          serviceDateFrom: body.invoice.service_date_from,
+          serviceDateTo: body.invoice.service_date_to,
+          paymentDueDate: body.invoice.payment_due_date,
         },
         externalRef: body.external_ref,
         sourceApp: body.source_app,

@@ -19,6 +19,9 @@ interface PdfData {
   description?: string;
   cae: string;
   caeDueDate: string;          // YYYYMMDD
+  serviceDateFrom?: string;    // YYYYMMDD — período facturado, factura de servicios
+  serviceDateTo?: string;      // YYYYMMDD
+  paymentDueDate?: string;     // YYYYMMDD
 }
 
 const IVA_RATE_LABEL: Record<IvaRateId, string> = {
@@ -50,6 +53,10 @@ function formatDateAR(d: Date): string {
 
 function buyerIvaCondition(docType: string): string {
   return docType === 'CONSUMIDOR_FINAL' ? 'Consumidor Final' : 'Responsable Inscripto';
+}
+
+function emisorIvaCondition(letter: InvoiceLetterType): string {
+  return letter === 'C' ? 'Responsable Monotributo' : 'IVA Responsable Inscripto';
 }
 
 // ── Número a letras (pesos argentinos) ───────────────────────────────────────
@@ -182,7 +189,7 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
     // ── Encabezado: emisor | letra | comprobante ──────────────────────────
     const emisorLines = [
       `CUIT: ${formatCuit(data.tenant.cuit)}`,
-      'IVA Responsable Inscripto',
+      emisorIvaCondition(letter),
       `Ingresos Brutos: ${data.tenant.iibb ?? data.tenant.cuit}`,
     ];
     if (data.tenant.address) emisorLines.push(`Domicilio: ${data.tenant.address}`);
@@ -190,25 +197,35 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
       emisorLines.push(`Inicio de Actividades: ${formatDateAR(data.tenant.activityStartDate)}`);
     }
 
-    const headerY = 40;
-    const headerH = Math.max(100, 32 + emisorLines.length * 14);
     const col1W = 230;
     const col2W = 60;
     const col3X = leftCol + col1W + col2W;
     const col3W = pageWidth - col1W - col2W;
+    const emisorTextWidth = col1W - 16;
+
+    // Cada línea puede envolver a más de un renglón (ej: domicilios largos),
+    // así que medimos la altura real en vez de asumir un alto fijo por línea.
+    doc.font('Helvetica').fontSize(9);
+    const lineHeights = emisorLines.map((line) => doc.heightOfString(line, { width: emisorTextWidth }));
+    const emisorTextHeight = lineHeights.reduce((sum, h) => sum + h + 2, 0);
+
+    const headerY = 40;
+    const headerH = Math.max(100, 34 + emisorTextHeight);
 
     doc.rect(leftCol, headerY, col1W, headerH).stroke(BLACK);
     doc.rect(leftCol + col1W, headerY, col2W, headerH).stroke(BLACK);
     doc.rect(col3X, headerY, col3W, headerH).stroke(BLACK);
 
     doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(11)
-      .text(data.tenant.name, leftCol + 8, headerY + 8, { width: col1W - 16 });
+      .text(data.tenant.name, leftCol + 8, headerY + 8, { width: emisorTextWidth });
     doc.font('Helvetica').fontSize(9).fillColor(GRAY);
+    let emisorLineY = headerY + 26;
     emisorLines.forEach((line, i) => {
-      doc.text(line, leftCol + 8, headerY + 26 + i * 14, { width: col1W - 16 });
+      doc.text(line, leftCol + 8, emisorLineY, { width: emisorTextWidth });
+      emisorLineY += lineHeights[i] + 2;
     });
 
-    const letterCodes: Record<InvoiceLetterType, string> = { A: 'COD. 01', B: 'COD. 06', C: 'COD. 11' };
+    const letterCodes: Record<InvoiceLetterType, string> = { A: 'COD. 001', B: 'COD. 006', C: 'COD. 011' };
     const letterX = leftCol + col1W;
     doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(44)
       .text(letter, letterX, headerY + 18, { width: col2W, align: 'center' });
@@ -223,8 +240,20 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
       .text(`Comp. Nro: ${nro}`, col3X + 10, headerY + 48)
       .text(`Fecha de Emisión: ${formatAfipDate(data.invoiceDate)}`, col3X + 10, headerY + 64);
 
+    // ── Período facturado (solo facturas con concepto Servicios/Ambos) ────
+    let nextY = headerY + headerH + 10;
+    if (data.serviceDateFrom && data.serviceDateTo && data.paymentDueDate) {
+      const periodoH = 26;
+      doc.rect(leftCol, nextY, pageWidth, periodoH).stroke(BLACK);
+      doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(8)
+        .text(`Período Facturado Desde: ${formatAfipDate(data.serviceDateFrom)}`, leftCol + 8, nextY + 9, { width: 210 })
+        .text(`Hasta: ${formatAfipDate(data.serviceDateTo)}`, leftCol + 226, nextY + 9, { width: 110 })
+        .text(`Fecha de Vto. para el pago: ${formatAfipDate(data.paymentDueDate)}`, leftCol + 344, nextY + 9, { width: pageWidth - 352 });
+      nextY += periodoH + 10;
+    }
+
     // ── Receptor ────────────────────────────────────────────────────────────
-    const receptorY = headerY + headerH + 10;
+    const receptorY = nextY;
     const receptorH = 64;
     doc.rect(leftCol, receptorY, pageWidth, receptorH).stroke(BLACK);
 
