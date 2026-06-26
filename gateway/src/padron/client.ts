@@ -20,6 +20,10 @@ export interface PersonaResult {
   monotributo?: boolean;
   /** Condición frente al IVA del Régimen General, si el padrón la informa */
   ivaCondition?: 'INSCRIPTO' | 'EXENTO' | null;
+  /** Período (AAAAMM) desde el que está declarada la actividad principal. No es un dato
+   *  exacto de "fecha de inicio de actividades" (ARCA no expone el día), pero es la
+   *  mejor aproximación disponible para sugerirla. */
+  periodoActividadPrincipal?: string;
 }
 
 async function soapCall(padronUrl: string, body: string): Promise<string> {
@@ -135,6 +139,7 @@ export async function getPersona(
     domicilio: parseDomicilioFiscal(ret.domicilio),
     monotributo: !!ret.datosMonotributo,
     ivaCondition: parseIvaCondition(ret.datosRegimenGeneral),
+    periodoActividadPrincipal: ret.periodoActividadPrincipal ? String(ret.periodoActividadPrincipal) : undefined,
   };
 }
 

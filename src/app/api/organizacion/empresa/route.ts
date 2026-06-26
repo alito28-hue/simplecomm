@@ -23,6 +23,8 @@ export async function PUT(req: NextRequest) {
 
   const body = await req.json();
   if (typeof body.cuit === 'string') body.cuit = body.cuit.replace(/\D/g, '');
+  // Postgres no acepta '' para una columna timestamp — lo normalizamos a null.
+  if (body.startDate === '') body.startDate = null;
   const now = new Date().toISOString();
 
   // Verificar si ya existe

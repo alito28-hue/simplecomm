@@ -17,6 +17,14 @@ interface PadronData {
   domicilio?: { direccion?: string; provincia?: string; codPostal?: string };
   monotributo?: boolean;
   ivaCondition?: 'INSCRIPTO' | 'EXENTO' | null;
+  periodoActividadPrincipal?: string;
+}
+
+// ARCA informa el período de actividad principal como "AAAAMM" (sin día).
+// Lo usamos como aproximación de la fecha de inicio de actividades.
+function periodoToIsoDate(periodo: string | undefined): string | null {
+  if (!periodo || !/^\d{6}$/.test(periodo)) return null;
+  return `${periodo.slice(0, 4)}-${periodo.slice(4, 6)}-01`;
 }
 
 const STEPS = ['Tu cuenta', 'Empresa', 'Conectar ARCA', 'Listo'];
@@ -47,8 +55,9 @@ export default function OnboardingPage() {
 
   const [data, setData] = useState({
     name: '', cuit: '', address: '', province: 'Buenos Aires',
-    city: '', fiscalTreatment: 'RESPONSABLE_INSCRIPTO', personType: '',
+    city: '', fiscalTreatment: 'RESPONSABLE_INSCRIPTO', personType: '', startDate: '',
   });
+  const [startDateSuggested, setStartDateSuggested] = useState(false);
 
   // Si el usuario ya tocó manualmente "Condición fiscal", no la pisamos
   // con la sugerencia del Padrón de ARCA.
@@ -120,6 +129,8 @@ export default function OnboardingPage() {
         setPadronStatus('found');
         const suggestion = suggestFiscalTreatment({ monotributo: info.monotributo, ivaCondition: info.ivaCondition });
         if (suggestion && !fiscalTouchedRef.current) setFiscalSuggested(true);
+        const startDateSuggestion = periodoToIsoDate(info.periodoActividadPrincipal);
+        if (startDateSuggestion) setStartDateSuggested(true);
         setData(d => ({
           ...d,
           name: d.name.trim() ? d.name : info.nombre,
@@ -129,6 +140,7 @@ export default function OnboardingPage() {
             : d.province,
           personType: info.tipoPersona || d.personType,
           fiscalTreatment: (suggestion && !fiscalTouchedRef.current) ? suggestion : d.fiscalTreatment,
+          startDate: d.startDate.trim() ? d.startDate : (startDateSuggestion ?? d.startDate),
         }));
       } catch (err) {
         setPadronStatus('error');
@@ -281,6 +293,16 @@ export default function OnboardingPage() {
               </div>
               <div className={styles.field}><label>Domicilio fiscal</label>
                 <input className="input" value={data.address} onChange={e => setData(d => ({ ...d, address: e.target.value }))} />
+              </div>
+              <div className={styles.field}><label>Fecha de inicio de actividades</label>
+                <input className="input" type="date" value={data.startDate} onChange={e => {
+                  setStartDateSuggested(false);
+                  const value = e.target.value;
+                  setData(d => ({ ...d, startDate: value }));
+                }} />
+                {startDateSuggested && (
+                  <p className={styles.padronHint}>Aproximada según ARCA (solo informa mes y año). Podés ajustarla si no es correcta.</p>
+                )}
               </div>
               <div className={styles.row}>
                 <div className={styles.field}><label>Provincia</label>
