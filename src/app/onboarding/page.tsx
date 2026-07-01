@@ -326,8 +326,12 @@ export default function OnboardingPage() {
               </p>
               {error && <div className={styles.formError}>{error}</div>}
 
+              <p className={styles.stepDesc}>
+                <strong>Son 2 pasos obligatorios en ARCA.</strong> Si te salteás alguno, el sistema no va a poder emitir tus facturas.
+              </p>
+
               <div className={styles.delegationSteps}>
-                <p className={styles.delegationTitle}>Antes de continuar, dá de alta el punto de venta en ARCA:</p>
+                <p className={styles.delegationTitle}>Paso 1 de 2 — Dar de alta el punto de venta:</p>
                 <ol className={styles.stepsList}>
                   <li>Ingresá a <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml" target="_blank" className={styles.helpLink}>mi.afip.gov.ar</a> con tu CUIT y clave fiscal</li>
                   <li>Ir a <strong>Administración de Puntos de Venta y Domicilios</strong></li>
@@ -364,7 +368,7 @@ export default function OnboardingPage() {
 
               {afip.authMethod === 'delegation' && (
                 <div className={styles.delegationSteps}>
-                  <p className={styles.delegationTitle}>Pasos para delegar:</p>
+                  <p className={styles.delegationTitle}>Paso 2 de 2 — Autorizar a SimpleComm (delegación):</p>
                   <ol className={styles.stepsList}>
                     <li>Ingresá a <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml" target="_blank" className={styles.helpLink}>mi.afip.gov.ar</a> con tu CUIT y clave fiscal</li>
                     <li>Ir a <strong>Administrador de Relaciones de Clave Fiscal</strong></li>
@@ -376,6 +380,9 @@ export default function OnboardingPage() {
                   <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml" target="_blank" className={`btn btn-outline btn-sm ${styles.arcaBtn}`}>
                     Ir al portal de ARCA ↗
                   </a>
+                  <p className={styles.padronHint} style={{ marginTop: '0.75rem' }}>
+                    ⚠️ Después de este paso, nuestro equipo tiene que <strong>aceptar manualmente</strong> tu autorización del lado de ARCA antes de que puedas emitir facturas. Este proceso puede tardar. Si pasadas unas horas seguís sin poder facturar, escribinos.
+                  </p>
                 </div>
               )}
 

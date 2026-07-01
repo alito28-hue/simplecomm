@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
+import { translateGatewayError } from '@/lib/afip-errors';
 import { randomUUID } from 'crypto';
 
 const NOTA_CREDITO_MAP: Record<number, number> = {
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
   const ncData = await ncRes.json();
 
   if (!ncRes.ok) {
-    return NextResponse.json({ error: ncData.error ?? 'Gateway error' }, { status: 502 });
+    return NextResponse.json({ error: translateGatewayError(ncData.error) }, { status: 502 });
   }
 
   return NextResponse.json({

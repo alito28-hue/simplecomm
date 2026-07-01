@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { issueScheduledOccurrence } from '@/lib/scheduled-invoices/issue';
+import { translateGatewayError } from '@/lib/afip-errors';
 
 export async function POST(_: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
@@ -15,6 +16,6 @@ export async function POST(_: NextRequest, context: { params: Promise<{ id: stri
   try {
     return NextResponse.json(await issueScheduledOccurrence(id));
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Error de emisión' }, { status: 502 });
+    return NextResponse.json({ error: translateGatewayError(error instanceof Error ? error.message : 'Error de emisión') }, { status: 502 });
   }
 }

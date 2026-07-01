@@ -1,8 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { Resend } from 'resend';
 
 const GATEWAY_URL          = process.env.GATEWAY_URL          ?? 'https://simplecomm-production.up.railway.app';
 const GATEWAY_ADMIN_SECRET = process.env.GATEWAY_ADMIN_SECRET ?? '';
+const ADMIN_EMAIL          = process.env.ADMIN_EMAIL           ?? 'alito28@gmail.com';
+const FROM_EMAIL           = 'SimpleComm <info@simplecomm.com.ar>';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+async function notifyAdminNewDelegation(orgName: string, cuit: string) {
+  await resend.emails.send({
+    from:    FROM_EMAIL,
+    to:      ADMIN_EMAIL,
+    subject: `Nueva delegación ARCA pendiente de aceptar — ${orgName} (${cuit})`,
+    html: `
+      <p><strong>${orgName}</strong> (CUIT ${cuit}) acaba de dar de alta su punto de venta y autorizar la delegación en ARCA.</p>
+      <p>Tenés que entrar a <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml">mi.afip.gov.ar</a> con el CUIT 30715371622 (Mocla SA), ir a <strong>Administrador de Relaciones de Clave Fiscal</strong> y <strong>aceptar</strong> la relación pendiente de este cliente. Hasta que no la aceptes, el cliente no va a poder facturar.</p>
+      <p>Después podés marcarla como verificada desde el panel: <a href="https://simplecomm.com.ar/mayor/clientes">simplecomm.com.ar/mayor/clientes</a></p>
+    `,
+  }).catch(err => console.error('[Resend] Failed to notify admin of new delegation:', err));
+}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -90,7 +108,13 @@ export async function POST(req: NextRequest) {
       gatewayTenantId: gwData.tenant_id,
       ptoVta: body.ptoVta,
       afipConfigured: true,
+      afipAuthMethod: body.authMethod,
+      afipRelationVerifiedAt: null,
     }).eq('id', org.id);
+
+    if (body.authMethod === 'delegation') {
+      await notifyAdminNewDelegation(org.name ?? `Cliente ${cleanCuit}`, cleanCuit);
+    }
 
     return NextResponse.json({ ok: true, message: 'Tenant ya existente vinculado', tenant_id: gwData.tenant_id });
   }
@@ -105,7 +129,12 @@ export async function POST(req: NextRequest) {
     gatewayApiKey:   gwData.api_key,
     ptoVta:          body.ptoVta,
     afipConfigured:  true,
+    afipAuthMethod:  body.authMethod,
   }).eq('id', org.id);
+
+  if (body.authMethod === 'delegation') {
+    await notifyAdminNewDelegation(org.name ?? `Cliente ${cleanCuit}`, cleanCuit);
+  }
 
   return NextResponse.json({
     ok: true,

@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getPlan, PLANS, type PlanId } from '@/lib/usage';
+import VerificarArcaButton from './VerificarArcaButton';
 import styles from '../../mayor.module.css';
 
 async function getOrgDetail(id: string) {
@@ -15,7 +16,7 @@ async function getOrgDetail(id: string) {
     { data: plans },
   ] = await Promise.all([
     supabase.from('organizations')
-      .select('id, name, cuit, fiscalTreatment, emailAlerts, subscriptionStatus, planId, invoiceCountMonth, invoiceCountResetAt, gatewayApiKey, createdAt')
+      .select('id, name, cuit, fiscalTreatment, emailAlerts, subscriptionStatus, planId, invoiceCountMonth, invoiceCountResetAt, gatewayApiKey, afipAuthMethod, afipRelationVerifiedAt, createdAt')
       .eq('id', id)
       .single(),
     supabase.from('integrations')
@@ -156,6 +157,21 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
       </div>
+
+      {/* ARCA / delegación pendiente */}
+      {org.afipAuthMethod === 'delegation' && (
+        <div className="card" style={{ padding: '1.25rem', borderLeft: org.afipRelationVerifiedAt ? undefined : '3px solid var(--warning, #d97706)' }}>
+          <h2 className={styles.sectionTitle} style={{ marginBottom: '0.5rem' }}>Estado ARCA (delegación)</h2>
+          {org.afipRelationVerifiedAt ? (
+            <p className="text-sm">✅ Relación verificada el {fmt(org.afipRelationVerifiedAt)}.</p>
+          ) : (
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+              ⏳ Este cliente usa delegación y todavía no verificaste que ARCA la haya aceptado. Aceptala en el Administrador de Relaciones (CUIT 30715371622) y después verificá acá.
+            </p>
+          )}
+          <VerificarArcaButton orgId={org.id} />
+        </div>
+      )}
 
       {/* Row 2: Info + Facturación */}
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: '1.25rem' }}>

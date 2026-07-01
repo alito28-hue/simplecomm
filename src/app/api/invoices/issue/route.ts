@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
 import { getAllowedInvoiceLetters } from '@/lib/fiscal';
+import { translateGatewayError } from '@/lib/afip-errors';
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
   const data = await res.json();
 
   if (!res.ok) {
-    return NextResponse.json({ error: data.error ?? 'Gateway error' }, { status: 502 });
+    return NextResponse.json({ error: translateGatewayError(data.error) }, { status: 502 });
   }
 
   // Send PDF by email if requested

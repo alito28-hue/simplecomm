@@ -5,6 +5,7 @@ import styles from '../mayor.module.css';
 export default async function AdminClientesPage() {
   const supabase = createAdminClient();
   const { data: clientes } = await supabase.from('organizations').select('*').order('createdAt', { ascending: false });
+  const pendientesArca = (clientes ?? []).filter(c => c.afipAuthMethod === 'delegation' && !c.afipRelationVerifiedAt).length;
 
   async function pausar(id: string, status: string) {
     'use server';
@@ -22,15 +23,21 @@ export default async function AdminClientesPage() {
         <p className={styles.subtitle}>Todos los clientes registrados en SimpleComm.</p>
       </div>
 
+      {pendientesArca > 0 && (
+        <div className="card" style={{ padding: '0.9rem 1.25rem', borderLeft: '3px solid var(--warning, #d97706)', marginBottom: '1rem' }}>
+          <p className="text-sm">⏳ <strong>{pendientesArca}</strong> cliente(s) con delegación ARCA pendiente de verificar. Entrá a cada uno para aceptarla y verificarla.</p>
+        </div>
+      )}
+
       <div className="card">
         <div className="table-wrap">
           <table className="table">
             <thead>
-              <tr><th>Empresa</th><th>CUIT</th><th>Email</th><th>Estado</th><th>Registro</th><th></th></tr>
+              <tr><th>Empresa</th><th>CUIT</th><th>Email</th><th>Estado</th><th>ARCA</th><th>Registro</th><th></th></tr>
             </thead>
             <tbody>
               {!clientes || clientes.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Sin clientes registrados</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Sin clientes registrados</td></tr>
               ) : clientes.map((c) => (
                 <tr key={c.id}>
                   <td><strong>{c.name || '(sin nombre)'}</strong></td>
@@ -41,6 +48,17 @@ export default async function AdminClientesPage() {
                       c.subscriptionStatus === 'ACTIVE'    ? 'badge-success' :
                       c.subscriptionStatus === 'CANCELLED' ? 'badge-error'   : 'badge-gray'
                     }`}>{c.subscriptionStatus ?? 'Trial'}</span>
+                  </td>
+                  <td>
+                    {c.afipAuthMethod === 'delegation' ? (
+                      c.afipRelationVerifiedAt
+                        ? <span className="badge badge-success">Verificada</span>
+                        : <span className="badge badge-warning">⏳ Pendiente</span>
+                    ) : c.afipAuthMethod === 'certificate' ? (
+                      <span className="badge badge-gray">Certificado propio</span>
+                    ) : (
+                      <span className="badge badge-gray">—</span>
+                    )}
                   </td>
                   <td className="text-sm text-muted">{new Date(c.createdAt).toLocaleDateString('es-AR')}</td>
                   <td>
