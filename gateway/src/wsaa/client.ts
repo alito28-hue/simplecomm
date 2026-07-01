@@ -93,7 +93,12 @@ export async function loginCms(
 
   const taXml = htmlDecode(returnMatch[1]);
 
-  // 7. Parsear token, sign y vencimiento
+  // 7. Log diagnóstico (temporal) — muestra header del TA sin token/sign para debugging
+  const destination = extractFromXml(taXml, 'destination');
+  const taService   = extractFromXml(taXml, 'service');
+  console.log(`[wsaa] TA recibido — destination: "${destination}" | service: "${taService}"`);
+
+  // 8. Parsear token, sign y vencimiento
   const token = extractFromXml(taXml, 'token');
   const sign = extractFromXml(taXml, 'sign');
   const expirationTimeStr = extractFromXml(taXml, 'expirationTime');
