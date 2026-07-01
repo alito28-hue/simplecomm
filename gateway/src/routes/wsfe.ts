@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { feDummy } from '../wsfe/client';
 import { feCompUltimoAutorizado } from '../wsfe/client';
+import { feParamGetPtosVenta } from '../wsfe/client';
 import { getValidTicket } from '../wsaa/cache';
 import { endpoints, config } from '../config';
 import { authenticateApiKey } from '../middleware/apikey';
@@ -64,6 +65,30 @@ export async function wsfeRoutes(app: FastifyInstance): Promise<void> {
         cbteType,
         lastNumber: lastNro,
         nextNumber: lastNro + 1,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return reply.status(502).send({ error: message });
+    }
+  });
+
+  /**
+   * GET /v1/wsfe/puntos-venta
+   * Lista los puntos de venta habilitados en ARCA para el CUIT del tenant.
+   */
+  app.get('/v1/wsfe/puntos-venta', {
+    preHandler: authenticateApiKey,
+  }, async (request, reply) => {
+    try {
+      const tenant = await db.tenant.findUnique({ where: { id: request.tenantId } });
+      if (!tenant) return reply.status(404).send({ error: 'Tenant no encontrado' });
+
+      const ticket = await getValidTicket(request.tenantId);
+      const puntosVenta = await feParamGetPtosVenta(endpoints.wsfe, ticket, tenant.cuit);
+
+      return reply.send({
+        puntosVenta,
+        asignado: tenant.defaultPtoVta,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     await fetch(`${GATEWAY_URL}/v1/admin/tenants/${gwData.tenant_id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GATEWAY_ADMIN_SECRET}` },
-      body: JSON.stringify({ name: gatewayPayload.name, address: gatewayPayload.address, iibb: gatewayPayload.iibb, activity_start_date: gatewayPayload.activity_start_date }),
+      body: JSON.stringify({ name: gatewayPayload.name, address: gatewayPayload.address, iibb: gatewayPayload.iibb, activity_start_date: gatewayPayload.activity_start_date, pto_vta: gatewayPayload.pto_vta }),
       signal: AbortSignal.timeout(30_000),
     }).catch(() => {});
 

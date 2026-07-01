@@ -326,10 +326,20 @@ export default function OnboardingPage() {
               </p>
               {error && <div className={styles.formError}>{error}</div>}
 
+              <div className={styles.delegationSteps}>
+                <p className={styles.delegationTitle}>Antes de continuar, dá de alta el punto de venta en ARCA:</p>
+                <ol className={styles.stepsList}>
+                  <li>Ingresá a <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml" target="_blank" className={styles.helpLink}>mi.afip.gov.ar</a> con tu CUIT y clave fiscal</li>
+                  <li>Ir a <strong>Administración de Puntos de Venta y Domicilios</strong></li>
+                  <li>Dar de alta un punto de venta nuevo de tipo <strong>Web Services (WS)</strong></li>
+                  <li>Anotá el número que te asignó ARCA y cargalo abajo</li>
+                </ol>
+              </div>
+
               <div className={styles.field}><label>Número de Punto de Venta *</label>
                 <input className="input" type="number" min="1" value={afip.ptoVta}
                   onChange={e => setAfip(a => ({ ...a, ptoVta: e.target.value }))}
-                  placeholder="Ej: 5 (crealo en ARCA como tipo Web Services)" />
+                  placeholder="Ej: 5 (el que diste de alta en ARCA)" />
               </div>
 
               <div className={styles.field}>

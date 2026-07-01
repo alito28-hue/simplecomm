@@ -146,6 +146,48 @@ export async function feCompUltimoAutorizado(
   return Number(result?.CbteNro ?? 0);
 }
 
+export interface PuntoVenta {
+  nro: number;
+  emisionTipo: string;
+  bloqueado: boolean;
+  fechaBaja: string | null;
+}
+
+/**
+ * FEParamGetPtosVenta — lista los puntos de venta habilitados en ARCA para el CUIT autenticado.
+ */
+export async function feParamGetPtosVenta(
+  wsfeUrl: string,
+  ticket: AuthTicket,
+  cuit: string
+): Promise<PuntoVenta[]> {
+  const body = `<ar:FEParamGetPtosVenta>
+    ${buildAuth(ticket, cuit)}
+  </ar:FEParamGetPtosVenta>`;
+
+  const xml = await soapCall(wsfeUrl, 'FEParamGetPtosVenta', body);
+  const parsed = parser.parse(xml);
+
+  const result =
+    parsed?.Envelope?.Body?.FEParamGetPtosVentaResponse?.FEParamGetPtosVentaResult;
+
+  if (result?.Errors?.Err) {
+    const err = Array.isArray(result.Errors.Err) ? result.Errors.Err[0] : result.Errors.Err;
+    throw new Error(`WSFE FEParamGetPtosVenta error ${err.Code}: ${err.Msg}`);
+  }
+
+  const raw = result?.ResultGet?.PtoVenta;
+  if (!raw) return [];
+
+  const items = Array.isArray(raw) ? raw : [raw];
+  return items.map((p: { Nro: number; EmisionTipo: string; Bloqueado: string; FchBaja?: string }) => ({
+    nro: Number(p.Nro),
+    emisionTipo: String(p.EmisionTipo),
+    bloqueado: p.Bloqueado === 'S',
+    fechaBaja: p.FchBaja ?? null,
+  }));
+}
+
 /**
  * FECAESolicitar — solicita CAE para una factura.
  */

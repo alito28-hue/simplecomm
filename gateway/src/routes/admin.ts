@@ -32,6 +32,7 @@ const updateTenantSchema = z.object({
   address:             z.string().optional(),
   iibb:                z.string().optional(),
   activity_start_date: z.string().optional(), // ISO date, ej: "2026-01-01"
+  pto_vta:             z.number().int().positive().optional(),
 });
 
 export async function adminRoutes(app: FastifyInstance): Promise<void> {
@@ -165,6 +166,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         address:           body.address,
         iibb:              body.iibb,
         activityStartDate: body.activity_start_date ? new Date(body.activity_start_date) : undefined,
+        defaultPtoVta:     body.pto_vta,
       },
     });
 
@@ -174,6 +176,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       address: tenant.address,
       iibb: tenant.iibb,
       activity_start_date: tenant.activityStartDate,
+      pto_vta: tenant.defaultPtoVta,
     });
   });
 

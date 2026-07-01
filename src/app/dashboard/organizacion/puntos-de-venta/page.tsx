@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import styles from '../clientes/clientes.module.css';
 
 interface PdV { id: string; prefix: string; name: string; address: string | null; province: string | null; city: string | null; arcaNumber: number | null; }
+interface ArcaPtoVenta { nro: number; emisionTipo: string; bloqueado: boolean; fechaBaja: string | null; }
 const PROVINCES = ['Buenos Aires','Ciudad Autónoma de Buenos Aires','Córdoba','Santa Fe','Mendoza','Tucumán','Salta','Entre Ríos','Misiones','Chaco','Corrientes','Santiago del Estero','San Juan','Jujuy','Río Negro','Neuquén','Formosa','La Pampa','Catamarca','La Rioja','San Luis','Santa Cruz','Chubut','Tierra del Fuego'];
 const EMPTY = { prefix: '', name: '', address: '', province: '', city: '', arcaNumber: '' };
 
@@ -15,6 +16,11 @@ export default function PuntosDeVentaPage() {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const [arcaItems, setArcaItems] = useState<ArcaPtoVenta[]>([]);
+  const [arcaAsignado, setArcaAsignado] = useState<number | null>(null);
+  const [arcaLoading, setArcaLoading] = useState(true);
+  const [arcaError, setArcaError] = useState('');
 
   async function load() {
     setLoading(true);
@@ -35,6 +41,30 @@ export default function PuntosDeVentaPage() {
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch('/api/organizacion/puntos-de-venta/arca')
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? 'Error al consultar ARCA');
+        return data;
+      })
+      .then((data) => {
+        if (!cancelled) { setArcaItems(data.puntosVenta ?? []); setArcaAsignado(data.asignado ?? null); }
+      })
+      .catch((e) => {
+        if (!cancelled) setArcaError(e instanceof Error ? e.message : 'Error al consultar ARCA');
+      })
+      .finally(() => {
+        if (!cancelled) setArcaLoading(false);
       });
 
     return () => {
@@ -75,6 +105,38 @@ export default function PuntosDeVentaPage() {
           <p className={styles.pageSubtitle}>Puntos de venta registrados en ARCA para emitir facturas.</p>
         </div>
         <button className="btn btn-primary btn-sm" onClick={openNew}>+ Agregar</button>
+      </div>
+
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
+        <div style={{ padding: '1rem 1.25rem 0.25rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1rem' }}>Puntos de venta en ARCA</h3>
+          <p className="text-sm" style={{ color: 'var(--text-muted)', margin: '0.25rem 0 0.75rem' }}>
+            Los que tenés dados de alta en ARCA para este CUIT. El marcado como &quot;Asignado&quot; es el que usa SimpleComm para facturar.
+          </p>
+        </div>
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr><th>N° ARCA</th><th>Tipo de emisión</th><th>Estado</th><th>Asignado a SimpleComm</th></tr>
+            </thead>
+            <tbody>
+              {arcaLoading ? (
+                <tr><td colSpan={4} style={{ textAlign:'center', padding:'1.5rem', color:'var(--text-muted)' }}>Consultando ARCA...</td></tr>
+              ) : arcaError ? (
+                <tr><td colSpan={4} style={{ textAlign:'center', padding:'1.5rem', color:'var(--error)' }}>{arcaError}</td></tr>
+              ) : arcaItems.length === 0 ? (
+                <tr><td colSpan={4} style={{ textAlign:'center', padding:'1.5rem', color:'var(--text-muted)', fontStyle:'italic' }}>ARCA no devolvió puntos de venta para este CUIT.</td></tr>
+              ) : arcaItems.map(p => (
+                <tr key={p.nro}>
+                  <td className="mono text-sm">{p.nro}</td>
+                  <td className="text-sm">{p.emisionTipo}</td>
+                  <td><span className={`badge ${p.bloqueado ? 'badge-error' : 'badge-success'}`}>{p.bloqueado ? 'Bloqueado' : 'Activo'}</span></td>
+                  <td>{p.nro === arcaAsignado ? <span className="badge badge-blue">✓ Asignado</span> : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="card">
