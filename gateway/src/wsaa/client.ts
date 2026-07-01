@@ -93,10 +93,10 @@ export async function loginCms(
 
   const taXml = htmlDecode(returnMatch[1]);
 
-  // 7. Log diagnóstico (temporal) — muestra header del TA sin token/sign para debugging
-  const destination = extractFromXml(taXml, 'destination');
-  const taService   = extractFromXml(taXml, 'service');
-  console.log(`[wsaa] TA recibido — destination: "${destination}" | service: "${taService}"`);
+  // 7. Log diagnóstico (temporal) — muestra el TA hasta antes de las credenciales
+  const credentialsIdx = taXml.indexOf('<credentials>');
+  const taHeader = credentialsIdx > 0 ? taXml.slice(0, credentialsIdx) : taXml.slice(0, 800);
+  console.log(`[wsaa] TA header raw:\n${taHeader}`);
 
   // 8. Parsear token, sign y vencimiento
   const token = extractFromXml(taXml, 'token');
