@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
+import { getSharedGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 
 export async function GET(
   _req: NextRequest,
@@ -17,7 +17,7 @@ export async function GET(
     return NextResponse.json({ error: 'DNI inválido' }, { status: 400 });
   }
 
-  const gatewayApiKey = await getGatewayKey(user.id);
+  const gatewayApiKey = getSharedGatewayKey();
 
   const res = await fetch(`${GATEWAY_URL}/v1/padron/por-dni/${clean}`, {
     headers: { 'Authorization': `Bearer ${gatewayApiKey}` },

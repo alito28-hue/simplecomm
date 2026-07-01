@@ -19,4 +19,14 @@ export async function getGatewayKey(organizationId: string): Promise<string> {
   return data?.gatewayApiKey ?? GATEWAY_API_KEY;
 }
 
+/**
+ * Devuelve siempre la key central de SimpleComm para servicios compartidos
+ * como la consulta al Padrón de ARCA (ws_sr_padron_a13). Las búsquedas del
+ * padrón son consultas públicas — no corresponde usar la key personal de cada
+ * org, ya que requeriría que cada una autorice ese servicio extra en ARCA.
+ */
+export function getSharedGatewayKey(): string {
+  return GATEWAY_API_KEY;
+}
+
 export { GATEWAY_URL };
