@@ -16,6 +16,7 @@ async function getCredentialsForTenant(tenantId: string) {
   });
 
   if (stored) {
+    console.log(`[wsaa] tenant ${tenantId} usando credencial propia (fingerprint: ${stored.fingerprint})`);
     return {
       certPem:  decrypt(stored.certEnc),
       keyPem:   decrypt(stored.keyEnc),
@@ -24,6 +25,7 @@ async function getCredentialsForTenant(tenantId: string) {
   }
 
   // Fallback: Mocla SA / delegación
+  console.log(`[wsaa] tenant ${tenantId} usando credencial maestra (Mocla SA / delegación)`);
   return {
     certPem:  masterCredentials.certPem,
     keyPem:   masterCredentials.keyPem,
