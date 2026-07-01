@@ -2,20 +2,20 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { TRIAL_LIMIT } from '@/lib/plans';
 
 const EXEMPT = ['/dashboard/suscripcion', '/dashboard/cuenta', '/dashboard/soporte'];
 
 interface Props {
   subscriptionStatus: string | null;
   invoiceCount: number;
+  trialLimit: number;
   children: React.ReactNode;
 }
 
-export default function PaywallGuard({ subscriptionStatus, invoiceCount, children }: Props) {
+export default function PaywallGuard({ subscriptionStatus, invoiceCount, trialLimit, children }: Props) {
   const pathname    = usePathname();
   const isSubscribed  = subscriptionStatus === 'ACTIVE';
-  const trialRemaining = Math.max(0, TRIAL_LIMIT - invoiceCount);
+  const trialRemaining = Math.max(0, trialLimit - invoiceCount);
   const trialExhausted = !isSubscribed && trialRemaining === 0;
   const isExempt    = EXEMPT.some(p => pathname.startsWith(p));
 
@@ -40,7 +40,7 @@ export default function PaywallGuard({ subscriptionStatus, invoiceCount, childre
               Período de prueba agotado
             </h2>
             <p style={{ color: 'var(--text-muted)', marginBottom: '0.5rem', lineHeight: 1.6 }}>
-              Ya usaste tus <strong>{TRIAL_LIMIT} comprobantes gratuitos</strong>.
+              Ya usaste tus <strong>{trialLimit} comprobantes gratuitos</strong>.
               Elegí un plan para seguir emitiendo.
             </p>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.75rem' }}>
@@ -78,7 +78,7 @@ export default function PaywallGuard({ subscriptionStatus, invoiceCount, childre
           fontSize: '0.875rem',
         }}>
           <span>
-            🎁 <strong>Período de prueba:</strong> {trialRemaining} de {TRIAL_LIMIT} comprobantes gratuitos restantes
+            🎁 <strong>Período de prueba:</strong> {trialRemaining} de {trialLimit} comprobantes gratuitos restantes
           </span>
           <Link href="/dashboard/suscripcion" className="btn btn-sm btn-primary" style={{ whiteSpace: 'nowrap' }}>
             Elegir plan

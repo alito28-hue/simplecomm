@@ -1,8 +1,20 @@
 import { createClient } from '@/lib/supabase/server';
-import { PLANS, TRIAL_LIMIT, getPlan } from '@/lib/plans';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { PLANS, TRIAL_LIMIT as DEFAULT_TRIAL_LIMIT, getPlan } from '@/lib/plans';
 
-export { PLANS, TRIAL_LIMIT, getPlan };
+export { PLANS, getPlan };
 export type { PlanId } from '@/lib/plans';
+
+/**
+ * Límite de comprobantes gratis por mes para orgs sin suscripción activa.
+ * Configurable por el admin (tabla app_settings) — cae al default si no está seteado.
+ */
+export async function getFreeTierLimit(): Promise<number> {
+  const db = createAdminClient();
+  const { data } = await db.from('app_settings').select('value').eq('key', 'free_tier_limit').maybeSingle();
+  const parsed = data?.value ? parseInt(data.value, 10) : NaN;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_TRIAL_LIMIT;
+}
 
 async function getPlanLimit(supabase: Awaited<ReturnType<typeof createClient>>, planId: string | null) {
   const id = planId ?? 'plan_starter';
@@ -26,7 +38,10 @@ export async function getOrgUsage(organizationId: string) {
 
   if (!org) return null;
 
-  const plan = await getPlanLimit(supabase, org.planId);
+  const [plan, freeTierLimit] = await Promise.all([
+    getPlanLimit(supabase, org.planId),
+    getFreeTierLimit(),
+  ]);
   const isUnlimited = plan.monthlyLimit === 0;
 
   const now     = new Date();
@@ -48,7 +63,7 @@ export async function getOrgUsage(organizationId: string) {
   const isSubscribed   = org.subscriptionStatus === 'ACTIVE';
   const effectiveLimit = isSubscribed
     ? plan.monthlyLimit
-    : TRIAL_LIMIT;
+    : freeTierLimit;
   const effectiveUnlimited = isSubscribed && isUnlimited;
 
   return {
@@ -61,8 +76,8 @@ export async function getOrgUsage(organizationId: string) {
     percentage:         effectiveUnlimited ? 0 : Math.min(100, Math.round((currentCount / effectiveLimit) * 100)),
     subscriptionStatus: org.subscriptionStatus as string | null,
     isSubscribed,
-    isTrial:            !isSubscribed && currentCount < TRIAL_LIMIT,
-    trialRemaining:     !isSubscribed ? Math.max(0, TRIAL_LIMIT - currentCount) : null,
+    isTrial:            !isSubscribed && currentCount < freeTierLimit,
+    trialRemaining:     !isSubscribed ? Math.max(0, freeTierLimit - currentCount) : null,
   };
 }
 
@@ -80,12 +95,12 @@ export async function checkAndIncrementUsage(
   }
 
   if (!usage.isSubscribed) {
-    if (usage.currentCount >= TRIAL_LIMIT) {
+    if (usage.currentCount >= usage.monthlyLimit) {
       return {
         allowed: false,
-        reason:  `Período de prueba agotado (${usage.currentCount}/${TRIAL_LIMIT} comprobantes gratuitos usados). Suscribite para continuar.`,
+        reason:  `Período de prueba agotado (${usage.currentCount}/${usage.monthlyLimit} comprobantes gratuitos usados). Suscribite para continuar.`,
         current: usage.currentCount,
-        limit:   TRIAL_LIMIT,
+        limit:   usage.monthlyLimit,
       };
     }
   } else {

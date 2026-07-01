@@ -36,6 +36,10 @@ export default function PlanesPage() {
   const [error, setError]       = useState('');
   const [deleting, setDeleting] = useState<string | null>(null);
 
+  const [freeTierLimit, setFreeTierLimit]   = useState<number | null>(null);
+  const [freeTierInput, setFreeTierInput]   = useState('');
+  const [savingFreeTier, setSavingFreeTier] = useState(false);
+
   async function load() {
     setLoading(true);
     const res  = await fetch('/api/admin/planes');
@@ -44,7 +48,28 @@ export default function PlanesPage() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  async function loadFreeTier() {
+    const res  = await fetch('/api/admin/configuracion');
+    const data = await res.json();
+    if (typeof data.freeTierLimit === 'number') {
+      setFreeTierLimit(data.freeTierLimit);
+      setFreeTierInput(String(data.freeTierLimit));
+    }
+  }
+
+  async function saveFreeTier() {
+    setSavingFreeTier(true);
+    const res = await fetch('/api/admin/configuracion', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ freeTierLimit: Number(freeTierInput) }),
+    });
+    const data = await res.json();
+    if (res.ok) setFreeTierLimit(data.freeTierLimit);
+    setSavingFreeTier(false);
+  }
+
+  useEffect(() => { load(); loadFreeTier(); }, []);
 
   function openNew() {
     setEditPlan(null);
@@ -175,6 +200,27 @@ export default function PlanesPage() {
           <p className={styles.subtitle}>Gestioná los planes disponibles para los clientes.</p>
         </div>
         <button className="btn btn-primary" onClick={openNew}>+ Nuevo plan</button>
+      </div>
+
+      <div className="card" style={{ padding: '1.25rem' }}>
+        <h2 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.25rem' }}>🎁 Comprobantes gratis por mes</h2>
+        <p className="text-sm text-muted" style={{ marginBottom: '0.75rem' }}>
+          Cantidad de comprobantes que puede emitir gratis, todos los meses, cualquier organización sin suscripción activa (no requiere elegir plan).
+        </p>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <input
+            className="input"
+            type="number"
+            min="0"
+            style={{ maxWidth: 120 }}
+            value={freeTierInput}
+            onChange={e => setFreeTierInput(e.target.value)}
+          />
+          <button className="btn btn-primary btn-sm" onClick={saveFreeTier} disabled={savingFreeTier || freeTierInput === ''}>
+            {savingFreeTier ? 'Guardando...' : 'Guardar'}
+          </button>
+          {freeTierLimit !== null && <span className="text-sm text-muted">Actual: {freeTierLimit}/mes</span>}
+        </div>
       </div>
 
       {/* Tabla */}

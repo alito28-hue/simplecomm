@@ -139,27 +139,30 @@ export async function POST(req: NextRequest) {
           <div style="background:#f9f9fb;padding:32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
             <p style="margin:0 0 8px">Hola ${displayName},</p>
             <p style="margin:0 0 20px;color:#555">Tu comprobante electrónico de <strong>${sellerName}</strong> ya está disponible. Lo encontrás adjunto a este correo en PDF.</p>
-            <div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:16px 20px;margin-bottom:20px">
-              <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-                <span style="color:#888;font-size:.875rem">Cliente</span>
-                <strong>${buyerDocLine}</strong>
-              </div>
-              <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-                <span style="color:#888;font-size:.875rem">N° Comprobante</span>
-                <strong style="font-family:monospace">${invoiceNumber}</strong>
-              </div>
-              <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-                <span style="color:#888;font-size:.875rem">Monto total</span>
-                <strong>${montoFmt}</strong>
-              </div>
-              <div style="display:flex;justify-content:space-between">
-                <span style="color:#888;font-size:.875rem">CAE</span>
-                <strong style="font-family:monospace">${data.cae ?? '—'}</strong>
-              </div>
-            </div>
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:16px 20px;margin-bottom:20px">
+              <tr>
+                <td style="color:#888;font-size:.875rem;padding-bottom:8px">Cliente</td>
+                <td style="text-align:right;padding-bottom:8px"><strong>${buyerDocLine}</strong></td>
+              </tr>
+              <tr>
+                <td style="color:#888;font-size:.875rem;padding-bottom:8px">N° Comprobante</td>
+                <td style="text-align:right;padding-bottom:8px"><strong style="font-family:monospace">${invoiceNumber}</strong></td>
+              </tr>
+              <tr>
+                <td style="color:#888;font-size:.875rem;padding-bottom:8px">Monto total</td>
+                <td style="text-align:right;padding-bottom:8px"><strong>${montoFmt}</strong></td>
+              </tr>
+              <tr>
+                <td style="color:#888;font-size:.875rem">CAE</td>
+                <td style="text-align:right"><strong style="font-family:monospace">${data.cae ?? '—'}</strong></td>
+              </tr>
+            </table>
+            <p style="font-size:.8rem;color:#999;margin:0 0 12px">
+              Comprobante generado por <a href="https://simplecomm.com.ar" style="color:#2563eb">simplecomm.com.ar</a>.<br>
+              Para consultas sobre tu compra, comunicate con tu proveedor — este es un email de envío automático.
+            </p>
             <p style="font-size:.8rem;color:#999;margin:0">
-              Este comprobante fue emitido por ${sellerName} a través de SimpleComm.<br>
-              Para consultas sobre tu compra, respondé este email directamente.
+              Probalo sin cargo ahora y empezá a generar tus propias <a href="https://simplecomm.com.ar" style="color:#2563eb">facturas electrónicas</a>.
             </p>
           </div>
         </div>
