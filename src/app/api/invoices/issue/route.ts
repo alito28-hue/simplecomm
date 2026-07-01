@@ -8,7 +8,12 @@ import { translateGatewayError } from '@/lib/afip-errors';
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM_EMAIL = 'SimpleComm <info@simplecomm.com.ar>';
+
+function fromEmail(sellerName: string): string {
+  // El remitente visible es el negocio emisor; el dominio verificado sigue siendo simplecomm.com.ar
+  const safeName = sellerName.replace(/[<>"]/g, '');
+  return `${safeName} <info@simplecomm.com.ar>`;
+}
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -51,7 +56,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { data: org } = await supabase.from('organizations')
-    .select('fiscalTreatment').eq('id', user.id).maybeSingle();
+    .select('name, fiscalTreatment').eq('id', user.id).maybeSingle();
 
   const allowedLetters = getAllowedInvoiceLetters(org?.fiscalTreatment);
   if (!allowedLetters.includes(invoiceLetter)) {
@@ -116,23 +121,36 @@ export async function POST(req: NextRequest) {
   if (recipientEmail && data.pdf_base64) {
     const invoiceNumber = data.invoice_number ?? 'comprobante';
     const displayName   = buyerName && buyerName !== 'Consumidor Final' ? buyerName : recipientEmail;
+    const sellerName    = org?.name ?? 'SimpleComm';
+    const montoFmt       = amount.toLocaleString('es-AR', { style: 'currency', currency: 'ARS' });
+    const buyerDocLine   = buyerName && buyerName !== 'Consumidor Final' && finalDocNumber && finalDocNumber !== '0'
+      ? `${buyerName} — ${finalDocType === 'CUIT' ? 'CUIT' : 'DNI'} ${finalDocNumber}`
+      : buyerName ?? 'Consumidor Final';
 
     await resend.emails.send({
-      from:    FROM_EMAIL,
+      from:    fromEmail(sellerName),
       to:      recipientEmail,
-      subject: `Tu comprobante ${invoiceNumber} — SimpleComm`,
+      subject: `Tu comprobante ${invoiceNumber} — ${sellerName}`,
       html: `
         <div style="font-family:sans-serif;max-width:540px;margin:0 auto;color:#1a1a2e">
           <div style="background:#1a1a2e;padding:24px 32px;border-radius:8px 8px 0 0">
-            <h1 style="color:#fff;margin:0;font-size:1.4rem">SimpleComm</h1>
+            <h1 style="color:#fff;margin:0;font-size:1.4rem">${sellerName}</h1>
           </div>
           <div style="background:#f9f9fb;padding:32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
             <p style="margin:0 0 8px">Hola ${displayName},</p>
-            <p style="margin:0 0 20px;color:#555">Tu comprobante electrónico ya está disponible. Lo encontrás adjunto a este correo.</p>
+            <p style="margin:0 0 20px;color:#555">Tu comprobante electrónico de <strong>${sellerName}</strong> ya está disponible. Lo encontrás adjunto a este correo en PDF.</p>
             <div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:16px 20px;margin-bottom:20px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                <span style="color:#888;font-size:.875rem">Cliente</span>
+                <strong>${buyerDocLine}</strong>
+              </div>
               <div style="display:flex;justify-content:space-between;margin-bottom:8px">
                 <span style="color:#888;font-size:.875rem">N° Comprobante</span>
                 <strong style="font-family:monospace">${invoiceNumber}</strong>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                <span style="color:#888;font-size:.875rem">Monto total</span>
+                <strong>${montoFmt}</strong>
               </div>
               <div style="display:flex;justify-content:space-between">
                 <span style="color:#888;font-size:.875rem">CAE</span>
@@ -140,8 +158,8 @@ export async function POST(req: NextRequest) {
               </div>
             </div>
             <p style="font-size:.8rem;color:#999;margin:0">
-              Este comprobante fue generado automáticamente por SimpleComm.<br>
-              Para consultas, respondé este email o ingresá a <a href="https://simplecomm.com.ar" style="color:#2563eb">simplecomm.com.ar</a>
+              Este comprobante fue emitido por ${sellerName} a través de SimpleComm.<br>
+              Para consultas sobre tu compra, respondé este email directamente.
             </p>
           </div>
         </div>
