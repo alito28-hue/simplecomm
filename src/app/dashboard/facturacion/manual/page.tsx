@@ -205,9 +205,6 @@ export default function FacturacionManualPage() {
     if (letter === 'A' && !buyer.docNumber.replace(/\D/g, '')) {
       setError('Factura A requiere el CUIT del receptor.'); return;
     }
-    if (concept !== '1' && (!serviceDateFrom || !serviceDateTo || !paymentDueDate)) {
-      setError('Facturas de Servicios o Productos y Servicios requieren el período facturado y la fecha de vencimiento para el pago.'); return;
-    }
     setLoading(true); setError('');
     try {
       const clean = buyer.docNumber.replace(/\D/g, '');
@@ -365,16 +362,16 @@ export default function FacturacionManualPage() {
         {concept !== '1' && (
           <div className={styles.grid3} style={{ marginTop: '1rem' }}>
             <div className={styles.field}>
-              <label>Período facturado desde *</label>
-              <input className="input" type="date" value={serviceDateFrom} onChange={e => setServiceDateFrom(e.target.value)} required />
+              <label>Período facturado desde</label>
+<input className="input" type="date" value={serviceDateFrom} onChange={e => setServiceDateFrom(e.target.value)} required />
             </div>
             <div className={styles.field}>
-              <label>Período facturado hasta *</label>
-              <input className="input" type="date" value={serviceDateTo} onChange={e => setServiceDateTo(e.target.value)} required />
+              <label>Período facturado hasta</label>
+<input className="input" type="date" value={serviceDateTo} onChange={e => setServiceDateTo(e.target.value)} required />
             </div>
             <div className={styles.field}>
-              <label>Vencimiento para el pago *</label>
-              <input className="input" type="date" value={paymentDueDate} onChange={e => setPaymentDueDate(e.target.value)} required />
+              <label>Vencimiento para el pago</label>
+<input className="input" type="date" value={paymentDueDate} onChange={e => setPaymentDueDate(e.target.value)} required />
             </div>
           </div>
         )}

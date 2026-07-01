@@ -34,10 +34,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Monto inválido' }, { status: 400 });
   }
 
-  if (concept && concept !== 1 && (!serviceDateFrom || !serviceDateTo || !paymentDueDate)) {
-    return NextResponse.json({
-      error: 'Facturas de Servicios o Productos y Servicios requieren período facturado (desde/hasta) y fecha de vencimiento para el pago.',
-    }, { status: 400 });
+  // AFIP requiere período facturado para concepto Servicios/Ambos.
+  // Si el usuario no los completó, usamos el mes en curso como default.
+  let resolvedServiceDateFrom = serviceDateFrom;
+  let resolvedServiceDateTo   = serviceDateTo;
+  let resolvedPaymentDueDate  = paymentDueDate;
+  if (concept && concept !== 1) {
+    const now  = new Date();
+    const yyyy = now.getFullYear();
+    const mm   = String(now.getMonth() + 1).padStart(2, '0');
+    const lastDay = new Date(yyyy, now.getMonth() + 1, 0).getDate();
+    if (!resolvedServiceDateFrom) resolvedServiceDateFrom = `${yyyy}-${mm}-01`;
+    if (!resolvedServiceDateTo)   resolvedServiceDateTo   = `${yyyy}-${mm}-${lastDay}`;
+    if (!resolvedPaymentDueDate)  resolvedPaymentDueDate  = `${yyyy}-${mm}-${lastDay}`;
   }
 
   const { data: org } = await supabase.from('organizations')
@@ -73,9 +82,9 @@ export async function POST(req: NextRequest) {
       iva_rate:       ivaRate,
       concept:        concept ?? 1,
       description:    description ?? 'Venta',
-      service_date_from: serviceDateFrom,
-      service_date_to:   serviceDateTo,
-      payment_due_date:  paymentDueDate,
+      service_date_from: resolvedServiceDateFrom,
+      service_date_to:   resolvedServiceDateTo,
+      payment_due_date:  resolvedPaymentDueDate,
     },
     buyer: {
       full_name:  buyerName ?? 'Consumidor Final',
