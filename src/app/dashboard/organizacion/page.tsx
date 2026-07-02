@@ -9,6 +9,9 @@ const SECCIONES = [
   { href: '/dashboard/organizacion/puntos-de-venta', icon: '🏪', title: 'Puntos de Venta',  desc: 'Gestioná tus puntos de venta registrados en ARCA' },
   { href: '/dashboard/organizacion/clientes',        icon: '👥', title: 'Clientes',          desc: 'Directorio de clientes con datos fiscales' },
   { href: '/dashboard/organizacion/productos',       icon: '📦', title: 'Productos',         desc: 'Catálogo de productos y servicios' },
+  { href: '/dashboard/organizacion/listas-precios',  icon: '💲', title: 'Listas de Precios', desc: 'Precios especiales por lista (mayorista, minorista, etc.)' },
+  { href: '/dashboard/organizacion/centros-costo',   icon: '🏷', title: 'Centros de Costo',  desc: 'Etiquetá contactos para reportes por proyecto o área' },
+  { href: '/dashboard/organizacion/calendario-impositivo', icon: '📅', title: 'Calendario de Vencimientos', desc: 'Recordatorios impositivos y calendario oficial de ARCA' },
   { href: '/dashboard/organizacion/usuarios',        icon: '👤', title: 'Usuarios',          desc: 'Miembros del equipo y permisos' },
 ];
 

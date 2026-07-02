@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import AttachmentsPanel from '@/components/AttachmentsPanel';
 import styles from './billing.module.css';
 
 interface NcModal { invoiceId: string; invoiceNumber: string | null; amount: number; }
+interface PaymentStatus { invoiceId: string; status: 'PENDING' | 'PAID'; paidAt: string | null; }
 
 
 interface Invoice {
@@ -41,6 +43,8 @@ export default function BillingTable() {
   const [ncModal, setNcModal] = useState<NcModal | null>(null);
   const [ncLoading, setNcLoading] = useState(false);
   const [ncResult, setNcResult] = useState<string | null>(null);
+  const [payments, setPayments] = useState<Record<string, PaymentStatus>>({});
+  const [attachmentsInvoiceId, setAttachmentsInvoiceId] = useState<string | null>(null);
   const limit = 20;
 
   useEffect(() => {
@@ -50,8 +54,21 @@ export default function BillingTable() {
       .then(r => r.json())
       .then(data => {
         if (cancelled) return;
-        setInvoices(data.data ?? []);
+        const list: Invoice[] = data.data ?? [];
+        setInvoices(list);
         setTotal(data.meta?.total ?? 0);
+        const ids = list.map(i => i.invoice_id);
+        if (ids.length > 0) {
+          fetch(`/api/pagos?ids=${ids.join(',')}`)
+            .then(r => r.json())
+            .then((rows: PaymentStatus[]) => {
+              if (cancelled) return;
+              const map: Record<string, PaymentStatus> = {};
+              rows.forEach(r => { map[r.invoiceId] = r; });
+              setPayments(map);
+            })
+            .catch(() => {});
+        }
       })
       .catch(() => {
         if (!cancelled) setInvoices([]);
@@ -64,6 +81,20 @@ export default function BillingTable() {
       cancelled = true;
     };
   }, [page]);
+
+  async function togglePaid(inv: Invoice) {
+    const current = payments[inv.invoice_id]?.status ?? 'PENDING';
+    const next = current === 'PAID' ? 'PENDING' : 'PAID';
+    const res = await fetch(`/api/pagos/${inv.invoice_id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: next, invoiceNumber: inv.invoice_number, paidAmount: inv.total_amount }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setPayments(p => ({ ...p, [inv.invoice_id]: updated }));
+    }
+  }
 
   async function emitirNC(invoiceId: string) {
     setNcLoading(true);
@@ -119,13 +150,14 @@ export default function BillingTable() {
               <th>Vto. CAE</th>
               <th>Origen</th>
               <th>Estado</th>
+              <th>Cobro</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {invoices.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                <td colSpan={10} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                   Sin comprobantes aún.{' '}
                   <a href="/dashboard/facturacion/simplificada" style={{ color: 'var(--blue)' }}>
                     Emitir primera factura →
@@ -163,6 +195,18 @@ export default function BillingTable() {
                   )}
                 </td>
                 <td>
+                  {inv.status === 'issued' && (
+                    <button
+                      className={`badge ${payments[inv.invoice_id]?.status === 'PAID' ? 'badge-success' : 'badge-gray'}`}
+                      style={{ border: 'none', cursor: 'pointer' }}
+                      onClick={() => togglePaid(inv)}
+                      title="Click para cambiar el estado de cobro"
+                    >
+                      {payments[inv.invoice_id]?.status === 'PAID' ? '✓ Cobrada' : 'Pendiente'}
+                    </button>
+                  )}
+                </td>
+                <td>
                   <div style={{ display: 'flex', gap: '0.25rem' }}>
                     {inv.status === 'issued' && inv.invoice_number && (
                       <button
@@ -173,6 +217,13 @@ export default function BillingTable() {
                         ⬇
                       </button>
                     )}
+                    <button
+                      onClick={() => setAttachmentsInvoiceId(inv.invoice_id)}
+                      className="btn btn-ghost btn-sm"
+                      title="Adjuntos"
+                    >
+                      📎
+                    </button>
                     {inv.status === 'issued' && (
                       <button
                         onClick={() => { setNcModal({ invoiceId: inv.invoice_id, invoiceNumber: inv.invoice_number, amount: inv.total_amount }); setNcResult(null); }}
@@ -231,6 +282,20 @@ export default function BillingTable() {
                   {ncLoading ? 'Emitiendo...' : 'Confirmar'}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {attachmentsInvoiceId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          onClick={() => setAttachmentsInvoiceId(null)}>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', maxWidth: 480, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
+            onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.75rem' }}>Adjuntos del comprobante</h2>
+            <AttachmentsPanel relatedType="factura" relatedId={attachmentsInvoiceId} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => setAttachmentsInvoiceId(null)}>Cerrar</button>
             </div>
           </div>
         </div>

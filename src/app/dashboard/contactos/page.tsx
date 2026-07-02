@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { suggestFiscalTreatment } from '@/lib/fiscal';
+import AttachmentsPanel from '@/components/AttachmentsPanel';
 import styles from './contactos.module.css';
 
 interface Contact {
@@ -13,11 +14,14 @@ interface Contact {
   emailContact?: string | null;
   phone?: string | null;
   fiscalTreatment?: string;
+  costCenterId?: string | null;
 }
+
+interface CostCenter { id: string; name: string; }
 
 const DOC_TYPES = ['CUIT', 'CUIL', 'DNI', 'PASAPORTE', 'CONSUMIDOR_FINAL'];
 const EMPTY_FORM: Omit<Contact, 'id'> = {
-  businessName: '', docType: 'DNI', docNumber: '', emailContact: '', phone: '', fiscalTreatment: 'CONSUMIDOR_FINAL',
+  businessName: '', docType: 'DNI', docNumber: '', emailContact: '', phone: '', fiscalTreatment: 'CONSUMIDOR_FINAL', costCenterId: null,
 };
 
 type PadronStatus = 'idle' | 'loading' | 'found' | 'multiple' | 'not_found' | 'error';
@@ -81,9 +85,11 @@ interface HistorialInvoice {
 export default function ContactosPage() {
   const router = useRouter();
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [modal, setModal] = useState<'none' | 'add' | 'edit' | 'import' | 'historial'>('none');
+  const [modal, setModal] = useState<'none' | 'add' | 'edit' | 'import' | 'historial' | 'adjuntos'>('none');
+  const [attachmentsContact, setAttachmentsContact] = useState<Contact | null>(null);
   const [form, setForm] = useState<Omit<Contact, 'id'>>(EMPTY_FORM);
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -187,12 +193,19 @@ export default function ContactosPage() {
     return () => clearTimeout(t);
   }, [fetchContacts, search]);
 
+  useEffect(() => {
+    fetch('/api/organizacion/centros-costo')
+      .then(r => r.json())
+      .then(d => setCostCenters(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, []);
+
   function resetPadron() { setPadronStatus('idle'); setPadronData(null); setPadronCandidates([]); }
 
   function openAdd() { setForm(EMPTY_FORM); setEditId(null); resetPadron(); setModal('add'); }
   function openEdit(c: Contact) {
     skipPadronRef.current = true;
-    setForm({ businessName: c.businessName, docType: c.docType, docNumber: c.docNumber, emailContact: c.emailContact ?? '', phone: c.phone ?? '', fiscalTreatment: c.fiscalTreatment ?? 'CONSUMIDOR_FINAL' });
+    setForm({ businessName: c.businessName, docType: c.docType, docNumber: c.docNumber, emailContact: c.emailContact ?? '', phone: c.phone ?? '', fiscalTreatment: c.fiscalTreatment ?? 'CONSUMIDOR_FINAL', costCenterId: c.costCenterId ?? null });
     setEditId(c.id);
     resetPadron();
     setModal('edit');
@@ -313,6 +326,7 @@ export default function ContactosPage() {
                     <div className={styles.rowActions}>
                       <button className="btn btn-primary btn-sm" onClick={() => emitirFactura(c)}>+ Factura</button>
                       <button className="btn btn-ghost btn-sm" onClick={() => openHistorial(c)}>Historial</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => { setAttachmentsContact(c); setModal('adjuntos'); }}>📎 Adjuntos</button>
                       <button className="btn btn-ghost btn-sm" onClick={() => openEdit(c)}>Editar</button>
                       <button className="btn btn-ghost btn-sm" style={{ color: 'var(--error)' }} onClick={() => setDeleteId(c.id)}>Eliminar</button>
                     </div>
@@ -365,6 +379,13 @@ export default function ContactosPage() {
               <div className={styles.field}>
                 <label>Teléfono</label>
                 <input className="input" value={form.phone ?? ''} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+54 9 11 1234 5678" />
+              </div>
+              <div className={styles.field}>
+                <label>Centro de costo</label>
+                <select className="input" value={form.costCenterId ?? ''} onChange={e => setForm(f => ({ ...f, costCenterId: e.target.value || null }))}>
+                  <option value="">Sin asignar</option>
+                  {costCenters.map(cc => <option key={cc.id} value={cc.id}>{cc.name}</option>)}
+                </select>
               </div>
             </div>
             <div className={styles.modalActions}>
@@ -431,6 +452,19 @@ export default function ContactosPage() {
                 </div>
               </>
             )}
+            <div className={styles.modalActions}>
+              <button className="btn btn-ghost" onClick={() => setModal('none')}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Adjuntos modal */}
+      {modal === 'adjuntos' && attachmentsContact && (
+        <div className={styles.modalOverlay} onClick={() => setModal('none')}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
+            <h2 className={styles.modalTitle}>Adjuntos — {attachmentsContact.businessName}</h2>
+            <AttachmentsPanel relatedType="cliente" relatedId={attachmentsContact.id} />
             <div className={styles.modalActions}>
               <button className="btn btn-ghost" onClick={() => setModal('none')}>Cerrar</button>
             </div>
