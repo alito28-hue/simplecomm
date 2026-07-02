@@ -25,7 +25,7 @@ const FACTURACION_PERMISSION: PermissionKey = 'manage_invoices';
 
 const NAV: { href: string; label: string; icon: string; permission?: PermissionKey }[] = [
   { href: '/dashboard/billing',       label: 'Comprobantes', icon: '🧾', permission: 'manage_invoices' },
-  { href: '/dashboard/contactos',     label: 'Contactos',    icon: '👤', permission: 'manage_clients' },
+  { href: '/dashboard/contactos',     label: 'Clientes',    icon: '👤', permission: 'manage_clients' },
   { href: '/dashboard/cobranzas',     label: 'Cobranzas',    icon: '💰', permission: 'view_reports' },
   { href: '/dashboard/ads',           label: 'Publicidad',   icon: '📈', permission: 'view_reports' },
   { href: '/dashboard/tutoriales',    label: 'Tutoriales',   icon: '📚' },

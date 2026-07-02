@@ -122,7 +122,7 @@ export default function TopBar({ userInitials = 'U', userName, onHamburger }: To
 
             {results && results.contacts.length > 0 && (
               <div className={styles.dropSection}>
-                <div className={styles.dropLabel}>Contactos</div>
+                <div className={styles.dropLabel}>Clientes</div>
                 {results.contacts.map(c => (
                   <button
                     key={c.id}

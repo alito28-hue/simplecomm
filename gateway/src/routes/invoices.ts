@@ -186,7 +186,7 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
    * Lista todas las facturas del tenant con paginación.
    */
   app.get<{
-    Querystring: { page?: string; limit?: string; status?: string; source_app?: string };
+    Querystring: { page?: string; limit?: string; status?: string; source_app?: string; buyer_doc?: string };
   }>('/v1/invoices', {
     preHandler: authenticateApiKey,
   }, async (request, reply) => {
@@ -196,6 +196,7 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
 
     const where: Record<string, unknown> = { tenantId: request.tenantId };
     if (request.query.status)     where.status     = request.query.status.toUpperCase();
+    if (request.query.buyer_doc)  where.buyerDocNumber = request.query.buyer_doc;
     if (request.query.source_app) where.sourceApp  = request.query.source_app;
 
     const [invoices, total] = await Promise.all([

@@ -9,6 +9,8 @@ import styles from './contactos.module.css';
 interface Contact {
   id: string;
   businessName: string;
+  firstName?: string | null;
+  lastName?: string | null;
   docType: string;
   docNumber: string;
   emailContact?: string | null;
@@ -21,7 +23,7 @@ interface CostCenter { id: string; name: string; }
 
 const DOC_TYPES = ['CUIT', 'CUIL', 'DNI', 'PASAPORTE', 'CONSUMIDOR_FINAL'];
 const EMPTY_FORM: Omit<Contact, 'id'> = {
-  businessName: '', docType: 'DNI', docNumber: '', emailContact: '', phone: '', fiscalTreatment: 'CONSUMIDOR_FINAL', costCenterId: null,
+  businessName: '', firstName: '', lastName: '', docType: 'DNI', docNumber: '', emailContact: '', phone: '', fiscalTreatment: 'CONSUMIDOR_FINAL', costCenterId: null,
 };
 
 type PadronStatus = 'idle' | 'loading' | 'found' | 'multiple' | 'not_found' | 'error';
@@ -101,6 +103,9 @@ export default function ContactosPage() {
   const [historialContact, setHistorialContact] = useState<Contact | null>(null);
   const [historialInvoices, setHistorialInvoices] = useState<HistorialInvoice[]>([]);
   const [historialLoading, setHistorialLoading] = useState(false);
+  const [historialPage, setHistorialPage] = useState(1);
+  const [historialTotal, setHistorialTotal] = useState(0);
+  const HISTORIAL_LIMIT = 10;
 
   const [padronStatus, setPadronStatus] = useState<PadronStatus>('idle');
   const [padronData, setPadronData] = useState<PadronData | null>(null);
@@ -205,7 +210,7 @@ export default function ContactosPage() {
   function openAdd() { setForm(EMPTY_FORM); setEditId(null); resetPadron(); setModal('add'); }
   function openEdit(c: Contact) {
     skipPadronRef.current = true;
-    setForm({ businessName: c.businessName, docType: c.docType, docNumber: c.docNumber, emailContact: c.emailContact ?? '', phone: c.phone ?? '', fiscalTreatment: c.fiscalTreatment ?? 'CONSUMIDOR_FINAL', costCenterId: c.costCenterId ?? null });
+    setForm({ businessName: c.businessName, firstName: c.firstName ?? '', lastName: c.lastName ?? '', docType: c.docType, docNumber: c.docNumber, emailContact: c.emailContact ?? '', phone: c.phone ?? '', fiscalTreatment: c.fiscalTreatment ?? 'CONSUMIDOR_FINAL', costCenterId: c.costCenterId ?? null });
     setEditId(c.id);
     resetPadron();
     setModal('edit');
@@ -265,15 +270,17 @@ export default function ContactosPage() {
     router.push(`/dashboard/facturacion/simplificada?${params.toString()}`);
   }
 
-  async function openHistorial(c: Contact) {
+  async function openHistorial(c: Contact, page = 1) {
     setHistorialContact(c);
-    setHistorialInvoices([]);
+    setHistorialPage(page);
+    if (page === 1) setHistorialInvoices([]);
     setHistorialLoading(true);
     setModal('historial');
     try {
-      const res = await fetch(`/api/clientes/${c.id}/facturas`);
+      const res = await fetch(`/api/clientes/${c.id}/facturas?page=${page}&limit=${HISTORIAL_LIMIT}`);
       const data = await res.json();
       setHistorialInvoices(data.invoices ?? []);
+      setHistorialTotal(data.meta?.total ?? 0);
     } finally {
       setHistorialLoading(false);
     }
@@ -283,8 +290,8 @@ export default function ContactosPage() {
     <div className={styles.page}>
       <div className={styles.header}>
         <div>
-          <h1 className={styles.pageTitle}>Contactos</h1>
-          <p className={styles.subtitle}>{contacts.length > 0 ? `${contacts.length} contacto${contacts.length !== 1 ? 's' : ''}` : 'Tu directorio de compradores frecuentes'}</p>
+          <h1 className={styles.pageTitle}>Clientes</h1>
+          <p className={styles.subtitle}>{contacts.length > 0 ? `${contacts.length} cliente${contacts.length !== 1 ? 's' : ''}` : 'Tu directorio de clientes'}</p>
         </div>
         <div className={styles.headerActions}>
           <button className="btn btn-ghost btn-sm" onClick={() => { setImportText(''); setImportPreview([]); setImportResult(null); setModal('import'); }}>⬆ Importar CSV</button>
@@ -344,34 +351,57 @@ export default function ContactosPage() {
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <h2 className={styles.modalTitle}>{modal === 'add' ? 'Nuevo contacto' : 'Editar contacto'}</h2>
             <div className={styles.formGrid}>
+              <div className={styles.row}>
+                <div className={styles.field}>
+                  <label>Tipo documento</label>
+                  <select className="input" value={form.docType} onChange={e => setForm(f => ({ ...f, docType: e.target.value }))}>
+                    {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className={styles.field}>
+                  <label>N° documento</label>
+                  <input className="input" value={form.docNumber} onChange={e => setForm(f => ({ ...f, docNumber: e.target.value }))} placeholder="12345678" />
+                </div>
+              </div>
+              {padronStatus === 'loading'   && <p className={styles.padronLoading}>Consultando Padrón ARCA...</p>}
+              {padronStatus === 'not_found' && <p className={styles.padronWarn}>No encontramos ese documento en el Padrón. Completá los datos manualmente.</p>}
+              {padronStatus === 'error'     && <p className={styles.padronHint}>No se pudo consultar el Padrón ahora. Completá los datos manualmente.</p>}
+              {padronStatus === 'found' && padronData && <PersonaCard data={padronData} />}
+              {padronStatus === 'multiple' && (
+                <div className={styles.candidatesList}>
+                  <p className={styles.padronHint}>Encontramos varias personas con ese DNI, elegí una:</p>
+                  {padronCandidates.map(c => (
+                    <button key={c.cuil} type="button" className={styles.candidateBtn} onClick={() => selectCandidate(c)}>
+                      {c.nombre} — CUIL {c.cuil}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className={styles.row}>
+                <div className={styles.field}>
+                  <label>Nombre</label>
+                  <input className="input" value={form.firstName ?? ''}
+                    onChange={e => {
+                      const firstName = e.target.value;
+                      setForm(f => ({ ...f, firstName, businessName: `${firstName} ${f.lastName ?? ''}`.trim() || f.businessName }));
+                    }} placeholder="Juan" />
+                </div>
+                <div className={styles.field}>
+                  <label>Apellido</label>
+                  <input className="input" value={form.lastName ?? ''}
+                    onChange={e => {
+                      const lastName = e.target.value;
+                      setForm(f => ({ ...f, lastName, businessName: `${f.firstName ?? ''} ${lastName}`.trim() || f.businessName }));
+                    }} placeholder="Pérez" />
+                </div>
+              </div>
               <div className={styles.field}>
-                <label>Nombre *</label>
+                <label>Nombre / Razón social *</label>
                 <input className="input" value={form.businessName} onChange={e => setForm(f => ({ ...f, businessName: e.target.value }))} placeholder="Juan Pérez / ACME SA" />
+                <p className={styles.padronHint} style={{ marginTop: '0.25rem' }}>Para monotributistas/personas físicas se completa solo con Nombre + Apellido. Para empresas, escribí la razón social directamente.</p>
               </div>
-              <div className={styles.field}>
-                <label>Tipo documento</label>
-                <select className="input" value={form.docType} onChange={e => setForm(f => ({ ...f, docType: e.target.value }))}>
-                  {DOC_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                </select>
-              </div>
-              <div className={styles.field}>
-                <label>N° documento</label>
-                <input className="input" value={form.docNumber} onChange={e => setForm(f => ({ ...f, docNumber: e.target.value }))} placeholder="12345678" />
-                {padronStatus === 'loading'   && <p className={styles.padronLoading}>Consultando Padrón ARCA...</p>}
-                {padronStatus === 'not_found' && <p className={styles.padronWarn}>No encontramos ese documento en el Padrón. Completá los datos manualmente.</p>}
-                {padronStatus === 'error'     && <p className={styles.padronHint}>No se pudo consultar el Padrón ahora. Completá los datos manualmente.</p>}
-                {padronStatus === 'found' && padronData && <PersonaCard data={padronData} />}
-                {padronStatus === 'multiple' && (
-                  <div className={styles.candidatesList}>
-                    <p className={styles.padronHint}>Encontramos varias personas con ese DNI, elegí una:</p>
-                    {padronCandidates.map(c => (
-                      <button key={c.cuil} type="button" className={styles.candidateBtn} onClick={() => selectCandidate(c)}>
-                        {c.nombre} — CUIL {c.cuil}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+
               <div className={styles.field}>
                 <label>Email</label>
                 <input className="input" type="email" value={form.emailContact ?? ''} onChange={e => setForm(f => ({ ...f, emailContact: e.target.value }))} placeholder="juan@ejemplo.com" />
@@ -447,9 +477,16 @@ export default function ContactosPage() {
                   </table>
                 </div>
                 <div style={{ padding: '0.75rem 0', borderTop: '1px solid var(--border)', marginTop: '0.5rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-                  <span className="text-muted">{historialInvoices.length} comprobante{historialInvoices.length !== 1 ? 's' : ''}</span>
-                  <strong>Total: ${historialInvoices.filter(i => i.status === 'issued').reduce((s, i) => s + i.total_amount, 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong>
+                  <span className="text-muted">{historialTotal} comprobante{historialTotal !== 1 ? 's' : ''} en total</span>
+                  <strong>Total esta página: ${historialInvoices.filter(i => i.status === 'issued').reduce((s, i) => s + i.total_amount, 0).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong>
                 </div>
+                {historialTotal > HISTORIAL_LIMIT && (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
+                    <button className="btn btn-ghost btn-sm" disabled={historialPage === 1} onClick={() => openHistorial(historialContact, historialPage - 1)}>← Anterior</button>
+                    <span className="text-sm text-muted">Página {historialPage} de {Math.ceil(historialTotal / HISTORIAL_LIMIT)}</span>
+                    <button className="btn btn-ghost btn-sm" disabled={historialPage * HISTORIAL_LIMIT >= historialTotal} onClick={() => openHistorial(historialContact, historialPage + 1)}>Siguiente →</button>
+                  </div>
+                )}
               </>
             )}
             <div className={styles.modalActions}>

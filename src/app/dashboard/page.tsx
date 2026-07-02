@@ -6,8 +6,8 @@ export default function DashboardPage() {
     <div className={styles.page}>
       <div className={styles.pageHeader}>
         <div>
-          <h1 className={styles.pageTitle}>Resumen de Facturación</h1>
-          <p className={styles.pageSubtitle}>Gestioná tus ciclos de facturación y sincronizaciones.</p>
+          <h1 className={styles.pageTitle}>Inicio</h1>
+          <p className={styles.pageSubtitle}>Resumen de tu cuenta y accesos rápidos.</p>
         </div>
       </div>
 

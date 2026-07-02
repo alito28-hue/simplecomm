@@ -19,7 +19,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const apiKey = await getGatewayKey(user.id);
 
-  const params2 = new URLSearchParams({ limit: '100' });
+  const { searchParams } = new URL(req.url);
+  const page  = searchParams.get('page')  ?? '1';
+  const limit = searchParams.get('limit') ?? '20';
+
+  const params2 = new URLSearchParams({ page, limit });
   if (client.docNumber && client.docNumber !== '0') {
     params2.set('buyer_doc', client.docNumber);
   }
@@ -30,18 +34,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   });
 
   if (!res.ok) {
-    return NextResponse.json({ invoices: [], clientName: client.businessName });
+    return NextResponse.json({ invoices: [], clientName: client.businessName, meta: { page: 1, limit: 20, total: 0, pages: 0 } });
   }
 
   const data = await res.json();
-  const allInvoices: Array<{ buyer_doc_number?: string | null; [key: string]: unknown }> = data.data ?? [];
-
-  const filtered = client.docNumber && client.docNumber !== '0'
-    ? allInvoices.filter(inv => inv.buyer_doc_number === client.docNumber)
-    : allInvoices;
 
   return NextResponse.json({
-    invoices: filtered,
+    invoices: data.data ?? [],
     clientName: client.businessName,
+    meta: data.meta ?? { page: 1, limit: 20, total: 0, pages: 0 },
   });
 }
