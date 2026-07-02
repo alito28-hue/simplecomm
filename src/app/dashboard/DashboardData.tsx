@@ -36,6 +36,21 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+const MODULES = [
+  { href: '/dashboard/facturacion/simplificada',       icon: '⚡', title: 'Facturación Rápida',  desc: 'Emitir una factura al instante' },
+  { href: '/dashboard/billing',                        icon: '🧾', title: 'Comprobantes',         desc: 'Ver, conciliar y descargar facturas' },
+  { href: '/dashboard/contactos',                       icon: '👤', title: 'Clientes',             desc: 'Directorio y datos fiscales' },
+  { href: '/dashboard/organizacion/productos',          icon: '📦', title: 'Productos y Stock',    desc: 'Catálogo, precios e inventario' },
+  { href: '/dashboard/organizacion/listas-precios',      icon: '💲', title: 'Listas de Precios',    desc: 'Precios especiales por lista' },
+  { href: '/dashboard/organizacion/centros-costo',       icon: '🏷', title: 'Centros de Costo',     desc: 'Agrupá clientes por proyecto' },
+  { href: '/dashboard/organizacion/calendario-impositivo', icon: '📅', title: 'Vencimientos',       desc: 'Calendario impositivo y recordatorios' },
+  { href: '/dashboard/organizacion/usuarios',            icon: '👥', title: 'Usuarios y Permisos',  desc: 'Equipo y accesos por rol' },
+  { href: '/dashboard/integraciones',                    icon: '🔗', title: 'Integraciones',        desc: 'Mercado Pago, Tiendanube y más' },
+  { href: '/dashboard/facturacion/programadas',          icon: '🗓', title: 'Facturas Programadas', desc: 'Servicios recurrentes' },
+  { href: '/dashboard/ads',                              icon: '📈', title: 'Publicidad',           desc: 'Inversión y ROAS' },
+  { href: '/dashboard/organizacion',                     icon: '⚙',  title: 'Configuración',        desc: 'Empresa, ARCA y puntos de venta' },
+];
+
 export default function DashboardData() {
   const [kpis, setKpis] = useState<KPIs | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,6 +87,16 @@ export default function DashboardData() {
       </div>
 
       <OnboardingChecklist />
+
+      <div className={styles.modulesGrid}>
+        {MODULES.map(m => (
+          <Link key={m.href} href={m.href} className={`card ${styles.moduleCard}`}>
+            <div className={styles.moduleIcon}>{m.icon}</div>
+            <div className={styles.moduleTitle}>{m.title}</div>
+            <div className={styles.moduleDesc}>{m.desc}</div>
+          </Link>
+        ))}
+      </div>
 
       <div className={styles.statsGrid}>
         <div className="card">

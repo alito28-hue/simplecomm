@@ -130,6 +130,29 @@
 
 .newInvoiceBar { display: flex; justify-content: flex-end; }
 
+/* Módulos (tarjetas de acceso rápido) */
+.modulesGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+@media (max-width: 1100px) { .modulesGrid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 800px)  { .modulesGrid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px)  { .modulesGrid { grid-template-columns: 1fr; } }
+
+.moduleCard {
+  padding: 1.1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  text-decoration: none;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.moduleCard:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+.moduleIcon { font-size: 1.3rem; }
+.moduleTitle { font-size: 0.875rem; font-weight: 700; font-family: var(--font-heading); color: var(--text-primary); }
+.moduleDesc { font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; }
+
 /* Onboarding checklist */
 .onboardingCard { padding: 1.25rem 1.5rem; border: 1px solid var(--warning); background: color-mix(in srgb, var(--warning) 6%, var(--surface)); }
 .onboardingHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
