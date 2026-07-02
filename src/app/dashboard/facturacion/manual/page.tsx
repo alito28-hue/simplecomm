@@ -183,11 +183,29 @@ export default function FacturacionManualPage() {
     setItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: value } : it));
   }
 
+  // Total que paga el cliente (con IVA incluido) — para mostrar en pantalla.
   function calcTotal() {
     return items.reduce((sum, it) => {
       const rate = letter === 'C' ? 0 : (IVA_RATES.find(r => r.id === it.ivaRate)?.rate ?? 0.21);
       return sum + (it.quantity * it.unitPrice * (1 + rate));
     }, 0);
+  }
+
+  // Total neto (sin IVA) — es lo que espera el Gateway para Factura A.
+  // Para B/C en cambio se envía el total con IVA incluido (calcTotal).
+  function calcNetoTotal() {
+    return items.reduce((sum, it) => sum + (it.quantity * it.unitPrice), 0);
+  }
+
+  // El Gateway solo soporta una alícuota de IVA por comprobante. Si los ítems
+  // mezclan alícuotas distintas, no hay forma correcta de facturarlos juntos acá.
+  function getConsistentIvaRate(): { rate: string | null; error: string | null } {
+    const withPrice = items.filter(it => it.description && it.unitPrice > 0);
+    const rates = new Set(withPrice.map(it => it.ivaRate));
+    if (rates.size > 1) {
+      return { rate: null, error: 'Los ítems tienen alícuotas de IVA distintas — no se pueden facturar juntos en un mismo comprobante. Separalos en facturas distintas por alícuota.' };
+    }
+    return { rate: withPrice[0]?.ivaRate ?? 'IVA_21', error: null };
   }
 
   function getDocLabel() {
@@ -210,6 +228,9 @@ export default function FacturacionManualPage() {
     if (currency !== 'PES' && (!exchangeRate || parseFloat(exchangeRate) <= 1)) {
       setError('Ingresá la cotización del día para facturar en moneda distinta a pesos.'); return;
     }
+    const ivaCheck = letter !== 'C' ? getConsistentIvaRate() : { rate: null, error: null };
+    if (ivaCheck.error) { setError(ivaCheck.error); return; }
+
     setLoading(true); setError('');
     try {
       const clean = buyer.docNumber.replace(/\D/g, '');
@@ -217,15 +238,17 @@ export default function FacturacionManualPage() {
       const effectiveType = letter === 'A' ? 'CUIT'
         : resolvedCuil ? 'CUIL'
         : buyer.docType;
+      const ivaRatePct = ivaCheck.rate ? (IVA_RATES.find(r => r.id === ivaCheck.rate)?.rate ?? 0.21) * 100 : 0;
 
       const res = await fetch('/api/invoices/issue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          amount:         Math.round(calcTotal() * 100) / 100,
+          // Factura A: el Gateway espera el monto NETO (sin IVA). B/C: el total con IVA incluido.
+          amount:         Math.round((letter === 'A' ? calcNetoTotal() : calcTotal()) * 100) / 100,
           description:    items.map(it => `${it.description} x${it.quantity}`).join(', '),
           invoiceLetter:  letter,
-          ivaRate:        letter === 'C' ? 0 : undefined,
+          ivaRate:        letter === 'C' ? 0 : ivaRatePct,
           docNumber:      effectiveDoc,
           docType:        effectiveType,
           buyerName:      buyer.fullName || 'Consumidor Final',
