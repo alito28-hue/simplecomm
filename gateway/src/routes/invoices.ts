@@ -186,7 +186,7 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
    * Lista todas las facturas del tenant con paginación.
    */
   app.get<{
-    Querystring: { page?: string; limit?: string; status?: string; source_app?: string; buyer_doc?: string };
+    Querystring: { page?: string; limit?: string; status?: string; source_app?: string; buyer_doc?: string; date_from?: string; date_to?: string };
   }>('/v1/invoices', {
     preHandler: authenticateApiKey,
   }, async (request, reply) => {
@@ -198,6 +198,12 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
     if (request.query.status)     where.status     = request.query.status.toUpperCase();
     if (request.query.buyer_doc)  where.buyerDocNumber = request.query.buyer_doc;
     if (request.query.source_app) where.sourceApp  = request.query.source_app;
+    if (request.query.date_from || request.query.date_to) {
+      where.createdAt = {
+        ...(request.query.date_from ? { gte: new Date(request.query.date_from) } : {}),
+        ...(request.query.date_to   ? { lte: new Date(request.query.date_to) }   : {}),
+      };
+    }
 
     const [invoices, total] = await Promise.all([
       db.invoice.findMany({
@@ -219,6 +225,9 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
         buyer_name:     inv.buyerName,
         buyer_doc:      inv.buyerDocNumber,
         total_amount:   Number(inv.totalAmount),
+        net_amount:     Number(inv.netAmount),
+        iva_amount:     Number(inv.ivaAmount),
+        invoice_type:   inv.invoiceType,
         cae:            inv.cae,
         cae_due_date:   inv.caeDueDate,
         description:    inv.description,

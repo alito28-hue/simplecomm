@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import styles from './dashboard.module.css';
 import OnboardingChecklist from './OnboardingChecklist';
+import IvaPositionCard from './IvaPositionCard';
 
 interface LastInvoice {
   invoice_id?: string;
@@ -87,6 +88,8 @@ export default function DashboardData() {
       </div>
 
       <OnboardingChecklist />
+
+      <IvaPositionCard />
 
       <div className={styles.modulesGrid}>
         {MODULES.map(m => (
