@@ -24,6 +24,44 @@
 .field { display: flex; flex-direction: column; gap: 0.35rem; }
 .field label { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); }
 
+/* Padrón ARCA */
+.padronLoading { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem; }
+.padronWarn    { font-size: 0.78rem; color: var(--warning);    margin-top: 0.4rem; }
+.padronHint    { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.4rem; }
+
+.personaCard {
+  margin-top: 0.5rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--success);
+  background: color-mix(in srgb, var(--success) 8%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.personaCardWarn {
+  border-color: var(--warning);
+  background: color-mix(in srgb, var(--warning) 8%, transparent);
+}
+.personaName { font-weight: 700; font-size: 0.85rem; color: var(--navy); }
+.personaMeta { display: flex; gap: 0.5rem; flex-wrap: wrap; font-size: 0.74rem; color: var(--text-muted); }
+.personaMeta span::after { content: '·'; margin-left: 0.5rem; }
+.personaMeta span:last-child::after { content: ''; margin-left: 0; }
+.metaActivo   { color: var(--success) !important; font-weight: 600; }
+.metaInactivo { color: var(--warning) !important; font-weight: 600; }
+
+.candidatesList { display: flex; flex-direction: column; gap: 0.35rem; margin-top: 0.4rem; }
+.candidateBtn {
+  text-align: left;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.candidateBtn:hover { border-color: var(--blue); background: var(--surface-low); }
+
 /* Import */
 .importHint { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.75rem; line-height: 1.5; }
 .importHint code { background: var(--surface-low); padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.78rem; }

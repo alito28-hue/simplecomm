@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { suggestFiscalTreatment } from '@/lib/fiscal';
 import styles from './contactos.module.css';
 
 interface Contact {
@@ -18,6 +19,34 @@ const DOC_TYPES = ['CUIT', 'CUIL', 'DNI', 'PASAPORTE', 'CONSUMIDOR_FINAL'];
 const EMPTY_FORM: Omit<Contact, 'id'> = {
   businessName: '', docType: 'DNI', docNumber: '', emailContact: '', phone: '', fiscalTreatment: 'CONSUMIDOR_FINAL',
 };
+
+type PadronStatus = 'idle' | 'loading' | 'found' | 'multiple' | 'not_found' | 'error';
+
+interface PadronData {
+  cuil: string;
+  nombre: string;
+  tipoPersona: string;
+  estadoClave: string;
+  domicilio?: { localidad?: string; provincia?: string };
+  monotributo?: boolean;
+  ivaCondition?: 'INSCRIPTO' | 'EXENTO' | null;
+}
+
+function PersonaCard({ data }: { data: PadronData }) {
+  const activo = data.estadoClave === 'ACTIVO';
+  const lugar = [data.domicilio?.localidad, data.domicilio?.provincia].filter(Boolean).join(', ');
+  return (
+    <div className={`${styles.personaCard} ${!activo ? styles.personaCardWarn : ''}`}>
+      <div className={styles.personaName}>{activo ? '✓' : '⚠'} {data.nombre}</div>
+      <div className={styles.personaMeta}>
+        <span>{data.tipoPersona === 'FISICA' ? 'Persona Física' : 'Persona Jurídica'}</span>
+        <span className={activo ? styles.metaActivo : styles.metaInactivo}>{data.estadoClave}</span>
+        {lugar && <span>{lugar}</span>}
+      </div>
+      {!activo && <p className={styles.padronWarn}>Este documento figura como {data.estadoClave} en ARCA. Verificá antes de facturar.</p>}
+    </div>
+  );
+}
 
 function parseCSV(text: string): Array<Record<string, string>> {
   const lines = text.trim().split('\n').filter(l => l.trim());
@@ -67,6 +96,84 @@ export default function ContactosPage() {
   const [historialInvoices, setHistorialInvoices] = useState<HistorialInvoice[]>([]);
   const [historialLoading, setHistorialLoading] = useState(false);
 
+  const [padronStatus, setPadronStatus] = useState<PadronStatus>('idle');
+  const [padronData, setPadronData] = useState<PadronData | null>(null);
+  const [padronCandidates, setPadronCandidates] = useState<PadronData[]>([]);
+  const skipPadronRef = useRef(false);
+
+  // Al cargar un CUIT/CUIL/DNI válido en el formulario, consultamos el Padrón
+  // de ARCA y completamos nombre y condición fiscal automáticamente.
+  useEffect(() => {
+    if (modal !== 'add' && modal !== 'edit') return;
+    if (skipPadronRef.current) { skipPadronRef.current = false; return; }
+
+    const clean = form.docNumber.replace(/\D/g, '');
+    setPadronCandidates([]);
+
+    if (!['CUIT', 'CUIL', 'DNI'].includes(form.docType) || clean.length < 7) {
+      setPadronStatus('idle'); setPadronData(null);
+      return;
+    }
+
+    const isCuilLike = form.docType !== 'DNI' && clean.length === 11;
+    const isDni = form.docType === 'DNI' && clean.length >= 7 && clean.length <= 8;
+    if (!isCuilLike && !isDni) { setPadronStatus('idle'); setPadronData(null); return; }
+
+    setPadronStatus('loading');
+    setPadronData(null);
+
+    const handle = setTimeout(async () => {
+      try {
+        if (isCuilLike) {
+          const res = await fetch(`/api/padron/${clean}`);
+          const info: PadronData = await res.json();
+          if (res.ok && info.nombre) {
+            setPadronData(info);
+            setPadronStatus('found');
+            const suggestion = suggestFiscalTreatment({ monotributo: info.monotributo, ivaCondition: info.ivaCondition });
+            setForm(f => ({
+              ...f,
+              businessName: f.businessName.trim() ? f.businessName : info.nombre,
+              fiscalTreatment: suggestion ?? f.fiscalTreatment,
+            }));
+          } else {
+            setPadronStatus(res.status === 404 ? 'not_found' : 'error');
+          }
+        } else {
+          const res = await fetch(`/api/padron/dni/${clean}`);
+          const data = await res.json();
+          if (res.ok) {
+            const { resultados } = data as { resultados: PadronData[] };
+            if (resultados.length === 1) {
+              setPadronData(resultados[0]);
+              setPadronStatus('found');
+              setForm(f => ({ ...f, businessName: f.businessName.trim() ? f.businessName : resultados[0].nombre }));
+            } else if (resultados.length > 1) {
+              setPadronCandidates(resultados);
+              setPadronStatus('multiple');
+            } else {
+              setPadronStatus('not_found');
+            }
+          } else {
+            setPadronStatus(res.status === 404 ? 'not_found' : 'error');
+          }
+        }
+      } catch {
+        setPadronStatus('error');
+      }
+    }, 600);
+
+    return () => clearTimeout(handle);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.docNumber, form.docType, modal]);
+
+  function selectCandidate(c: PadronData) {
+    setPadronData(c);
+    setPadronCandidates([]);
+    setPadronStatus('found');
+    setForm(f => ({ ...f, docNumber: c.cuil, businessName: c.nombre }));
+  }
+
   const fetchContacts = useCallback(async () => {
     setLoading(true);
     const res = await fetch(`/api/clientes?q=${encodeURIComponent(search)}`);
@@ -80,10 +187,14 @@ export default function ContactosPage() {
     return () => clearTimeout(t);
   }, [fetchContacts, search]);
 
-  function openAdd() { setForm(EMPTY_FORM); setEditId(null); setModal('add'); }
+  function resetPadron() { setPadronStatus('idle'); setPadronData(null); setPadronCandidates([]); }
+
+  function openAdd() { setForm(EMPTY_FORM); setEditId(null); resetPadron(); setModal('add'); }
   function openEdit(c: Contact) {
+    skipPadronRef.current = true;
     setForm({ businessName: c.businessName, docType: c.docType, docNumber: c.docNumber, emailContact: c.emailContact ?? '', phone: c.phone ?? '', fiscalTreatment: c.fiscalTreatment ?? 'CONSUMIDOR_FINAL' });
     setEditId(c.id);
+    resetPadron();
     setModal('edit');
   }
 
@@ -232,6 +343,20 @@ export default function ContactosPage() {
               <div className={styles.field}>
                 <label>N° documento</label>
                 <input className="input" value={form.docNumber} onChange={e => setForm(f => ({ ...f, docNumber: e.target.value }))} placeholder="12345678" />
+                {padronStatus === 'loading'   && <p className={styles.padronLoading}>Consultando Padrón ARCA...</p>}
+                {padronStatus === 'not_found' && <p className={styles.padronWarn}>No encontramos ese documento en el Padrón. Completá los datos manualmente.</p>}
+                {padronStatus === 'error'     && <p className={styles.padronHint}>No se pudo consultar el Padrón ahora. Completá los datos manualmente.</p>}
+                {padronStatus === 'found' && padronData && <PersonaCard data={padronData} />}
+                {padronStatus === 'multiple' && (
+                  <div className={styles.candidatesList}>
+                    <p className={styles.padronHint}>Encontramos varias personas con ese DNI, elegí una:</p>
+                    {padronCandidates.map(c => (
+                      <button key={c.cuil} type="button" className={styles.candidateBtn} onClick={() => selectCandidate(c)}>
+                        {c.nombre} — CUIL {c.cuil}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className={styles.field}>
                 <label>Email</label>
