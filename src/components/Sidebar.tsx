@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/auth/actions';
 import { LogoWhite } from './Logo';
+import { hasPermission, type PermissionKey } from '@/lib/permissions';
 import styles from './Sidebar.module.css';
 
 interface SidebarProps {
@@ -20,17 +21,18 @@ const FACTURACION_ITEMS = [
   { href: '/dashboard/facturacion/programadas',  label: '🗓 Facturas Programadas' },
   { href: '/dashboard/facturacion/lotes',        label: '📦 Facturación Masiva' },
 ];
+const FACTURACION_PERMISSION: PermissionKey = 'manage_invoices';
 
-const NAV = [
-  { href: '/dashboard/billing',       label: 'Comprobantes', icon: '🧾' },
-  { href: '/dashboard/contactos',     label: 'Contactos',    icon: '👤' },
-  { href: '/dashboard/cobranzas',     label: 'Cobranzas',    icon: '💰' },
-  { href: '/dashboard/ads',           label: 'Publicidad',   icon: '📈' },
+const NAV: { href: string; label: string; icon: string; permission?: PermissionKey }[] = [
+  { href: '/dashboard/billing',       label: 'Comprobantes', icon: '🧾', permission: 'manage_invoices' },
+  { href: '/dashboard/contactos',     label: 'Contactos',    icon: '👤', permission: 'manage_clients' },
+  { href: '/dashboard/cobranzas',     label: 'Cobranzas',    icon: '💰', permission: 'view_reports' },
+  { href: '/dashboard/ads',           label: 'Publicidad',   icon: '📈', permission: 'view_reports' },
   { href: '/dashboard/tutoriales',    label: 'Tutoriales',   icon: '📚' },
   { href: '/dashboard/soporte',       label: 'Soporte',      icon: '🎫' },
-  { href: '/dashboard/integraciones', label: 'Integraciones', icon: '🔗' },
+  { href: '/dashboard/integraciones', label: 'Integraciones', icon: '🔗', permission: 'manage_settings' },
   { href: '/dashboard/cuenta',        label: 'Mi cuenta',     icon: '💳' },
-  { href: '/dashboard/organizacion',  label: 'Configuración', icon: '⚙' },
+  { href: '/dashboard/organizacion',  label: 'Configuración', icon: '⚙', permission: 'manage_settings' },
 ];
 
 export default function Sidebar({ orgName = 'Mi Organización', userEmail, mobileOpen = false, onMobileClose }: SidebarProps) {
@@ -38,13 +40,24 @@ export default function Sidebar({ orgName = 'Mi Organización', userEmail, mobil
   const isFacturacion = pathname.startsWith('/dashboard/facturacion');
   const [facturacionOpen, setFacturacionOpen] = useState(isFacturacion);
   const [afipConfigured, setAfipConfigured] = useState<boolean | null>(null);
+  const [profile, setProfile] = useState<{ role: string; permissions: string[] } | null>(null);
 
   useEffect(() => {
     fetch('/api/organizacion/afip-status')
       .then(r => r.json())
       .then(d => setAfipConfigured(d.configured ?? false))
       .catch(() => setAfipConfigured(false));
+    fetch('/api/organizacion/mi-perfil')
+      .then(r => r.json())
+      .then(d => setProfile({ role: d.role ?? 'ADMIN', permissions: d.permissions ?? [] }))
+      .catch(() => setProfile({ role: 'ADMIN', permissions: [] }));
   }, []);
+
+  // Mientras carga el perfil, no ocultamos nada (evita parpadeo); una vez cargado, filtramos.
+  const visibleNav = profile
+    ? NAV.filter(item => !item.permission || hasPermission(profile, item.permission as PermissionKey))
+    : NAV;
+  const canSeeFacturacion = !profile || hasPermission(profile, FACTURACION_PERMISSION);
 
   const close = () => onMobileClose?.();
 
@@ -72,28 +85,30 @@ export default function Sidebar({ orgName = 'Mi Organización', userEmail, mobil
           <span>Dashboard</span>
         </Link>
 
-        <div>
-          <button
-            className={`${styles.navItem} ${styles.navBtn} ${isFacturacion || facturacionOpen ? styles.active : ''}`}
-            onClick={() => setFacturacionOpen(!facturacionOpen)}
-          >
-            <span className={styles.icon}>⚡</span>
-            <span>Facturación</span>
-            <span className={styles.chevron}>{facturacionOpen ? '▾' : '▸'}</span>
-          </button>
-          {facturacionOpen && (
-            <div className={styles.subMenu}>
-              {FACTURACION_ITEMS.map(item => (
-                <Link key={item.href} href={item.href} onClick={close}
-                  className={`${styles.subItem} ${pathname === item.href ? styles.subActive : ''}`}>
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+        {canSeeFacturacion && (
+          <div>
+            <button
+              className={`${styles.navItem} ${styles.navBtn} ${isFacturacion || facturacionOpen ? styles.active : ''}`}
+              onClick={() => setFacturacionOpen(!facturacionOpen)}
+            >
+              <span className={styles.icon}>⚡</span>
+              <span>Facturación</span>
+              <span className={styles.chevron}>{facturacionOpen ? '▾' : '▸'}</span>
+            </button>
+            {facturacionOpen && (
+              <div className={styles.subMenu}>
+                {FACTURACION_ITEMS.map(item => (
+                  <Link key={item.href} href={item.href} onClick={close}
+                    className={`${styles.subItem} ${pathname === item.href ? styles.subActive : ''}`}>
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
-        {NAV.map((item) => {
+        {visibleNav.map((item) => {
           const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'));
           return (
             <Link key={item.href} href={item.href} onClick={close}

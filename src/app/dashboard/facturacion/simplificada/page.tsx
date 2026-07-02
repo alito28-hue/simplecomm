@@ -4,8 +4,13 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import ContactPicker, { type ContactOption } from '@/components/ContactPicker';
+import ProductPicker, { type ProductOption } from '@/components/ProductPicker';
 import { getAllowedInvoiceLetters, getDefaultInvoiceLetter, type InvoiceLetter } from '@/lib/fiscal';
 import styles from './simplificada.module.css';
+
+const IVA_RATE_PCT: Record<string, number> = {
+  EXENTO: 0, NO_GRAVADO: 0, IVA_2_5: 2.5, IVA_5: 5, IVA_10_5: 10.5, IVA_21: 21, IVA_27: 27,
+};
 
 type PadronStatus = 'idle' | 'loading' | 'found' | 'multiple' | 'not_found' | 'error';
 
@@ -56,10 +61,34 @@ export default function FacturacionSimplificadaPage() {
   const [sendEmail, setSendEmail] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
 
+  const [selectedProduct, setSelectedProduct] = useState<ProductOption | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const amountRef = useRef<HTMLInputElement>(null);
+  const descRef = useRef<HTMLTextAreaElement>(null);
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipPadronRef = useRef(false);
   const searchParams = useSearchParams();
   const info = LETTER_INFO[letter];
+
+  function applyProduct(p: ProductOption, qty: number, currentLetter: InvoiceLetter) {
+    const ivaPct = IVA_RATE_PCT[p.ivaRate] ?? 21;
+    const netTotal = Number(p.netPrice) * qty;
+    const amount = currentLetter === 'B' ? netTotal * (1 + ivaPct / 100) : netTotal;
+    if (amountRef.current) amountRef.current.value = amount.toFixed(2);
+    if (descRef.current) descRef.current.value = qty === 1 ? p.description : `${p.description} x${qty}`;
+  }
+
+  function handleProductSelect(p: ProductOption) {
+    setSelectedProduct(p);
+    setQuantity(1);
+    applyProduct(p, 1, letter);
+  }
+
+  function handleQuantityChange(qty: number) {
+    setQuantity(qty);
+    if (selectedProduct) applyProduct(selectedProduct, qty, letter);
+  }
 
   // Filtrar tipos de comprobante según la condición fiscal de la organización
   useEffect(() => {
@@ -170,12 +199,14 @@ export default function FacturacionSimplificadaPage() {
     setLetter(l); setDocNumber(''); setBuyerName('');
     setPadronData(null); setPadronCandidates([]); setResolvedCuil(null);
     setPadronStatus('idle'); setError(''); setResult(null);
+    if (selectedProduct) applyProduct(selectedProduct, quantity, l);
   }
 
   function resetForm() {
     setDocNumber(''); setBuyerName('');
     setPadronData(null); setPadronCandidates([]); setResolvedCuil(null);
     setPadronStatus('idle'); setResult(null);
+    setSelectedProduct(null); setQuantity(1);
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -210,6 +241,8 @@ export default function FacturacionSimplificadaPage() {
           docType:   effectiveType,
           buyerName: buyerName || undefined,
           recipientEmail: sendEmail && recipientEmail ? recipientEmail : undefined,
+          productId: selectedProduct?.id,
+          quantity:  selectedProduct ? quantity : undefined,
         }),
       });
       const data = await res.json();
@@ -306,10 +339,27 @@ export default function FacturacionSimplificadaPage() {
                 {padronStatus === 'found' && padronData && <PersonaCard data={padronData} />}
               </div>
 
-              <div className={styles.amountField}>
-                <span className={styles.currencySign}>$</span>
-                <input name="amount" type="number" step="0.01" min="0.01" required
-                  placeholder={info.inputLabel} className={styles.amountInput} />
+              <div className={styles.field}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                  <label style={{ margin: 0 }}>Monto</label>
+                  <ProductPicker onSelect={handleProductSelect} />
+                </div>
+                <div className={styles.amountField}>
+                  <span className={styles.currencySign}>$</span>
+                  <input ref={amountRef} name="amount" type="number" step="0.01" min="0.01" required
+                    placeholder={info.inputLabel} className={styles.amountInput} />
+                </div>
+                {selectedProduct && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem' }}>
+                    <span className="text-sm text-muted">{selectedProduct.code} · Cantidad</span>
+                    <input type="number" min="1" step="1" value={quantity} className="input" style={{ width: 70 }}
+                      onChange={e => handleQuantityChange(Math.max(1, parseInt(e.target.value, 10) || 1))} />
+                    {selectedProduct.stock !== null && quantity > selectedProduct.stock && (
+                      <span className="text-sm" style={{ color: 'var(--warning)' }}>⚠ Stock disponible: {selectedProduct.stock}</span>
+                    )}
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSelectedProduct(null)}>✕ Quitar</button>
+                  </div>
+                )}
               </div>
 
               {letter === 'A' && (
@@ -324,7 +374,7 @@ export default function FacturacionSimplificadaPage() {
                 </div>
               )}
 
-              <textarea name="description" placeholder="¿Qué vendiste? (opcional)"
+              <textarea ref={descRef} name="description" placeholder="¿Qué vendiste? (opcional)"
                 className={`input ${styles.descArea}`} rows={3} />
 
               {/* Nombre editable: siempre para A, o cuando padron no encontró / error */}

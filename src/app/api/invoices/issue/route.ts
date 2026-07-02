@@ -35,6 +35,8 @@ export async function POST(req: NextRequest) {
     serviceDateFrom,
     serviceDateTo,
     paymentDueDate,
+    productId,
+    quantity,
   } = await req.json();
 
   if (!amount || amount <= 0) {
@@ -116,6 +118,17 @@ export async function POST(req: NextRequest) {
 
   if (!res.ok) {
     return NextResponse.json({ error: translateGatewayError(data.error) }, { status: 502 });
+  }
+
+  // Descontar stock del producto vendido (si tiene control de stock activado)
+  if (productId && quantity > 0) {
+    const { data: product } = await supabase.from('products')
+      .select('stock').eq('id', productId).eq('organizationId', user.id).maybeSingle();
+    if (product && product.stock !== null) {
+      await supabase.from('products')
+        .update({ stock: Math.max(0, product.stock - quantity), updatedAt: new Date().toISOString() })
+        .eq('id', productId).eq('organizationId', user.id);
+    }
   }
 
   // Send PDF by email if requested

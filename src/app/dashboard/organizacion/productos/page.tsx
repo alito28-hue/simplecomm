@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import styles from '../clientes/clientes.module.css';
 
-interface Producto { id: string; code: string; description: string; netPrice: number; ivaRate: string; }
+interface Producto { id: string; code: string; description: string; netPrice: number; ivaRate: string; stock: number | null; }
 const IVA_RATES = ['EXENTO','NO_GRAVADO','IVA_2_5','IVA_5','IVA_10_5','IVA_21','IVA_27'];
-const EMPTY = { code: '', description: '', netPrice: '', ivaRate: 'IVA_21' };
+const EMPTY = { code: '', description: '', netPrice: '', ivaRate: 'IVA_21', stock: '' };
 
 export default function ProductosPage() {
   const [items, setItems] = useState<Producto[]>([]);
@@ -48,7 +48,7 @@ export default function ProductosPage() {
 
   function openNew() { setForm(EMPTY); setEditId(null); setError(''); setModal(true); }
   function openEdit(p: Producto) {
-    setForm({ code: p.code, description: p.description, netPrice: String(p.netPrice), ivaRate: p.ivaRate });
+    setForm({ code: p.code, description: p.description, netPrice: String(p.netPrice), ivaRate: p.ivaRate, stock: p.stock === null ? '' : String(p.stock) });
     setEditId(p.id); setError(''); setModal(true);
   }
 
@@ -58,7 +58,8 @@ export default function ProductosPage() {
     try {
       const url = editId ? `/api/organizacion/productos/${editId}` : '/api/organizacion/productos';
       const method = editId ? 'PUT' : 'POST';
-      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, netPrice: parseFloat(form.netPrice) || 0 }) });
+      const body = { ...form, netPrice: parseFloat(form.netPrice) || 0, stock: form.stock === '' ? null : parseInt(form.stock, 10) };
+      const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
       setModal(false); load();
     } catch (e) { setError(e instanceof Error ? e.message : 'Error'); }
@@ -89,19 +90,23 @@ export default function ProductosPage() {
         <div className="table-wrap">
           <table className="table">
             <thead>
-              <tr><th>Código</th><th>Descripción</th><th>Precio neto</th><th>Alícuota IVA</th><th></th></tr>
+              <tr><th>Código</th><th>Descripción</th><th>Precio neto</th><th>Alícuota IVA</th><th>Stock</th><th></th></tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Cargando...</td></tr>
+                <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Cargando...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Sin productos. Agregá el primero.</td></tr>
+                <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Sin productos. Agregá el primero.</td></tr>
               ) : items.map(p => (
                 <tr key={p.id}>
                   <td><span className="mono text-sm">{p.code}</span></td>
                   <td>{p.description}</td>
                   <td><strong>${Number(p.netPrice).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong></td>
                   <td><span className="badge badge-blue">{p.ivaRate.replace('_', ' ')}</span></td>
+                  <td>
+                    {p.stock === null ? <span className="text-sm text-muted">—</span> :
+                      <span className={`badge ${p.stock === 0 ? 'badge-error' : p.stock <= 5 ? 'badge-warning' : 'badge-success'}`}>{p.stock}</span>}
+                  </td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.35rem' }}>
                       <button className="btn btn-ghost btn-sm" onClick={() => openEdit(p)}>✏</button>
@@ -133,7 +138,13 @@ export default function ProductosPage() {
                 </div>
               </div>
               <div className={styles.field}><label>Descripción *</label><input className="input" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} /></div>
-              <div className={styles.field}><label>Precio neto</label><input className="input" type="number" step="0.01" value={form.netPrice} onChange={e => setForm(f => ({ ...f, netPrice: e.target.value }))} /></div>
+              <div className={styles.row}>
+                <div className={styles.field}><label>Precio neto</label><input className="input" type="number" step="0.01" value={form.netPrice} onChange={e => setForm(f => ({ ...f, netPrice: e.target.value }))} /></div>
+                <div className={styles.field}>
+                  <label>Stock</label>
+                  <input className="input" type="number" min="0" step="1" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))} placeholder="Vacío = sin control de stock" />
+                </div>
+              </div>
             </div>
             <div className={styles.modalActions}>
               <button className="btn btn-ghost" onClick={() => setModal(false)}>Cancelar</button>
