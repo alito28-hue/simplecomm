@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { logout } from '@/app/auth/actions';
 import NotificationBell from './NotificationBell';
 import styles from './TopBar.module.css';
 
@@ -39,6 +40,8 @@ export default function TopBar({ userInitials = 'U', userName, onHamburger }: To
   const [searching, setSearching] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  const avatarRef = useRef<HTMLDivElement>(null);
 
   const search = useCallback(async (q: string) => {
     if (q.length < 2) { setResults(null); setOpen(false); return; }
@@ -64,6 +67,9 @@ export default function TopBar({ userInitials = 'U', userName, onHamburger }: To
     function handleClick(e: MouseEvent) {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
         setOpen(false);
+      }
+      if (avatarRef.current && !avatarRef.current.contains(e.target as Node)) {
+        setAvatarOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClick);
@@ -144,12 +150,37 @@ export default function TopBar({ userInitials = 'U', userName, onHamburger }: To
 
       <div className={styles.actions}>
         <Link href="/dashboard/soporte" className={styles.iconBtn} title="Soporte">🎫</Link>
-        <Link href="/faq" className={styles.iconBtn} title="FAQ">❓</Link>
+        <Link href="/dashboard/faq" className={styles.iconBtn} title="FAQ">❓</Link>
         <NotificationBell />
         <Link href="/dashboard/facturacion/simplificada" className="btn btn-primary btn-sm">
           + Nueva factura
         </Link>
-        <div className={styles.avatar} title={userName}>{userInitials}</div>
+        <div className={styles.avatarWrap} ref={avatarRef}>
+          <button
+            type="button"
+            className={styles.avatar}
+            title={userName}
+            onClick={() => setAvatarOpen(o => !o)}
+          >
+            {userInitials}
+          </button>
+          {avatarOpen && (
+            <div className={styles.avatarDropdown}>
+              {userName && <div className={styles.avatarDropdownEmail}>{userName}</div>}
+              <Link href="/dashboard/cuenta" className={styles.dropItem} onClick={() => setAvatarOpen(false)}>
+                <span className={styles.dropMain}>Mi cuenta</span>
+              </Link>
+              <Link href="/dashboard/organizacion" className={styles.dropItem} onClick={() => setAvatarOpen(false)}>
+                <span className={styles.dropMain}>Configuración</span>
+              </Link>
+              <form action={logout}>
+                <button type="submit" className={styles.dropItem} style={{ width: '100%' }}>
+                  <span className={styles.dropMain}>Cerrar sesión</span>
+                </button>
+              </form>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

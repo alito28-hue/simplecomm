@@ -116,12 +116,18 @@
   font-size: 0.8rem !important;
 }
 
+.avatarWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
 .avatar {
   width: 32px;
   height: 32px;
   border-radius: var(--radius-full);
   background: var(--navy);
   color: #fff;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -129,6 +135,32 @@
   font-weight: 700;
   cursor: pointer;
   flex-shrink: 0;
+  font-family: inherit;
+}
+
+.avatarDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 200px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  z-index: 200;
+  overflow: hidden;
+  padding: 0.35rem;
+}
+
+.avatarDropdownEmail {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding: 0.4rem 0.65rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Search dropdown */

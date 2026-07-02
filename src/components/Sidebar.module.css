@@ -9,6 +9,45 @@
   flex-direction: column;
   z-index: 50;
   overflow-y: auto;
+  overflow-x: hidden;
+  transition: width 0.15s;
+}
+
+.sidebarCollapsed {
+  width: var(--sidebar-w-collapsed);
+}
+
+.sidebarCollapsed .navItem {
+  justify-content: center;
+}
+
+.sidebarCollapsed .logo {
+  align-items: center;
+}
+
+.collapseBtn {
+  display: none;
+  position: absolute;
+  top: 0.85rem;
+  right: 0.6rem;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.6);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.collapseBtn:hover { background: rgba(255,255,255,0.18); color: #fff; }
+
+@media (min-width: 769px) {
+  .collapseBtn { display: flex; }
 }
 
 /* Mobile: close button (hidden on desktop) */

@@ -47,7 +47,7 @@ export default function SoportePage() {
           <p className={styles.pageSubtitle}>Creá tickets de soporte y seguí el estado de tus consultas.</p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <Link href="/faq" className="btn btn-outline btn-sm">📖 Ver FAQ</Link>
+          <Link href="/dashboard/faq" className="btn btn-outline btn-sm">📖 Ver FAQ</Link>
           <button className="btn btn-primary btn-sm" onClick={() => setModal(true)}>+ Nuevo ticket</button>
         </div>
       </div>

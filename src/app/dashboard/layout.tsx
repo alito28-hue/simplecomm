@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getFreeTierLimit } from '@/lib/usage';
 import DashboardShell from '@/components/DashboardShell';
 import PaywallGuard from '@/components/PaywallGuard';
+import GlobalBackBar from '@/components/GlobalBackBar';
 import styles from './layout.module.css';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -28,6 +29,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <DashboardShell orgName={orgName} userEmail={user.email} userInitials={initials} userName={user.email}>
       <main className={styles.main}>
+        <GlobalBackBar />
         <PaywallGuard subscriptionStatus={subscriptionStatus} invoiceCount={invoiceCount} trialLimit={trialLimit}>
           {children}
         </PaywallGuard>

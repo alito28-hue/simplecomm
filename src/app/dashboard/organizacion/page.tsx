@@ -11,20 +11,26 @@ const SECCIONES = [
   { href: '/dashboard/organizacion/productos',       icon: '📦', title: 'Productos',         desc: 'Catálogo de productos y servicios' },
   { href: '/dashboard/organizacion/listas-precios',  icon: '💲', title: 'Listas de Precios', desc: 'Precios especiales por lista (mayorista, minorista, etc.)' },
   { href: '/dashboard/organizacion/centros-costo',   icon: '🏷', title: 'Centros de Costo',  desc: 'Etiquetá contactos para reportes por proyecto o área' },
-  { href: '/dashboard/organizacion/compras',         icon: '🧾', title: 'Compras',           desc: 'Facturas de proveedores para tu posición de IVA' },
+  { href: '/dashboard/organizacion/iva',             icon: '📊', title: 'IVA',               desc: 'Posición de IVA, compras e importación de ARCA', ivaOnly: true },
   { href: '/dashboard/organizacion/calendario-impositivo', icon: '📅', title: 'Calendario de Vencimientos', desc: 'Recordatorios impositivos y calendario oficial de ARCA' },
   { href: '/dashboard/organizacion/usuarios',        icon: '👤', title: 'Usuarios',          desc: 'Miembros del equipo y permisos' },
 ];
 
 export default function OrganizacionPage() {
   const [personType, setPersonType] = useState('');
+  const [isResponsableInscripto, setIsResponsableInscripto] = useState(true);
 
   useEffect(() => {
     fetch('/api/organizacion/empresa')
       .then(r => r.json())
-      .then(data => setPersonType(data?.personType ?? ''))
+      .then(data => {
+        setPersonType(data?.personType ?? '');
+        setIsResponsableInscripto(data?.fiscalTreatment === 'RESPONSABLE_INSCRIPTO');
+      })
       .catch(() => {});
   }, []);
+
+  const secciones = SECCIONES.filter(s => !s.ivaOnly || isResponsableInscripto);
 
   return (
     <div className={styles.page}>
@@ -33,7 +39,7 @@ export default function OrganizacionPage() {
         <p className={styles.pageSubtitle}>Gestioná tu organización, equipo y configuraciones.</p>
       </div>
       <div className={styles.grid}>
-        {SECCIONES.map((s) => (
+        {secciones.map((s) => (
           <Link key={s.href} href={s.href} className={`card ${styles.settingCard}`}>
             <div className={styles.settingIcon}>{s.icon}</div>
             <h3 className={styles.settingTitle}>

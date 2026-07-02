@@ -18,10 +18,15 @@
   flex-direction: column;
   min-height: 100vh;
   background: var(--bg);
+  transition: margin-left 0.15s;
+}
+
+.contentCollapsed {
+  margin-left: var(--sidebar-w-collapsed);
 }
 
 @media (max-width: 768px) {
-  .content {
+  .content, .contentCollapsed {
     margin-left: 0;
   }
 }

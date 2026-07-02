@@ -44,6 +44,7 @@ const MODULES = [
   { href: '/dashboard/organizacion/productos',          icon: '📦', title: 'Productos y Stock',    desc: 'Catálogo, precios e inventario' },
   { href: '/dashboard/organizacion/listas-precios',      icon: '💲', title: 'Listas de Precios',    desc: 'Precios especiales por lista' },
   { href: '/dashboard/organizacion/centros-costo',       icon: '🏷', title: 'Centros de Costo',     desc: 'Agrupá clientes por proyecto' },
+  { href: '/dashboard/organizacion/iva',                icon: '📊', title: 'IVA',                  desc: 'Posición de IVA, compras e importación de ARCA', ivaOnly: true },
   { href: '/dashboard/organizacion/calendario-impositivo', icon: '📅', title: 'Vencimientos',       desc: 'Calendario impositivo y recordatorios' },
   { href: '/dashboard/organizacion/usuarios',            icon: '👥', title: 'Usuarios y Permisos',  desc: 'Equipo y accesos por rol' },
   { href: '/dashboard/integraciones',                    icon: '🔗', title: 'Integraciones',        desc: 'Mercado Pago, Tiendanube y más' },
@@ -56,6 +57,7 @@ export default function DashboardData() {
   const [kpis, setKpis] = useState<KPIs | null>(null);
   const [loading, setLoading] = useState(true);
   const [publicidad, setPublicidad] = useState<PublicidadResumen | null>(null);
+  const [isResponsableInscripto, setIsResponsableInscripto] = useState(false);
 
   useEffect(() => {
     fetch('/api/dashboard/kpis')
@@ -68,7 +70,14 @@ export default function DashboardData() {
       .then(r => r.json())
       .then(data => setPublicidad(data))
       .catch(() => {});
+
+    fetch('/api/organizacion/empresa')
+      .then(r => r.json())
+      .then(d => setIsResponsableInscripto(d?.fiscalTreatment === 'RESPONSABLE_INSCRIPTO'))
+      .catch(() => {});
   }, []);
+
+  const visibleModules = MODULES.filter(m => !m.ivaOnly || isResponsableInscripto);
 
   if (loading) return (
     <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
@@ -81,25 +90,7 @@ export default function DashboardData() {
 
   return (
     <>
-      <div className={styles.newInvoiceBar}>
-        <Link href="/dashboard/facturacion/simplificada" className="btn btn-primary">
-          ⚡ Nueva factura
-        </Link>
-      </div>
-
       <OnboardingChecklist />
-
-      <IvaPositionCard />
-
-      <div className={styles.modulesGrid}>
-        {MODULES.map(m => (
-          <Link key={m.href} href={m.href} className={`card ${styles.moduleCard}`}>
-            <div className={styles.moduleIcon}>{m.icon}</div>
-            <div className={styles.moduleTitle}>{m.title}</div>
-            <div className={styles.moduleDesc}>{m.desc}</div>
-          </Link>
-        ))}
-      </div>
 
       <div className={styles.statsGrid}>
         <div className="card">
@@ -130,6 +121,8 @@ export default function DashboardData() {
           </div>
         </div>
       </div>
+
+      <IvaPositionCard />
 
       <div className={`card ${styles.tableCard}`}>
         <div className={styles.tableHeader}>
@@ -236,6 +229,17 @@ export default function DashboardData() {
             Ver integraciones →
           </Link>
         </div>
+      </div>
+
+      <h2 className={styles.sectionTitle} style={{ margin: '0.5rem 0 -0.5rem' }}>Accesos directos</h2>
+      <div className={styles.modulesGrid}>
+        {visibleModules.map(m => (
+          <Link key={m.href} href={m.href} className={`card ${styles.moduleCard}`}>
+            <div className={styles.moduleIcon}>{m.icon}</div>
+            <div className={styles.moduleTitle}>{m.title}</div>
+            <div className={styles.moduleDesc}>{m.desc}</div>
+          </Link>
+        ))}
       </div>
     </>
   );

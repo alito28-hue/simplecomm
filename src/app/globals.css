@@ -37,6 +37,7 @@
 
   /* Sidebar */
   --sidebar-w:      220px;
+  --sidebar-w-collapsed: 64px;
 
   /* Radius */
   --radius-sm:      4px;
