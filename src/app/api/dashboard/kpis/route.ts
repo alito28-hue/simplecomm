@@ -6,6 +6,10 @@ function firstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).toISOString().slice(0, 10);
 }
 
+function lastDayOfMonth(year: number, month: number) {
+  return new Date(year, month + 1, 0).toISOString().slice(0, 10);
+}
+
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -22,7 +26,7 @@ export async function GET() {
 
   const prevDate = new Date(thisYear, thisMonth - 1, 1);
   const fromPrev = firstDayOfMonth(prevDate.getFullYear(), prevDate.getMonth());
-  const toPrev = firstDayOfMonth(thisYear, thisMonth);
+  const toPrev = lastDayOfMonth(prevDate.getFullYear(), prevDate.getMonth());
 
   async function fetchInvoices(params: URLSearchParams) {
     const res = await fetch(`${GATEWAY_URL}/v1/invoices?${params}`, {
@@ -34,8 +38,8 @@ export async function GET() {
   }
 
   const [currentData, prevData, allData, lastData] = await Promise.all([
-    fetchInvoices(new URLSearchParams({ from: fromCurrent, to: toCurrent, status: 'issued', limit: '1000' })),
-    fetchInvoices(new URLSearchParams({ from: fromPrev, to: toPrev, status: 'issued', limit: '1000' })),
+    fetchInvoices(new URLSearchParams({ date_from: fromCurrent, date_to: `${toCurrent}T23:59:59.999Z`, status: 'issued', limit: '1000' })),
+    fetchInvoices(new URLSearchParams({ date_from: fromPrev, date_to: `${toPrev}T23:59:59.999Z`, status: 'issued', limit: '1000' })),
     fetchInvoices(new URLSearchParams({ status: 'issued', limit: '1', page: '1' })),
     fetchInvoices(new URLSearchParams({ limit: '5', page: '1' })),
   ]);

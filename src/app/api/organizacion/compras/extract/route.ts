@@ -6,6 +6,14 @@ import Anthropic from '@anthropic-ai/sdk';
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'];
 
+// Letra + tipo → código de comprobante AFIP (para matchear con lo importado de ARCA).
+const LETTER_KIND_TO_TIPO: Record<string, Record<string, number>> = {
+  A: { FACTURA: 1, NOTA_DEBITO: 2, NOTA_CREDITO: 3 },
+  B: { FACTURA: 6, NOTA_DEBITO: 7, NOTA_CREDITO: 8 },
+  C: { FACTURA: 11, NOTA_DEBITO: 12, NOTA_CREDITO: 13 },
+  M: { FACTURA: 51, NOTA_DEBITO: 52, NOTA_CREDITO: 53 },
+};
+
 const EXTRACTION_SCHEMA = {
   type: 'object',
   properties: {
@@ -22,9 +30,18 @@ const EXTRACTION_SCHEMA = {
       enum: ['A', 'B', 'C', 'T', 'M', 'E', 'X', 'OTRO', 'DESCONOCIDO'],
       description: 'Letra del comprobante (A/B/C/T/M/E/X). Si es un tique sin letra visible o no aplica, usar OTRO. Si no se puede determinar, DESCONOCIDO.',
     },
+    comprobante_kind: {
+      type: 'string',
+      enum: ['FACTURA', 'NOTA_DEBITO', 'NOTA_CREDITO'],
+      description: 'Tipo de comprobante. La gran mayoría de las compras son FACTURA — usar NOTA_DEBITO o NOTA_CREDITO solo si el comprobante lo dice explícitamente impreso en el encabezado.',
+    },
+    punto_venta: {
+      type: 'string',
+      description: 'Punto de venta, la primera parte del número impreso (ej. en "0004-00012345" es "0004"). Solo dígitos, sin ceros a la izquierda. Vacío si no es legible.',
+    },
     invoice_number: {
       type: 'string',
-      description: 'Número de comprobante tal como figura impreso (puede incluir punto de venta). Vacío si no es legible.',
+      description: 'Número de comprobante SIN el punto de venta (ej. en "0004-00012345" es "12345"). Solo dígitos, sin ceros a la izquierda. Vacío si no es legible.',
     },
     issue_date: {
       type: 'string',
@@ -53,7 +70,7 @@ const EXTRACTION_SCHEMA = {
     },
   },
   required: [
-    'issuer_name', 'issuer_cuit', 'invoice_letter', 'invoice_number', 'issue_date',
+    'issuer_name', 'issuer_cuit', 'invoice_letter', 'comprobante_kind', 'punto_venta', 'invoice_number', 'issue_date',
     'net_amount', 'iva_amount', 'total_amount', 'confidence', 'notes',
   ],
   additionalProperties: false,
@@ -65,7 +82,9 @@ Reglas importantes:
 - El monto total (total_amount) es el dato más confiable — casi siempre está impreso claramente. Extraelo con precisión, sin inventar decimales.
 - Todo comprobante lleva IVA, se discrimine o no por separado. Si no está discriminado (tiques de kiosco, combustible, consumidor final), calculalo asumiendo 21% salvo evidencia de otra tasa, y decilo en "notes".
 - Verificá que neto + IVA = total antes de responder. Si no cierra, ajustá el neto o el IVA (nunca el total, que es el dato impreso) y explicá el ajuste en "notes".
-- Si algún dato no es legible (CUIT borroso, fecha cortada), dejalo vacío ("") y bajá "confidence" a "low" o "medium" según corresponda, explicando qué faltó.
+- El CUIT del emisor, el punto de venta y el número de comprobante son OBLIGATORIOS para poder guardar el registro (se usan para no duplicar comprobantes ya cargados a mano o importados de ARCA) — prestales especial atención y sacá el máximo esfuerzo en leerlos, aunque el resto de la imagen esté borroso.
+- El número impreso suele tener el formato "punto de venta - número" (ej. "0004-00012345"): separalos en punto_venta ("0004") e invoice_number ("00012345"), cada uno sin ceros a la izquierda.
+- Si algún dato no es legible (CUIT borroso, número cortado), dejalo vacío ("") y bajá "confidence" a "low" o "medium" según corresponda, explicando qué faltó — el usuario va a tener que completarlo a mano antes de guardar.
 - Respondé únicamente con los datos extraídos de ESTE comprobante — no inventes datos que no estén presentes en la imagen.`;
 
 export async function POST(req: NextRequest) {
@@ -143,6 +162,8 @@ export async function POST(req: NextRequest) {
       issuer_name: string;
       issuer_cuit: string;
       invoice_letter: string;
+      comprobante_kind: string;
+      punto_venta: string;
       invoice_number: string;
       issue_date: string;
       net_amount: number;
@@ -170,11 +191,16 @@ export async function POST(req: NextRequest) {
       notesExtra.push('Se recalculó el IVA/neto para que la suma cierre con el total impreso.');
     }
 
+    const tipoComprobante = LETTER_KIND_TO_TIPO[extracted.invoice_letter]?.[extracted.comprobante_kind] ?? null;
+
     return NextResponse.json({
       issuer_name: extracted.issuer_name,
       issuer_cuit: extracted.issuer_cuit.replace(/[^0-9]/g, ''),
       invoice_letter: extracted.invoice_letter,
-      invoice_number: extracted.invoice_number,
+      comprobante_kind: extracted.comprobante_kind,
+      tipo_comprobante: tipoComprobante,
+      punto_venta: extracted.punto_venta.replace(/[^0-9]/g, ''),
+      invoice_number: extracted.invoice_number.replace(/[^0-9]/g, ''),
       issue_date: extracted.issue_date || null,
       net_amount: netAmount,
       iva_amount: ivaAmount,

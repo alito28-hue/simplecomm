@@ -19,8 +19,17 @@ interface Purchase {
 }
 
 const EMPTY_FORM = {
-  issuerName: '', issuerCuit: '', invoiceLetter: '', invoiceNumber: '',
+  issuerName: '', issuerCuit: '', invoiceLetter: '', comprobanteKind: 'FACTURA',
+  puntoVenta: '', invoiceNumber: '',
   issueDate: '', netAmount: '', ivaAmount: '', totalAmount: '',
+};
+
+// Letra + tipo → código de comprobante AFIP (para no duplicar contra lo importado de ARCA).
+const LETTER_KIND_TO_TIPO: Record<string, Record<string, number>> = {
+  A: { FACTURA: 1, NOTA_DEBITO: 2, NOTA_CREDITO: 3 },
+  B: { FACTURA: 6, NOTA_DEBITO: 7, NOTA_CREDITO: 8 },
+  C: { FACTURA: 11, NOTA_DEBITO: 12, NOTA_CREDITO: 13 },
+  M: { FACTURA: 51, NOTA_DEBITO: 52, NOTA_CREDITO: 53 },
 };
 
 function money(n: number) {
@@ -52,14 +61,40 @@ export default function ComprasPage() {
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const [lastImportAt, setLastImportAt] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
+  const csvRef = useRef<HTMLInputElement>(null);
+
   function load() {
     setLoading(true);
     const { from, to } = monthRange(month);
     fetch(`/api/organizacion/compras?from=${from}&to=${to}`)
       .then(r => r.json())
-      .then(d => { setItems(d.data ?? []); setTotals(d.totals ?? { net: 0, iva: 0, total: 0 }); })
+      .then(d => {
+        setItems(d.data ?? []);
+        setTotals(d.totals ?? { net: 0, iva: 0, total: 0 });
+        setLastImportAt(d.lastImportAt ?? null);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
+  }
+
+  async function importCsv(file: File) {
+    setImporting(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/organizacion/iva/importar-recibidos', { method: 'POST', body: fd });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'No se pudo importar el archivo');
+      alert(`Importación completa: ${d.rowCount} comprobantes (${d.newCount} nuevos, ${d.updatedCount} actualizados).`);
+      load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Error al importar el archivo');
+    } finally {
+      setImporting(false);
+      if (csvRef.current) csvRef.current.value = '';
+    }
   }
 
   useEffect(load, [month]);
@@ -89,6 +124,8 @@ export default function ComprasPage() {
         issuerName: data.issuer_name ?? '',
         issuerCuit: data.issuer_cuit ?? '',
         invoiceLetter: data.invoice_letter ?? '',
+        comprobanteKind: data.comprobante_kind ?? 'FACTURA',
+        puntoVenta: data.punto_venta ?? '',
         invoiceNumber: data.invoice_number ?? '',
         issueDate: data.issue_date ?? '',
         netAmount: data.net_amount != null ? String(data.net_amount) : '',
@@ -108,12 +145,20 @@ export default function ComprasPage() {
   async function save() {
     const total = parseFloat(form.totalAmount);
     if (!total || total <= 0) { alert('El monto total debe ser mayor a cero'); return; }
+    if (!/^\d{11}$/.test(form.issuerCuit)) { alert('El CUIT/CUIL del emisor es obligatorio y debe tener 11 dígitos'); return; }
+    if (!form.puntoVenta.trim()) { alert('El punto de venta es obligatorio'); return; }
+    if (!form.invoiceNumber.trim()) { alert('El número de comprobante es obligatorio'); return; }
+
+    const tipoComprobante = LETTER_KIND_TO_TIPO[form.invoiceLetter]?.[form.comprobanteKind] ?? null;
+
     setSaving(true);
     try {
       const fd = new FormData();
       fd.append('issuerName', form.issuerName);
       fd.append('issuerCuit', form.issuerCuit);
       fd.append('invoiceLetter', form.invoiceLetter);
+      if (tipoComprobante != null) fd.append('tipoComprobante', String(tipoComprobante));
+      fd.append('puntoVenta', form.puntoVenta);
       fd.append('invoiceNumber', form.invoiceNumber);
       fd.append('issueDate', form.issueDate);
       fd.append('netAmount', form.netAmount || '0');
@@ -148,8 +193,13 @@ export default function ComprasPage() {
           <h1 className={styles.pageTitle}>Compras</h1>
           <p className={styles.pageSubtitle}>Facturas de proveedores para calcular tu posición de IVA. Cargalas a mano o subí una foto/PDF y dejá que la IA complete los datos.</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
           <input type="month" className="input" value={month} onChange={e => setMonth(e.target.value)} style={{ maxWidth: 160 }} />
+          {lastImportAt && (
+            <span className="text-sm text-muted">
+              Última importación ARCA: {new Date(lastImportAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
         </div>
       </div>
 
@@ -158,7 +208,12 @@ export default function ComprasPage() {
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
             <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+            <input ref={csvRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) importCsv(f); }} />
             <button className="btn btn-primary btn-sm" onClick={() => fileRef.current?.click()}>📷 Subir foto o PDF</button>
+            <button className="btn btn-outline btn-sm" onClick={() => csvRef.current?.click()} disabled={importing}>
+              {importing ? 'Importando...' : '📥 Importar CSV de ARCA (recibidos)'}
+            </button>
             <button className="btn btn-outline btn-sm" onClick={() => setShowForm(true)}>✏️ Cargar manualmente</button>
           </div>
         ) : (
@@ -175,8 +230,9 @@ export default function ComprasPage() {
               <label className="text-sm">Emisor
                 <input className="input" value={form.issuerName} onChange={e => setForm(f => ({ ...f, issuerName: e.target.value }))} />
               </label>
-              <label className="text-sm">CUIT
-                <input className="input" value={form.issuerCuit} onChange={e => setForm(f => ({ ...f, issuerCuit: e.target.value }))} />
+              <label className="text-sm">CUIT/CUIL *
+                <input className="input" value={form.issuerCuit} maxLength={11}
+                  onChange={e => setForm(f => ({ ...f, issuerCuit: e.target.value.replace(/[^0-9]/g, '') }))} />
               </label>
               <label className="text-sm">Letra
                 <select className="select" value={form.invoiceLetter} onChange={e => setForm(f => ({ ...f, invoiceLetter: e.target.value }))}>
@@ -184,8 +240,20 @@ export default function ComprasPage() {
                   {['A', 'B', 'C', 'T', 'M', 'E', 'X', 'OTRO'].map(l => <option key={l} value={l}>{l}</option>)}
                 </select>
               </label>
-              <label className="text-sm">Número
-                <input className="input" value={form.invoiceNumber} onChange={e => setForm(f => ({ ...f, invoiceNumber: e.target.value }))} />
+              <label className="text-sm">Tipo
+                <select className="select" value={form.comprobanteKind} onChange={e => setForm(f => ({ ...f, comprobanteKind: e.target.value }))}>
+                  <option value="FACTURA">Factura</option>
+                  <option value="NOTA_DEBITO">Nota de Débito</option>
+                  <option value="NOTA_CREDITO">Nota de Crédito</option>
+                </select>
+              </label>
+              <label className="text-sm">Punto de Venta *
+                <input className="input" value={form.puntoVenta}
+                  onChange={e => setForm(f => ({ ...f, puntoVenta: e.target.value.replace(/[^0-9]/g, '') }))} />
+              </label>
+              <label className="text-sm">Número *
+                <input className="input" value={form.invoiceNumber}
+                  onChange={e => setForm(f => ({ ...f, invoiceNumber: e.target.value.replace(/[^0-9]/g, '') }))} />
               </label>
               <label className="text-sm">Fecha
                 <input type="date" className="input" value={form.issueDate} onChange={e => setForm(f => ({ ...f, issueDate: e.target.value }))} />

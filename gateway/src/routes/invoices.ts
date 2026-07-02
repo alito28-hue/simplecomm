@@ -221,6 +221,8 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
         invoice_number: inv.invoiceNumber
           ? `${String(inv.ptoVta).padStart(4,'0')}-${String(inv.invoiceNumber).padStart(8,'0')}`
           : null,
+        pto_vta:        inv.ptoVta,
+        invoice_number_int: inv.invoiceNumber,
         status:         inv.status.toLowerCase(),
         buyer_name:     inv.buyerName,
         buyer_doc:      inv.buyerDocNumber,
