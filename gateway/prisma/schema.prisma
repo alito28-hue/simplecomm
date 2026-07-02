@@ -96,6 +96,8 @@ model Invoice {
   netAmount      Decimal   @db.Decimal(12, 2)
   ivaAmount      Decimal   @db.Decimal(12, 2)
   concept        Int       @default(1)   // 1=Productos, 2=Servicios, 3=Ambos
+  moneda         String    @default("PES")  // "PES" o "DOL" (AFIP MonId)
+  cotizacion     Decimal   @default(1) @db.Decimal(10, 4) // AFIP MonCotiz
   description    String?
   externalRef    String?
   status         InvStatus @default(PENDING)

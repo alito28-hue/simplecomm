@@ -25,6 +25,8 @@ export interface IssueRequest {
     serviceDateFrom?: string;  // YYYY-MM-DD — obligatorio si concept es 2 o 3
     serviceDateTo?: string;    // YYYY-MM-DD — obligatorio si concept es 2 o 3
     paymentDueDate?: string;   // YYYY-MM-DD — obligatorio si concept es 2 o 3
+    currency?: string;         // AFIP MonId: "PES" (default) o "DOL"
+    exchangeRate?: number;     // AFIP MonCotiz; requerido y >1 si currency !== "PES"
   };
   externalRef?: string;
   sourceApp?: string;
@@ -97,6 +99,13 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
   const fchServHasta = req.invoice.serviceDateTo ? isoToAfipDate(req.invoice.serviceDateTo) : undefined;
   const fchVtoPago = req.invoice.paymentDueDate ? isoToAfipDate(req.invoice.paymentDueDate) : undefined;
 
+  // ── Moneda ───────────────────────────────────────────────────────────────
+  const monId = req.invoice.currency ?? 'PES';
+  if (monId !== 'PES' && (!req.invoice.exchangeRate || req.invoice.exchangeRate <= 1)) {
+    throw new Error('Facturas en moneda distinta a pesos requieren la cotización del día (mayor a 1)');
+  }
+  const monCotiz = monId === 'PES' ? 1 : req.invoice.exchangeRate!;
+
   // ── Crear o actualizar registro en DB ────────────────────────────────────
   const dbInvoice = existing
     ? await db.invoice.update({
@@ -116,6 +125,8 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
           netAmount: amounts.impNeto,
           ivaAmount: amounts.impIVA,
           concept,
+          moneda: monId,
+          cotizacion: monCotiz,
           description: req.invoice.description,
           externalRef: req.externalRef,
           sourceApp: req.sourceApp,
@@ -156,6 +167,8 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
       fchServDesde,
       fchServHasta,
       fchVtoPago,
+      monId,
+      monCotiz,
     });
 
     // ── Generar PDF ───────────────────────────────────────────────────────
@@ -173,6 +186,8 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
       serviceDateFrom: fchServDesde,
       serviceDateTo: fchServHasta,
       paymentDueDate: fchVtoPago,
+      currency: monId,
+      exchangeRate: monCotiz,
     });
 
     // ── Persistir resultado ───────────────────────────────────────────────

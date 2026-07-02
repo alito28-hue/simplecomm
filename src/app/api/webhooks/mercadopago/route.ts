@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
 
@@ -155,6 +156,25 @@ export async function POST(req: NextRequest) {
 
     if (gatewayRes.ok) {
       console.log(`[MP webhook] ✅ Factura ${letter} emitida — ${invoiceData.invoice_number} | CAE: ${invoiceData.cae}`);
+
+      // La factura se emite en el mismo instante en que se confirma el pago de MP,
+      // así que ya nace conciliada — evita que aparezca como "Pendiente" en Facturación.
+      if (invoiceData.invoice_id) {
+        const admin = createAdminClient();
+        await admin.from('invoice_payments').upsert({
+          organizationId: integration.organizationId,
+          invoiceId:      invoiceData.invoice_id,
+          invoiceNumber:  invoiceData.invoice_number ?? null,
+          status:         'PAID',
+          paidAt:         new Date().toISOString(),
+          paidAmount:     totalAmount,
+          source:         'mercadopago',
+          mpPaymentId:    String(paymentId),
+          updatedAt:      new Date().toISOString(),
+        }, { onConflict: 'organizationId,invoiceId' }).then(({ error }) => {
+          if (error) console.error(`[MP webhook] No se pudo marcar como cobrada la factura ${invoiceData.invoice_id}:`, error.message);
+        });
+      }
     } else {
       console.error(`[MP webhook] ❌ Error: ${invoiceData.error}`);
     }

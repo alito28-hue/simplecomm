@@ -5,7 +5,7 @@ import AttachmentsPanel from '@/components/AttachmentsPanel';
 import styles from './billing.module.css';
 
 interface NcModal { invoiceId: string; invoiceNumber: string | null; amount: number; }
-interface PaymentStatus { invoiceId: string; status: 'PENDING' | 'PAID'; paidAt: string | null; }
+interface PaymentStatus { invoiceId: string; status: 'PENDING' | 'PAID'; paidAt: string | null; source: string | null; }
 
 
 interface Invoice {
@@ -200,9 +200,11 @@ export default function BillingTable() {
                       className={`badge ${payments[inv.invoice_id]?.status === 'PAID' ? 'badge-success' : 'badge-gray'}`}
                       style={{ border: 'none', cursor: 'pointer' }}
                       onClick={() => togglePaid(inv)}
-                      title="Click para cambiar el estado de cobro"
+                      title={payments[inv.invoice_id]?.source === 'mercadopago' ? 'Cobrada automáticamente vía Mercado Pago' : 'Click para cambiar el estado de cobro'}
                     >
-                      {payments[inv.invoice_id]?.status === 'PAID' ? '✓ Cobrada' : 'Pendiente'}
+                      {payments[inv.invoice_id]?.status === 'PAID'
+                        ? (payments[inv.invoice_id]?.source === 'mercadopago' ? '✓ Cobrada · MP' : '✓ Cobrada')
+                        : 'Pendiente'}
                     </button>
                   )}
                 </td>

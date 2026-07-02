@@ -61,6 +61,8 @@ export default function FacturacionManualPage() {
   const [serviceDateFrom, setServiceDateFrom] = useState('');
   const [serviceDateTo, setServiceDateTo] = useState('');
   const [paymentDueDate, setPaymentDueDate] = useState('');
+  const [currency, setCurrency] = useState<'PES' | 'DOL'>('PES');
+  const [exchangeRate, setExchangeRate] = useState('');
   const [sendEmail, setSendEmail] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -205,6 +207,9 @@ export default function FacturacionManualPage() {
     if (letter === 'A' && !buyer.docNumber.replace(/\D/g, '')) {
       setError('Factura A requiere el CUIT del receptor.'); return;
     }
+    if (currency !== 'PES' && (!exchangeRate || parseFloat(exchangeRate) <= 1)) {
+      setError('Ingresá la cotización del día para facturar en moneda distinta a pesos.'); return;
+    }
     setLoading(true); setError('');
     try {
       const clean = buyer.docNumber.replace(/\D/g, '');
@@ -228,6 +233,8 @@ export default function FacturacionManualPage() {
           serviceDateFrom: concept !== '1' ? serviceDateFrom : undefined,
           serviceDateTo:   concept !== '1' ? serviceDateTo : undefined,
           paymentDueDate:  concept !== '1' ? paymentDueDate : undefined,
+          currency,
+          exchangeRate: currency !== 'PES' ? parseFloat(exchangeRate) : undefined,
           recipientEmail: sendEmail && recipientEmail ? recipientEmail : undefined,
         }),
       });
@@ -357,7 +364,26 @@ export default function FacturacionManualPage() {
               <option value="3">Productos y Servicios</option>
             </select>
           </div>
+          <div className={styles.field}>
+            <label>Moneda</label>
+            <select className="select" value={currency} onChange={e => setCurrency(e.target.value as 'PES' | 'DOL')}>
+              <option value="PES">Pesos (ARS)</option>
+              <option value="DOL">Dólares (USD)</option>
+            </select>
+          </div>
+          {currency !== 'PES' && (
+            <div className={styles.field}>
+              <label>Cotización del día *</label>
+              <input className="input" type="number" step="0.0001" min="1" value={exchangeRate}
+                onChange={e => setExchangeRate(e.target.value)} placeholder="Ej: 1234.5678" />
+            </div>
+          )}
         </div>
+        {currency !== 'PES' && (
+          <p className="text-sm text-muted" style={{ marginTop: '0.5rem' }}>
+            Los importes de los ítems se facturan en la moneda elegida (no se convierten). La cotización es solo informativa para ARCA.
+          </p>
+        )}
 
         {concept !== '1' && (
           <div className={styles.grid3} style={{ marginTop: '1rem' }}>

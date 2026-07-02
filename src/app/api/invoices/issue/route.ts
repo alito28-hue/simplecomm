@@ -37,6 +37,8 @@ export async function POST(req: NextRequest) {
     paymentDueDate,
     productId,
     quantity,
+    currency,
+    exchangeRate,
   } = await req.json();
 
   if (!amount || amount <= 0) {
@@ -94,6 +96,8 @@ export async function POST(req: NextRequest) {
       service_date_from: resolvedServiceDateFrom,
       service_date_to:   resolvedServiceDateTo,
       payment_due_date:  resolvedPaymentDueDate,
+      currency:      currency && currency !== 'PES' ? currency : undefined,
+      exchange_rate: currency && currency !== 'PES' ? exchangeRate : undefined,
     },
     buyer: {
       full_name:  buyerName ?? 'Consumidor Final',

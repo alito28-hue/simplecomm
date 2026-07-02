@@ -34,6 +34,8 @@ export interface InvoiceRequest {
   fchServDesde?: string;  // YYYYMMDD — obligatorio si concept es 2 o 3
   fchServHasta?: string;  // YYYYMMDD — obligatorio si concept es 2 o 3
   fchVtoPago?: string;    // YYYYMMDD — obligatorio si concept es 2 o 3
+  monId?: string;         // AFIP MonId: "PES" (default) o "DOL"
+  monCotiz?: number;      // Cotización del día; 1 para PES
 }
 
 export interface IvaItem {
@@ -233,8 +235,8 @@ export async function feCAESolicitar(
           ${req.fchServDesde ? `<ar:FchServDesde>${req.fchServDesde}</ar:FchServDesde>` : ''}
           ${req.fchServHasta ? `<ar:FchServHasta>${req.fchServHasta}</ar:FchServHasta>` : ''}
           ${req.fchVtoPago ? `<ar:FchVtoPago>${req.fchVtoPago}</ar:FchVtoPago>` : ''}
-          <ar:MonId>PES</ar:MonId>
-          <ar:MonCotiz>1.00</ar:MonCotiz>
+          <ar:MonId>${req.monId ?? 'PES'}</ar:MonId>
+          <ar:MonCotiz>${(req.monCotiz ?? 1).toFixed(4)}</ar:MonCotiz>
           <ar:Iva>${ivaXml}
           </ar:Iva>
         </ar:FECAEDetRequest>

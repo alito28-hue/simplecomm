@@ -16,6 +16,8 @@ const issueSchema = z.object({
     service_date_from: z.string().optional(),  // YYYY-MM-DD, requerido si concept es 2 o 3
     service_date_to: z.string().optional(),    // YYYY-MM-DD, requerido si concept es 2 o 3
     payment_due_date: z.string().optional(),   // YYYY-MM-DD, requerido si concept es 2 o 3
+    currency: z.enum(['PES', 'DOL']).optional(),
+    exchange_rate: z.number().positive().optional(),
   }),
   buyer: z.object({
     full_name: z.string().min(1),
@@ -71,6 +73,8 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
           serviceDateFrom: body.invoice.service_date_from,
           serviceDateTo: body.invoice.service_date_to,
           paymentDueDate: body.invoice.payment_due_date,
+          currency: body.invoice.currency,
+          exchangeRate: body.invoice.exchange_rate,
         },
         externalRef: body.external_ref,
         sourceApp: body.source_app,

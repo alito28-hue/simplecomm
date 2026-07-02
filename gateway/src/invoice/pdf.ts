@@ -22,7 +22,11 @@ interface PdfData {
   serviceDateFrom?: string;    // YYYYMMDD — período facturado, factura de servicios
   serviceDateTo?: string;      // YYYYMMDD
   paymentDueDate?: string;     // YYYYMMDD
+  currency?: string;           // "PES" (default) o "DOL"
+  exchangeRate?: number;       // Cotización; 1 para PES
 }
+
+const CURRENCY_LABEL: Record<string, string> = { PES: 'Pesos Argentinos', DOL: 'Dólar Estadounidense' };
 
 const IVA_RATE_LABEL: Record<IvaRateId, string> = {
   2: 'No Gravado',
@@ -108,15 +112,16 @@ function numberToWordsEs(nInt: number): string {
   return parts.join(' ');
 }
 
-function amountToWordsEs(amount: number): string {
+function amountToWordsEs(amount: number, currency: string = 'PES'): string {
+  const unitLabel = currency === 'DOL' ? 'dólares' : 'pesos';
   const rounded = Math.round(amount * 100) / 100;
   const intPart = Math.floor(rounded);
   const cents = Math.round((rounded - intPart) * 100);
   const words = numberToWordsEs(intPart);
   const capitalized = words.charAt(0).toUpperCase() + words.slice(1);
   return cents > 0
-    ? `${capitalized} pesos con ${String(cents).padStart(2, '0')}/100`
-    : `${capitalized} pesos`;
+    ? `${capitalized} ${unitLabel} con ${String(cents).padStart(2, '0')}/100`
+    : `${capitalized} ${unitLabel}`;
 }
 
 // ── QR AFIP (RG 4892/2020) ───────────────────────────────────────────────────
@@ -134,8 +139,8 @@ function buildAfipQrUrl(data: PdfData): string {
     tipoCmp: CBTE_TYPE[letter],
     nroCmp: Number(nroStr),
     importe: data.amounts.impTotal,
-    moneda: 'PES',
-    ctz: 1,
+    moneda: data.currency ?? 'PES',
+    ctz: data.exchangeRate ?? 1,
     tipoDocRec: docTypeToAfipId(data.buyer.docType),
     nroDocRec: Number(data.buyer.docNumber) || 0,
     tipoCodAut: 'E',
@@ -168,6 +173,7 @@ function buildLineItems(amounts: InvoiceAmounts, letter: InvoiceLetterType): Lin
 
 export async function generateInvoicePdf(data: PdfData): Promise<string> {
   const letter = (data.invoiceLetter ?? 'B') as InvoiceLetterType;
+  const currencySymbol = data.currency === 'DOL' ? 'US$' : '$';
   const qrBuffer = await QRCode.toBuffer(buildAfipQrUrl(data), { width: 200, margin: 1 });
 
   return new Promise((resolve, reject) => {
@@ -240,8 +246,17 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
       .text(`Comp. Nro: ${nro}`, col3X + 10, headerY + 48)
       .text(`Fecha de Emisión: ${formatAfipDate(data.invoiceDate)}`, col3X + 10, headerY + 64);
 
-    // ── Período facturado (solo facturas con concepto Servicios/Ambos) ────
+    // ── Moneda (solo si no es en pesos) ────────────────────────────────────
     let nextY = headerY + headerH + 10;
+    if (data.currency && data.currency !== 'PES') {
+      const monedaH = 22;
+      doc.rect(leftCol, nextY, pageWidth, monedaH).stroke(BLACK);
+      doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(8)
+        .text(`Moneda: ${CURRENCY_LABEL[data.currency] ?? data.currency} — Cotización: ${(data.exchangeRate ?? 1).toFixed(4)}`, leftCol + 8, nextY + 7);
+      nextY += monedaH + 10;
+    }
+
+    // ── Período facturado (solo facturas con concepto Servicios/Ambos) ────
     if (data.serviceDateFrom && data.serviceDateTo && data.paymentDueDate) {
       const periodoH = 26;
       doc.rect(leftCol, nextY, pageWidth, periodoH).stroke(BLACK);
@@ -323,7 +338,7 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
       if (showIva) {
         doc.text(item.alicuotaLabel, colX.iva, y + 6, { width: colIva, align: 'right' });
       }
-      doc.text(`$ ${formatMoney(item.baseImp)}`, colX.subtotal, y + 6, { width: colSubtotal - 8, align: 'right' });
+      doc.text(`${currencySymbol} ${formatMoney(item.baseImp)}`, colX.subtotal, y + 6, { width: colSubtotal - 8, align: 'right' });
       y += rowH;
     }
 
@@ -335,7 +350,7 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
     const totalsW = 220;
     const totalsX = rightEdge - totalsW;
 
-    const sonText = `Son: ${amountToWordsEs(data.amounts.impTotal)}`;
+    const sonText = `Son: ${amountToWordsEs(data.amounts.impTotal, data.currency)}`;
     doc.font('Helvetica-Oblique').fontSize(8);
     const sonH = doc.heightOfString(sonText, { width: pageWidth });
 
@@ -347,14 +362,14 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
     if (showIva) {
       doc.font('Helvetica').fontSize(9).fillColor(GRAY)
         .text('Importe Neto Gravado:', totalsX, y)
-        .text(`$ ${formatMoney(data.amounts.impNeto)}`, totalsX + 130, y, { width: 90, align: 'right' });
+        .text(`${currencySymbol} ${formatMoney(data.amounts.impNeto)}`, totalsX + 130, y, { width: 90, align: 'right' });
       y += 15;
       doc.text('Importe Exento / No Gravado:', totalsX, y)
-        .text(`$ ${formatMoney(data.amounts.impOpEx + data.amounts.impTotConc)}`, totalsX + 130, y, { width: 90, align: 'right' });
+        .text(`${currencySymbol} ${formatMoney(data.amounts.impOpEx + data.amounts.impTotConc)}`, totalsX + 130, y, { width: 90, align: 'right' });
       y += 15;
       for (const item of data.amounts.ivaItems) {
         doc.text(`IVA ${IVA_RATE_LABEL[item.id]}:`, totalsX, y)
-          .text(`$ ${formatMoney(item.importe)}`, totalsX + 130, y, { width: 90, align: 'right' });
+          .text(`${currencySymbol} ${formatMoney(item.importe)}`, totalsX + 130, y, { width: 90, align: 'right' });
         y += 15;
       }
       y += 2;
@@ -362,7 +377,7 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
 
     doc.rect(totalsX, y, totalsW, 28).stroke(BLACK);
     doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(10)
-      .text('Importe Total: $', totalsX + 8, y + 8)
+      .text(`Importe Total: ${currencySymbol}`, totalsX + 8, y + 8)
       .text(formatMoney(data.amounts.impTotal), totalsX + 120, y + 8, { width: 90, align: 'right' });
 
     y += 28 + 10;
