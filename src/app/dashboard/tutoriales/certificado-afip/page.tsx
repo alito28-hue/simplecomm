@@ -62,7 +62,7 @@ export default function CertificadoAfipPage() {
                 Hacé clic en <strong>"Nueva Relación"</strong> e ingresá:
                 <ul className={styles.detailList}>
                   <li>CUIT del representante: <code className={styles.code}>30-71537162-2</code> (Mocla SA / SimpleComm)</li>
-                  <li>Servicio: <code className={styles.code}>Facturador Plus - Web Services - wsfe</code></li>
+                  <li>Servicio: <code className={styles.code}>Facturación Electrónica</code> (wsfe) — categoría WebServices</li>
                 </ul>
               </div>
             </div>

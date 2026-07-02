@@ -2,6 +2,7 @@ import { Resend } from 'resend';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
+import { buildInvoiceFilename } from '@/lib/invoice-filename';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = 'SimpleComm <info@simplecomm.com.ar>';
@@ -69,13 +70,16 @@ export async function issueScheduledOccurrence(occurrenceId: string) {
 
     let emailStatus = 'NOT_SENT';
     if (snapshot.recipientEmail && data.pdf_base64) {
+      const { data: org } = await admin.from('organizations').select('cuit').eq('id', occurrence.organizationId).maybeSingle();
       const email = await resend.emails.send({
         from: FROM_EMAIL,
         to: snapshot.recipientEmail,
         subject: `Tu comprobante ${data.invoice_number} - SimpleComm`,
         html: `<p>Hola ${snapshot.buyerName},</p><p>Tu comprobante electrónico está adjunto.</p>`,
         attachments: [{
-          filename: `factura-${data.invoice_number}.pdf`,
+          filename: org?.cuit && data.invoice_number
+            ? buildInvoiceFilename(org.cuit, snapshot.invoiceLetter, data.invoice_number)
+            : `factura-${data.invoice_number}.pdf`,
           content: Buffer.from(data.pdf_base64, 'base64'),
         }],
       });

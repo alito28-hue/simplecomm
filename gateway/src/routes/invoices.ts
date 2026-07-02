@@ -132,17 +132,22 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
   }, async (request, reply) => {
     const artifact = await db.invoiceArtifact.findFirst({
       where: { invoice: { id: request.params.id, tenantId: request.tenantId } },
+      include: { invoice: { include: { tenant: true } } },
     });
 
     if (!artifact?.pdfBase64) {
       return reply.status(404).send({ error: 'PDF no disponible' });
     }
 
+    // Nombre de archivo estándar AFIP: {CUIT}_{tipoCbte:3}_{ptoVta:5}_{nroCbte:8}.pdf
+    const inv = artifact.invoice;
+    const filename = `${inv.tenant.cuit}_${String(inv.invoiceType).padStart(3, '0')}_${String(inv.ptoVta).padStart(5, '0')}_${String(inv.invoiceNumber ?? 0).padStart(8, '0')}.pdf`;
+
     // Devolver como PDF directamente
     const pdfBuffer = Buffer.from(artifact.pdfBase64, 'base64');
     return reply
       .header('Content-Type', 'application/pdf')
-      .header('Content-Disposition', `attachment; filename="factura-${request.params.id}.pdf"`)
+      .header('Content-Disposition', `attachment; filename="${filename}"`)
       .send(pdfBuffer);
   });
 

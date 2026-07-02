@@ -328,9 +328,21 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
     }
 
     // ── Totales ─────────────────────────────────────────────────────────────
-    y += 16;
+    // Se ancla el bloque de totales cerca del pie (junto al CAE) en vez de
+    // pegado a los ítems, para que facturas cortas no dejen un hueco enorme
+    // en el medio de la hoja.
+    const caeY = doc.page.height - 140;
     const totalsW = 220;
     const totalsX = rightEdge - totalsW;
+
+    const sonText = `Son: ${amountToWordsEs(data.amounts.impTotal)}`;
+    doc.font('Helvetica-Oblique').fontSize(8);
+    const sonH = doc.heightOfString(sonText, { width: pageWidth });
+
+    const ivaLinesCount = showIva ? 2 + data.amounts.ivaItems.length : 0;
+    const totalsBlockH = ivaLinesCount * 15 + (showIva ? 2 : 0) + 28 + 10 + sonH;
+
+    y = Math.max(y + 16, caeY - totalsBlockH - 10);
 
     if (showIva) {
       doc.font('Helvetica').fontSize(9).fillColor(GRAY)
@@ -355,10 +367,9 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
 
     y += 28 + 10;
     doc.font('Helvetica-Oblique').fontSize(8).fillColor(GRAY)
-      .text(`Son: ${amountToWordsEs(data.amounts.impTotal)}`, leftCol, y, { width: pageWidth });
+      .text(sonText, leftCol, y, { width: pageWidth });
 
     // ── CAE + QR ────────────────────────────────────────────────────────────
-    const caeY = doc.page.height - 140;
     const qrSize = 70;
     const caeBoxX = leftCol + qrSize + 10;
     const caeBoxW = pageWidth - qrSize - 10;

@@ -5,6 +5,7 @@ import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
 import { getAllowedInvoiceLetters } from '@/lib/fiscal';
 import { translateGatewayError } from '@/lib/afip-errors';
+import { buildInvoiceFilename } from '@/lib/invoice-filename';
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { data: org } = await supabase.from('organizations')
-    .select('name, fiscalTreatment').eq('id', user.id).maybeSingle();
+    .select('name, cuit, fiscalTreatment').eq('id', user.id).maybeSingle();
 
   const allowedLetters = getAllowedInvoiceLetters(org?.fiscalTreatment);
   if (!allowedLetters.includes(invoiceLetter)) {
@@ -168,7 +169,9 @@ export async function POST(req: NextRequest) {
         </div>
       `,
       attachments: [{
-        filename: `factura-${invoiceNumber}.pdf`,
+        filename: org?.cuit && data.invoice_number
+          ? buildInvoiceFilename(org.cuit, invoiceLetter, data.invoice_number)
+          : `factura-${invoiceNumber}.pdf`,
         content:  Buffer.from(data.pdf_base64, 'base64'),
       }],
     }).catch(err => {
