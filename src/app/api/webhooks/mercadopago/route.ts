@@ -93,20 +93,43 @@ export async function POST(req: NextRequest) {
     const payer        = payment.payer ?? {};
     const identification = payer.identification ?? {};
 
-    // MP usa 'DNI' o 'CUIT' en identification.type
-    const buyerDocType   = identification.type ?? null;
-    const buyerDocNumber = String(identification.number ?? '').replace(/\D/g, '') || null;
-    const buyerName = [payer.first_name, payer.last_name].filter(Boolean).join(' ')
-      || payer.email
-      || 'Consumidor Final';
+    // "Venta Rápida" con link de pago: si este pago viene de una preferencia creada desde ahí,
+    // external_reference apunta a la fila en pending_sales con los datos reales de la venta
+    // (producto, cantidad, comprador, letra elegida) — más confiable que re-derivarlos del pago.
+    let pendingSale: {
+      id: string; productId: string | null; quantity: number | null;
+      docType: string | null; docNumber: string | null; buyerName: string | null;
+      description: string | null; amount: number; invoiceLetter: 'A' | 'B' | 'C'; ivaRate: number;
+    } | null = null;
+    if (payment.external_reference) {
+      const { data } = await supabase.from('pending_sales')
+        .select('id, productId, quantity, docType, docNumber, buyerName, description, amount, invoiceLetter, ivaRate, status')
+        .eq('id', payment.external_reference)
+        .eq('organizationId', integration.organizationId)
+        .maybeSingle();
+      if (data && data.status === 'PENDING') pendingSale = data;
+    }
 
-    const { letter, docType, docNumber } = detectInvoiceType(
-      sellerFiscalTreatment,
-      buyerDocType,
-      buyerDocNumber
-    );
+    let letter: 'A' | 'B' | 'C';
+    let docType: string;
+    let docNumber: string;
+    let buyerName: string;
 
-    console.log(`[MP webhook] Pago ${paymentId} → Factura ${letter} | Comprador: ${buyerName} | Doc: ${docType} ${docNumber}`);
+    if (pendingSale) {
+      letter = pendingSale.invoiceLetter;
+      docType = pendingSale.docType ?? 'CONSUMIDOR_FINAL';
+      docNumber = pendingSale.docNumber ?? '0';
+      buyerName = pendingSale.buyerName || [payer.first_name, payer.last_name].filter(Boolean).join(' ') || 'Consumidor Final';
+    } else {
+      const buyerDocType   = identification.type ?? null;
+      const buyerDocNumber = String(identification.number ?? '').replace(/\D/g, '') || null;
+      buyerName = [payer.first_name, payer.last_name].filter(Boolean).join(' ')
+        || payer.email
+        || 'Consumidor Final';
+      ({ letter, docType, docNumber } = detectInvoiceType(sellerFiscalTreatment, buyerDocType, buyerDocNumber));
+    }
+
+    console.log(`[MP webhook] Pago ${paymentId} → Factura ${letter} | Comprador: ${buyerName} | Doc: ${docType} ${docNumber}${pendingSale ? ' | Venta Rápida' : ''}`);
 
     // Factura A: el monto de MP es bruto (IVA incluido), el Gateway espera neto
     const IVA_RATE = 0.21;
@@ -132,8 +155,9 @@ export async function POST(req: NextRequest) {
         invoice: {
           total_amount:   amountForGateway,
           invoice_letter: letter,
+          iva_rate:       pendingSale?.ivaRate ?? undefined,
           concept:        1,
-          description:    `Pago MP #${paymentId}`,
+          description:    pendingSale?.description || `Pago MP #${paymentId}`,
         },
         buyer: {
           full_name:  buyerName,
@@ -157,10 +181,11 @@ export async function POST(req: NextRequest) {
     if (gatewayRes.ok) {
       console.log(`[MP webhook] ✅ Factura ${letter} emitida — ${invoiceData.invoice_number} | CAE: ${invoiceData.cae}`);
 
+      const admin = createAdminClient();
+
       // La factura se emite en el mismo instante en que se confirma el pago de MP,
       // así que ya nace conciliada — evita que aparezca como "Pendiente" en Facturación.
       if (invoiceData.invoice_id) {
-        const admin = createAdminClient();
         await admin.from('invoice_payments').upsert({
           organizationId: integration.organizationId,
           invoiceId:      invoiceData.invoice_id,
@@ -174,6 +199,23 @@ export async function POST(req: NextRequest) {
         }, { onConflict: 'organizationId,invoiceId' }).then(({ error }) => {
           if (error) console.error(`[MP webhook] No se pudo marcar como cobrada la factura ${invoiceData.invoice_id}:`, error.message);
         });
+      }
+
+      // Venta Rápida: recién ahora (pago confirmado) se descuenta el stock real y se marca
+      // la venta como pagada — evita el caso de "cargué la venta pero el cliente no pagó".
+      if (pendingSale) {
+        if (pendingSale.productId && pendingSale.quantity) {
+          const { data: product } = await admin.from('products')
+            .select('stock').eq('id', pendingSale.productId).eq('organizationId', integration.organizationId).maybeSingle();
+          if (product && product.stock !== null) {
+            await admin.from('products')
+              .update({ stock: Math.max(0, product.stock - pendingSale.quantity), updatedAt: new Date().toISOString() })
+              .eq('id', pendingSale.productId).eq('organizationId', integration.organizationId);
+          }
+        }
+        await admin.from('pending_sales')
+          .update({ status: 'PAID', paidAt: new Date().toISOString() })
+          .eq('id', pendingSale.id);
       }
     } else {
       console.error(`[MP webhook] ❌ Error: ${invoiceData.error}`);

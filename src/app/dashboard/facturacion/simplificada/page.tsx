@@ -65,6 +65,10 @@ export default function FacturacionSimplificadaPage() {
   const [quantity, setQuantity] = useState(1);
   const amountRef = useRef<HTMLInputElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
+  const ivaRateRef = useRef<HTMLSelectElement>(null);
+
+  const [paymentLink, setPaymentLink] = useState<string | null>(null);
+  const [generatingLink, setGeneratingLink] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipPadronRef = useRef(false);
@@ -198,14 +202,14 @@ export default function FacturacionSimplificadaPage() {
   function changeLetter(l: InvoiceLetter) {
     setLetter(l); setDocNumber(''); setBuyerName('');
     setPadronData(null); setPadronCandidates([]); setResolvedCuil(null);
-    setPadronStatus('idle'); setError(''); setResult(null);
+    setPadronStatus('idle'); setError(''); setResult(null); setPaymentLink(null);
     if (selectedProduct) applyProduct(selectedProduct, quantity, l);
   }
 
   function resetForm() {
     setDocNumber(''); setBuyerName('');
     setPadronData(null); setPadronCandidates([]); setResolvedCuil(null);
-    setPadronStatus('idle'); setResult(null);
+    setPadronStatus('idle'); setResult(null); setPaymentLink(null);
     setSelectedProduct(null); setQuantity(1);
   }
 
@@ -253,6 +257,56 @@ export default function FacturacionSimplificadaPage() {
     } finally { setLoading(false); }
   }
 
+  async function generarLinkPago() {
+    setError('');
+    const amount = parseFloat(amountRef.current?.value ?? '');
+    const description = descRef.current?.value ?? '';
+    const ivaRate = parseFloat(ivaRateRef.current?.value ?? '21');
+    const clean = docNumber.replace(/[-\s]/g, '');
+
+    if (!amount || amount <= 0) { setError('Ingresá un monto válido.'); return; }
+    if (letter === 'A' && !clean) { setError('Para Factura A necesitás el CUIT del receptor.'); return; }
+
+    const effectiveDoc = resolvedCuil ?? (clean || undefined);
+    const effectiveType = letter === 'A' ? 'CUIT'
+      : resolvedCuil ? 'CUIL'
+      : clean.length === 11 ? 'CUIL'
+      : clean ? 'DNI'
+      : 'CONSUMIDOR_FINAL';
+
+    setGeneratingLink(true);
+    try {
+      const res = await fetch('/api/mercadopago/preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount, description, invoiceLetter: letter, ivaRate,
+          docNumber: effectiveDoc,
+          docType:   effectiveType,
+          buyerName: buyerName || undefined,
+          recipientEmail: sendEmail && recipientEmail ? recipientEmail : undefined,
+          productId: selectedProduct?.id,
+          quantity:  selectedProduct ? quantity : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? 'No se pudo generar el link');
+      setPaymentLink(data.paymentLink);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    } finally { setGeneratingLink(false); }
+  }
+
+  function copiarLink() {
+    if (paymentLink) navigator.clipboard.writeText(paymentLink);
+  }
+
+  function compartirWhatsapp() {
+    if (!paymentLink) return;
+    const texto = `¡Hola! Te paso el link para abonar${buyerName ? ` — ${buyerName}` : ''}: ${paymentLink}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
+  }
+
   function downloadPdf() {
     if (!result?.pdfBase64) return;
     const bytes = atob(result.pdfBase64);
@@ -285,7 +339,23 @@ export default function FacturacionSimplificadaPage() {
           <div className={styles.letterDesc}>{info.desc}</div>
           {error && <div className={styles.error}>{error}</div>}
 
-          {result ? (
+          {paymentLink ? (
+            <div className={styles.success}>
+              <div className={styles.successIcon}>🔗</div>
+              <h3 className={styles.successTitle}>Link de pago generado</h3>
+              <p className="text-sm text-muted" style={{ marginTop: '0.25rem' }}>
+                Cuando el cliente pague, la factura se emite sola y se descuenta el stock — no hace falta hacer nada más acá.
+              </p>
+              <div className={styles.successDetail} style={{ marginTop: '0.75rem' }}>
+                <input className="input mono text-sm" readOnly value={paymentLink} onFocus={e => e.target.select()} />
+              </div>
+              <div className={styles.successActions}>
+                <button className="btn btn-primary" onClick={compartirWhatsapp}>💬 Compartir por WhatsApp</button>
+                <button className="btn btn-outline" onClick={copiarLink}>📋 Copiar link</button>
+                <button className="btn btn-ghost" onClick={resetForm}>Nueva venta</button>
+              </div>
+            </div>
+          ) : result ? (
             <div className={styles.success}>
               <div className={styles.successIcon}>✅</div>
               <h3 className={styles.successTitle}>¡{info.label} emitida!</h3>
@@ -365,7 +435,7 @@ export default function FacturacionSimplificadaPage() {
               {letter === 'A' && (
                 <div className={styles.field}>
                   <label>Alícuota IVA</label>
-                  <select name="ivaRate" className="select">
+                  <select name="ivaRate" ref={ivaRateRef} className="select">
                     <option value="21">21%</option>
                     <option value="10.5">10,5%</option>
                     <option value="27">27%</option>
@@ -400,9 +470,17 @@ export default function FacturacionSimplificadaPage() {
                 )}
               </div>
 
-              <button type="submit" className={`btn btn-primary ${styles.submitBtn}`} disabled={loading}>
-                {loading ? 'Emitiendo...' : `Emitir ${info.label}`}
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button type="submit" className={`btn btn-primary ${styles.submitBtn}`} disabled={loading || generatingLink} style={{ flex: 1 }}>
+                  {loading ? 'Emitiendo...' : `Emitir ${info.label}`}
+                </button>
+                <button type="button" className="btn btn-outline" disabled={loading || generatingLink} onClick={generarLinkPago} style={{ flex: 1 }}>
+                  {generatingLink ? 'Generando...' : '🔗 Cobrar con link de MP'}
+                </button>
+              </div>
+              <p className="text-sm text-muted" style={{ marginTop: '0.4rem' }}>
+                &quot;Cobrar con link de MP&quot; genera un link de Mercado Pago para compartir por WhatsApp — la factura se emite y el stock se descuenta recién cuando el cliente paga.
+              </p>
             </form>
           )}
         </div>
