@@ -5,6 +5,7 @@ import Link from 'next/link';
 import styles from './dashboard.module.css';
 import OnboardingChecklist from './OnboardingChecklist';
 import IvaPositionCard from './IvaPositionCard';
+import MonotributoStatusCard from './MonotributoStatusCard';
 
 interface LastInvoice {
   invoice_id?: string;
@@ -58,6 +59,7 @@ export default function DashboardData() {
   const [loading, setLoading] = useState(true);
   const [publicidad, setPublicidad] = useState<PublicidadResumen | null>(null);
   const [isResponsableInscripto, setIsResponsableInscripto] = useState(false);
+  const [isMonotributista, setIsMonotributista] = useState(false);
 
   useEffect(() => {
     fetch('/api/dashboard/kpis')
@@ -73,7 +75,10 @@ export default function DashboardData() {
 
     fetch('/api/organizacion/empresa')
       .then(r => r.json())
-      .then(d => setIsResponsableInscripto(d?.fiscalTreatment === 'RESPONSABLE_INSCRIPTO'))
+      .then(d => {
+        setIsResponsableInscripto(d?.fiscalTreatment === 'RESPONSABLE_INSCRIPTO');
+        setIsMonotributista(d?.fiscalTreatment === 'MONOTRIBUTISTA');
+      })
       .catch(() => {});
   }, []);
 
@@ -123,6 +128,7 @@ export default function DashboardData() {
       </div>
 
       <IvaPositionCard />
+      {isMonotributista && <MonotributoStatusCard />}
 
       <div className={`card ${styles.tableCard}`}>
         <div className={styles.tableHeader}>

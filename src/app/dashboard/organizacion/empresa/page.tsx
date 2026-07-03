@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 import styles from './empresa.module.css';
 
 const FISCAL = ['RESPONSABLE_INSCRIPTO', 'MONOTRIBUTISTA', 'EXENTO', 'CONSUMIDOR_FINAL', 'NO_CATEGORIZADO'];
+const CATEGORIAS_MONOTRIBUTO = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
 const PROVINCES = ['Buenos Aires', 'Ciudad Autónoma de Buenos Aires', 'Córdoba', 'Santa Fe', 'Mendoza', 'Tucumán', 'Salta', 'Entre Ríos', 'Misiones', 'Chaco', 'Corrientes', 'Santiago del Estero', 'San Juan', 'Jujuy', 'Río Negro', 'Neuquén', 'Formosa', 'La Pampa', 'Catamarca', 'La Rioja', 'San Luis', 'Santa Cruz', 'Chubut', 'Tierra del Fuego'];
 
 export default function EmpresaPage() {
   const [form, setForm] = useState({
-    name: '', cuit: '', personType: '', fiscalTreatment: 'RESPONSABLE_INSCRIPTO',
+    name: '', cuit: '', personType: '', fiscalTreatment: 'RESPONSABLE_INSCRIPTO', categoriaMonotributo: '',
     address: '', province: '', city: '', zipCode: '',
     phone: '', emailAlerts: '', emailAccountant: '', iibb: '', cbu: '',
     startDate: '',
@@ -76,6 +77,15 @@ export default function EmpresaPage() {
                 {FISCAL.map(f => <option key={f} value={f}>{f.replace(/_/g,' ')}</option>)}
               </select>
             </div>
+            {form.fiscalTreatment === 'MONOTRIBUTISTA' && (
+              <div className={styles.field}>
+                <label>Categoría de Monotributo</label>
+                <select className="select" value={form.categoriaMonotributo} onChange={e => update('categoriaMonotributo', e.target.value)}>
+                  <option value="">Seleccionar</option>
+                  {CATEGORIAS_MONOTRIBUTO.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            )}
           </div>
           <div className={styles.grid3}>
             <div className={`${styles.field} ${styles.span2}`}>
