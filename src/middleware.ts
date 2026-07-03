@@ -4,6 +4,15 @@ import { NextResponse, type NextRequest } from 'next/server';
 const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password', '/onboarding'];
 
 export async function middleware(request: NextRequest) {
+  // Las rutas de API (incluidos los webhooks de integraciones: Tiendanube, Shopify,
+  // MercadoLibre, MercadoPago) hacen su propia autenticación con supabase.auth.getUser()
+  // adentro de cada handler. No deben pasar por este redirect a /login — los webhooks los
+  // llaman los servidores de esas plataformas, no un usuario logueado, y un redirect acá
+  // los rompe silenciosamente (el POST nunca llega al handler real).
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(

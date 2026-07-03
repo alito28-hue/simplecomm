@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
+import { processIncomingOrder, type OrderLineItem } from '@/lib/order-processing';
 
 /**
  * Detecta el tipo de factura según:
@@ -107,6 +108,37 @@ export async function POST(req: NextRequest) {
 
     console.log(`[ML webhook] Orden ${orderId} → Factura ${letter} | Comprador: ${buyerName} | Doc: ${docType} ${docNumber}`);
 
+    // ⚠️ Estructura de order_items sin verificar contra la doc oficial de ML (no pude acceder
+    // al momento de escribir esto) — usa el shape más común documentado en la comunidad
+    // (order.order_items[].item.seller_sku/id/title, .quantity, .unit_price). Verificar con un
+    // pedido real antes de confiar en el match de stock; si el shape no coincide, sku queda
+    // null y simplemente no se matchea ningún producto (no rompe la emisión de factura).
+    const lineItems: OrderLineItem[] = ((order.order_items as Record<string, unknown>[]) ?? []).map(oi => {
+      const item = (oi.item as Record<string, unknown>) ?? {};
+      return {
+        sku: (item.seller_sku as string) || (item.seller_custom_field as string) || null,
+        name: String(item.title ?? ''),
+        quantity: Number(oi.quantity ?? 1),
+        unitPrice: Number(oi.unit_price ?? 0),
+      };
+    });
+    const orderResult = await processIncomingOrder(
+      integration.organizationId,
+      'mercadolibre',
+      String(orderId),
+      {
+        businessName: buyerName,
+        docType: docType,
+        docNumber: docNumber,
+        email: buyer.email || null,
+        phone: null,
+      },
+      lineItems,
+    );
+    if (orderResult.productsCreated.length) {
+      console.log(`[ML webhook] ${orderResult.productsCreated.length} producto(s) nuevo(s) creado(s) para revisión desde la orden ${orderId}.`);
+    }
+
     /**
      * Conversión de monto según tipo de factura:
      *
@@ -156,6 +188,7 @@ export async function POST(req: NextRequest) {
           mlOrderId:  orderId,
           mlUserId,
           invoice_letter: letter,
+          clientId: orderResult.clientId,
         },
       }),
       signal: AbortSignal.timeout(60_000),

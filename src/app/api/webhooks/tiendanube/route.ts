@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createHmac } from 'crypto';
 import { createClient } from '@/lib/supabase/server';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
+import { processIncomingOrder, type OrderLineItem } from '@/lib/order-processing';
 
 const USER_AGENT = 'SimpleComm (alito28@gmail.com)';
+const TN_CLIENT_SECRET = process.env.TN_CLIENT_SECRET ?? '';
+
+function verifyWebhook(body: string, signature: string): boolean {
+  if (!TN_CLIENT_SECRET || !signature) return true; // skip en dev
+  const hash = createHmac('sha256', TN_CLIENT_SECRET).update(body, 'utf8').digest('base64');
+  return hash === signature;
+}
 
 function detectInvoiceType(
   sellerFiscalTreatment: string,
@@ -23,8 +32,15 @@ function detectInvoiceType(
 }
 
 export async function POST(req: NextRequest) {
+  const rawBody = await req.text();
+  const signature = req.headers.get('x-linkedstore-hmac-sha256') ?? '';
+
+  if (!verifyWebhook(rawBody, signature)) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+  }
+
   let body: { store_id?: number; event?: string; id?: number };
-  try { body = await req.json(); } catch { return NextResponse.json({ ok: true }); }
+  try { body = JSON.parse(rawBody); } catch { return NextResponse.json({ ok: true }); }
 
   if (body.event !== 'order/paid') {
     return NextResponse.json({ ok: true, skipped: true });
@@ -79,6 +95,7 @@ export async function POST(req: NextRequest) {
 
     const totalAmount = parseFloat(order.total ?? '0');
     const consumer    = order.consumer ?? {};
+    const shipping    = order.shipping_address ?? {};
 
     // TN guarda identificación en consumer.identification / consumer.identification_type
     // Puede ser 'DNI', 'CUIT', 'CUIL', etc.
@@ -97,6 +114,33 @@ export async function POST(req: NextRequest) {
     );
 
     console.log(`[TN webhook] Pedido ${orderId} → Factura ${letter} | Comprador: ${buyerName} | Doc: ${docType} ${docNumber}`);
+
+    // Contacto + productos (por SKU) + descuento de stock — no bloquea la emisión de factura
+    // si algo falla acá (processIncomingOrder ya loguea sus propios errores internamente).
+    const lineItems: OrderLineItem[] = (order.products ?? []).map((p: Record<string, unknown>) => ({
+      sku: (p.sku as string) || null,
+      name: String(p.name ?? ''),
+      quantity: Number(p.quantity ?? 1),
+      unitPrice: Number(p.price ?? 0),
+    }));
+    const orderResult = await processIncomingOrder(
+      integration.organizationId,
+      'tiendanube',
+      String(orderId),
+      {
+        businessName: buyerName,
+        docType: docType,
+        docNumber: docNumber,
+        email: consumer.email ?? null,
+        phone: shipping.phone ?? null,
+      },
+      lineItems,
+    );
+    if (orderResult.alreadyProcessed) {
+      console.log(`[TN webhook] Pedido ${orderId} ya se había procesado (contacto/stock) — se sigue igual con la factura (dedup por el Gateway).`);
+    } else if (orderResult.productsCreated.length) {
+      console.log(`[TN webhook] ${orderResult.productsCreated.length} producto(s) nuevo(s) creado(s) para revisión desde el pedido ${orderId}.`);
+    }
 
     const IVA_RATE = 0.21;
     const amountForGateway = letter === 'A'
@@ -136,6 +180,7 @@ export async function POST(req: NextRequest) {
           tnOrderId: orderId,
           tnStoreId: storeId,
           invoice_letter: letter,
+          clientId: orderResult.clientId,
         },
       }),
       signal: AbortSignal.timeout(60_000),

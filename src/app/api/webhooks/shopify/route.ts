@@ -3,6 +3,7 @@ import { createHmac } from 'crypto';
 import { createClient } from '@/lib/supabase/server';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
+import { processIncomingOrder, type OrderLineItem } from '@/lib/order-processing';
 
 const SHOPIFY_CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET ?? '';
 
@@ -124,6 +125,29 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Shopify webhook] Orden ${orderId} → Factura ${letter} | Comprador: ${buyerName}`);
 
+    const lineItems: OrderLineItem[] = ((order.line_items as Record<string, unknown>[]) ?? []).map(li => ({
+      sku: (li.sku as string) || null,
+      name: String(li.name ?? li.title ?? ''),
+      quantity: Number(li.quantity ?? 1),
+      unitPrice: parseFloat(String(li.price ?? '0')),
+    }));
+    const orderResult = await processIncomingOrder(
+      integration.organizationId,
+      'shopify',
+      String(orderId),
+      {
+        businessName: buyerName,
+        docType: finalDocType,
+        docNumber: finalDocNumber,
+        email: String(customer.email ?? billing.email ?? '') || null,
+        phone: String(billing.phone ?? '') || null,
+      },
+      lineItems,
+    );
+    if (orderResult.productsCreated.length) {
+      console.log(`[Shopify webhook] ${orderResult.productsCreated.length} producto(s) nuevo(s) creado(s) para revisión desde la orden ${orderId}.`);
+    }
+
     const IVA_RATE = 0.21;
     const amountForGateway = letter === 'A'
       ? Math.round((totalAmount / (1 + IVA_RATE)) * 100) / 100
@@ -162,6 +186,7 @@ export async function POST(req: NextRequest) {
           shopifyOrderId: orderId,
           shopDomain,
           invoice_letter: letter,
+          clientId: orderResult.clientId,
         },
       }),
       signal: AbortSignal.timeout(60_000),
