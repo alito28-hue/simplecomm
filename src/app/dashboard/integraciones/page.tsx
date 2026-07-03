@@ -31,6 +31,13 @@ const INTEGRACIONES = [
     href: '/dashboard/integraciones/shopify',
   },
   {
+    id: 'enviopack',
+    nombre: 'Envíopack',
+    desc: 'Cotizá y generá guías de envío con múltiples correos desde una sola integración.',
+    estado: 'disponible', categoria: 'logistica', logo: '📦',
+    href: '/dashboard/integraciones/enviopack',
+  },
+  {
     id: 'woocommerce',
     nombre: 'WooCommerce',
     desc: 'Integración nativa con tu tienda WordPress para un dashboard operativo avanzado.',
@@ -107,7 +114,7 @@ export default function IntegracionesPage() {
       {/* API Status Bar */}
       <div className={`card ${styles.apiBar}`}>
         <div className={styles.apiStat}>
-          <span className={styles.apiNum}>{conectadas}/8</span>
+          <span className={styles.apiNum}>{conectadas}/{INTEGRACIONES.length}</span>
           <span className={styles.apiLabel}>Integraciones disponibles. Uptime 98.95%.</span>
         </div>
         <div className={styles.apiDivider} />

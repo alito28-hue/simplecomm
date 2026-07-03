@@ -110,6 +110,7 @@ export async function POST(req: NextRequest) {
     const totalAmount = parseFloat(String(order.total_price ?? '0'));
     const customer    = (order.customer as Record<string, unknown>) ?? {};
     const billing     = (order.billing_address as Record<string, unknown>) ?? {};
+    const shipping    = (order.shipping_address as Record<string, unknown>) ?? billing;
 
     const { docType, docNumber } = extractBuyerDoc(order);
     const buyerName = [billing.first_name, billing.last_name].filter(Boolean).join(' ')
@@ -140,7 +141,12 @@ export async function POST(req: NextRequest) {
         docType: finalDocType,
         docNumber: finalDocNumber,
         email: String(customer.email ?? billing.email ?? '') || null,
-        phone: String(billing.phone ?? '') || null,
+        phone: String(shipping.phone ?? billing.phone ?? '') || null,
+        shippingStreet: (shipping.address1 as string) || null,
+        shippingFloor: (shipping.address2 as string) || null,
+        shippingCity: (shipping.city as string) || null,
+        shippingProvince: (shipping.province as string) || null,
+        shippingZipCode: (shipping.zip as string) || null,
       },
       lineItems,
     );

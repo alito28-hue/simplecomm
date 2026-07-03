@@ -30,6 +30,7 @@ const NAV: { href: string; label: string; icon: string; permission?: PermissionK
   { href: '/dashboard/contactos',     label: 'Clientes',    icon: '👤', permission: 'manage_clients' },
   { href: '/dashboard/cobranzas',     label: 'Cobranzas',    icon: '💰', permission: 'view_reports' },
   { href: '/dashboard/ads',           label: 'Publicidad',   icon: '📈', permission: 'view_reports' },
+  { href: '/dashboard/envios',        label: 'Envíos',        icon: '🚚', permission: 'manage_invoices' },
   { href: '/dashboard/organizacion/productos',          label: 'Productos y Stock',   icon: '📦', permission: 'manage_products' },
   { href: '/dashboard/organizacion/iva',                label: 'IVA',                 icon: '📊', permission: 'view_reports', ivaOnly: true },
   { href: '/dashboard/organizacion/listas-precios',     label: 'Listas de Precios',   icon: '💲', permission: 'manage_products' },

@@ -3,9 +3,16 @@
 import { useEffect, useState } from 'react';
 import styles from '../clientes/clientes.module.css';
 
-interface Producto { id: string; code: string; sku: string | null; description: string; netPrice: number; ivaRate: string; stock: number | null; needsReview: boolean; }
+interface Producto {
+  id: string; code: string; sku: string | null; description: string; netPrice: number; ivaRate: string;
+  stock: number | null; needsReview: boolean;
+  pesoKg: number | null; altoCm: number | null; anchoCm: number | null; profundidadCm: number | null;
+}
 const IVA_RATES = ['EXENTO','NO_GRAVADO','IVA_2_5','IVA_5','IVA_10_5','IVA_21','IVA_27'];
-const EMPTY = { code: '', sku: '', description: '', netPrice: '', ivaRate: 'IVA_21', stock: '' };
+const EMPTY = {
+  code: '', sku: '', description: '', netPrice: '', ivaRate: 'IVA_21', stock: '',
+  pesoKg: '', altoCm: '', anchoCm: '', profundidadCm: '',
+};
 
 export default function ProductosPage() {
   const [items, setItems] = useState<Producto[]>([]);
@@ -48,7 +55,14 @@ export default function ProductosPage() {
 
   function openNew() { setForm(EMPTY); setEditId(null); setError(''); setModal(true); }
   function openEdit(p: Producto) {
-    setForm({ code: p.code, sku: p.sku ?? '', description: p.description, netPrice: String(p.netPrice), ivaRate: p.ivaRate, stock: p.stock === null ? '' : String(p.stock) });
+    setForm({
+      code: p.code, sku: p.sku ?? '', description: p.description, netPrice: String(p.netPrice), ivaRate: p.ivaRate,
+      stock: p.stock === null ? '' : String(p.stock),
+      pesoKg: p.pesoKg === null ? '' : String(p.pesoKg),
+      altoCm: p.altoCm === null ? '' : String(p.altoCm),
+      anchoCm: p.anchoCm === null ? '' : String(p.anchoCm),
+      profundidadCm: p.profundidadCm === null ? '' : String(p.profundidadCm),
+    });
     setEditId(p.id); setError(''); setModal(true);
   }
 
@@ -63,6 +77,10 @@ export default function ProductosPage() {
         sku: form.sku || null,
         netPrice: parseFloat(form.netPrice) || 0,
         stock: form.stock === '' ? null : parseInt(form.stock, 10),
+        pesoKg: form.pesoKg === '' ? null : parseFloat(form.pesoKg),
+        altoCm: form.altoCm === '' ? null : parseFloat(form.altoCm),
+        anchoCm: form.anchoCm === '' ? null : parseFloat(form.anchoCm),
+        profundidadCm: form.profundidadCm === '' ? null : parseFloat(form.profundidadCm),
         needsReview: false,
       };
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -159,6 +177,26 @@ export default function ProductosPage() {
                 <div className={styles.field}>
                   <label>Stock</label>
                   <input className="input" type="number" min="0" step="1" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))} placeholder="Vacío = sin control de stock" />
+                </div>
+              </div>
+              <div className={styles.row}>
+                <div className={styles.field}>
+                  <label>Peso (kg) — para cotizar envíos</label>
+                  <input className="input" type="number" step="0.001" min="0" value={form.pesoKg} onChange={e => setForm(f => ({ ...f, pesoKg: e.target.value }))} />
+                </div>
+                <div className={styles.field}>
+                  <label>Alto (cm)</label>
+                  <input className="input" type="number" step="0.1" min="0" value={form.altoCm} onChange={e => setForm(f => ({ ...f, altoCm: e.target.value }))} />
+                </div>
+              </div>
+              <div className={styles.row}>
+                <div className={styles.field}>
+                  <label>Ancho (cm)</label>
+                  <input className="input" type="number" step="0.1" min="0" value={form.anchoCm} onChange={e => setForm(f => ({ ...f, anchoCm: e.target.value }))} />
+                </div>
+                <div className={styles.field}>
+                  <label>Profundidad (cm)</label>
+                  <input className="input" type="number" step="0.1" min="0" value={form.profundidadCm} onChange={e => setForm(f => ({ ...f, profundidadCm: e.target.value }))} />
                 </div>
               </div>
             </div>

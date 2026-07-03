@@ -133,6 +133,12 @@ export async function POST(req: NextRequest) {
         docNumber: docNumber,
         email: consumer.email ?? null,
         phone: shipping.phone ?? null,
+        shippingStreet: shipping.address ?? null,
+        shippingNumber: shipping.number ?? null,
+        shippingFloor: shipping.floor ?? null,
+        shippingCity: shipping.city ?? null,
+        shippingProvince: shipping.province ?? null,
+        shippingZipCode: shipping.zipcode ?? null,
       },
       lineItems,
     );

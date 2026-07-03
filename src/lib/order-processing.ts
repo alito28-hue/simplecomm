@@ -7,6 +7,12 @@ export interface OrderBuyer {
   docNumber: string;
   email?: string | null;
   phone?: string | null;
+  shippingStreet?: string | null;
+  shippingNumber?: string | null;
+  shippingFloor?: string | null;
+  shippingCity?: string | null;
+  shippingProvince?: string | null;
+  shippingZipCode?: string | null;
 }
 
 export interface OrderLineItem {
@@ -77,6 +83,12 @@ export async function processIncomingOrder(
           emailContact: buyer.email || null,
           phone: buyer.phone || null,
           fiscalTreatment: buyer.docType === 'CUIT' ? 'RESPONSABLE_INSCRIPTO' : 'CONSUMIDOR_FINAL',
+          shippingStreet: buyer.shippingStreet || null,
+          shippingNumber: buyer.shippingNumber || null,
+          shippingFloor: buyer.shippingFloor || null,
+          shippingCity: buyer.shippingCity || null,
+          shippingProvince: buyer.shippingProvince || null,
+          shippingZipCode: buyer.shippingZipCode || null,
           createdAt: now,
           updatedAt: now,
         }).select('id').single();
