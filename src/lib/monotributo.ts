@@ -32,6 +32,7 @@ export interface MonotributoStatus {
   porcentaje?: number;
   level?: MonotributoLevel;
   categoriaEfectiva?: string | null;
+  lastSalesImportAt?: string | null;
   topeEfectivo?: number | null;
   porcentajeEfectivo?: number | null;
   vigenteDesde?: string;
@@ -206,6 +207,15 @@ export async function computeMonotributoStatus(
     ? categoriaQueAlcanza(escalaActual, totalVentanaFormal)?.categoria ?? null
     : org.categoriaMonotributo;
 
+  const { data: lastImport } = await supabase
+    .from('arca_import_log')
+    .select('importedAt')
+    .eq('organizationId', userId)
+    .eq('importType', 'emitidos')
+    .order('importedAt', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   return {
     applicable: true,
     categoria: org.categoriaMonotributo,
@@ -214,6 +224,7 @@ export async function computeMonotributoStatus(
     porcentaje,
     level,
     categoriaEfectiva,
+    lastSalesImportAt: lastImport?.importedAt ?? null,
     topeEfectivo,
     porcentajeEfectivo,
     vigenteDesde,

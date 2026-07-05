@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import styles from './dashboard.module.css';
 
@@ -21,6 +21,7 @@ interface MonotributoStatus {
   porcentaje?: number;
   level?: 'green' | 'yellow' | 'red' | 'exclusion';
   categoriaEfectiva?: string | null;
+  lastSalesImportAt?: string | null;
   topeEfectivo?: number | null;
   porcentajeEfectivo?: number | null;
   topeMaximo?: number;
@@ -35,6 +36,10 @@ function formatFecha(iso: string) {
   return new Date(iso + 'T00:00:00').toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+function formatFechaHora(iso: string) {
+  return new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
 const LEVEL_META = {
   green:     { color: 'var(--success)', bg: 'var(--success-bg)', label: '✓ Dentro de tu categoría' },
   yellow:    { color: '#92400e',        bg: 'var(--warning-bg)', label: '⚠ Acercándote al límite' },
@@ -44,13 +49,35 @@ const LEVEL_META = {
 
 export default function MonotributoStatusCard() {
   const [data, setData] = useState<MonotributoStatus | null>(null);
+  const [importing, setImporting] = useState(false);
+  const csvRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  function load() {
     fetch('/api/dashboard/monotributo-status')
       .then(r => r.json())
       .then(setData)
       .catch(() => {});
-  }, []);
+  }
+
+  useEffect(load, []);
+
+  async function importarVentas(file: File) {
+    setImporting(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/organizacion/iva/importar-emitidos', { method: 'POST', body: fd });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || 'No se pudo importar el archivo');
+      alert(`Importación completa: ${d.rowCount} comprobantes (${d.newCount} nuevos, ${d.updatedCount} actualizados).`);
+      load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Error al importar el archivo');
+    } finally {
+      setImporting(false);
+      if (csvRef.current) csvRef.current.value = '';
+    }
+  }
 
   if (!data) return null;
 
@@ -79,8 +106,28 @@ export default function MonotributoStatusCard() {
     <div className={`card ${styles.tableCard}`} style={{ padding: '1.25rem 1.5rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h2 className={styles.sectionTitle}>Posición de Monotributo — Categoría {data.categoria}</h2>
-        <Link href="/dashboard/organizacion/empresa" className={styles.viewAll}>Cambiar categoría →</Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <input ref={csvRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) importarVentas(f); }} />
+          <button className={styles.viewAll} style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+            onClick={() => csvRef.current?.click()} disabled={importing}>
+            {importing ? 'Importando...' : '📥 Importar comprobantes emitidos de ARCA'}
+          </button>
+          <Link href="/dashboard/organizacion/empresa" className={styles.viewAll}>Cambiar categoría →</Link>
+        </div>
       </div>
+
+      {!data.lastSalesImportAt && (
+        <div style={{ padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', background: 'var(--warning-bg)', color: '#92400e', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
+          ⚠ Todavía no importaste tus comprobantes emitidos de ARCA — la facturación de abajo solo cuenta lo emitido desde SimpleComm, y probablemente te falte historial de antes de sumarte.
+          Para una estimación correcta: entrá a ARCA → <strong>Mis Comprobantes</strong> → <strong>Emitidos</strong> → filtrá por fecha (los últimos 12 meses) → exportá el CSV, y subilo acá con el botón de arriba.
+        </div>
+      )}
+      {data.lastSalesImportAt && (
+        <p className="text-sm text-muted" style={{ marginBottom: '0.75rem' }}>
+          Última importación de ARCA: {formatFechaHora(data.lastSalesImportAt)}
+        </p>
+      )}
 
       <div style={{ padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', background: meta.bg, color: meta.color, fontWeight: 700, fontSize: '0.9rem', marginBottom: '1rem' }}>
         {level === 'exclusion' && (

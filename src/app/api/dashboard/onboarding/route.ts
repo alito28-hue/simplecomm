@@ -9,7 +9,7 @@ export async function GET() {
 
   const { data: org } = await supabase
     .from('organizations')
-    .select('name, cuit, afipConfigured, gatewayTenantId, gatewayApiKey, ptoVta')
+    .select('name, cuit, afipConfigured, gatewayTenantId, gatewayApiKey, ptoVta, fiscalTreatment')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -42,6 +42,25 @@ export async function GET() {
     { id: 'pto-venta', label: 'Punto de venta activo', done: puntoDeVenta, href: '/dashboard/organizacion' },
     { id: 'factura', label: 'Primera factura emitida', done: primeraFactura, href: '/dashboard/facturacion/simplificada' },
   ];
+
+  // Para Monotributistas: sin importar los comprobantes emitidos de ARCA de los últimos 12
+  // meses, la posición de Monotributo no tiene el historial previo a sumarse a SimpleComm.
+  if (org?.fiscalTreatment === 'MONOTRIBUTISTA') {
+    const { data: importLog } = await supabase
+      .from('arca_import_log')
+      .select('id')
+      .eq('organizationId', user.id)
+      .eq('importType', 'emitidos')
+      .limit(1)
+      .maybeSingle();
+
+    steps.push({
+      id: 'importar-arca',
+      label: 'Comprobantes emitidos de ARCA importados (últimos 12 meses)',
+      done: !!importLog,
+      href: '/dashboard',
+    });
+  }
 
   const allDone = steps.every(s => s.done);
 
