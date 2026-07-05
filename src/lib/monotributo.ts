@@ -172,32 +172,39 @@ export async function computeMonotributoStatus(
   const tope = Number(propia.topeIngresosBrutos);
   const porcentaje = tope > 0 ? Math.round((facturacion12m / tope) * 1000) / 10 : 0;
 
-  // Categoría que realmente cubre la facturación actual — puede ser la propia, una superior
-  // (si ya se pasó), o ninguna (si superó hasta la K → exclusión).
-  const efectiva = categoriaQueAlcanza(escalaActual, facturacion12m);
-
   let level: MonotributoLevel;
   let categoriaEfectiva: string | null = null;
   let topeEfectivo: number | null = null;
   let porcentajeEfectivo: number | null = null;
 
-  if (!efectiva) {
-    level = 'exclusion';
-  } else if (efectiva.categoria === org.categoriaMonotributo) {
+  if (facturacion12m <= tope) {
+    // Dentro de su categoría declarada — nunca hay que buscar una "efectiva" acá (si se
+    // buscara sin este chequeo, con facturación baja siempre "encontraría" la Categoría A,
+    // la más chica, y diría por error que se pasó de categoría).
     level = porcentaje >= 80 ? 'yellow' : 'green';
   } else {
-    // Se pasó del tope de su categoría declarada, pero entra en una superior — se recalcula
-    // el % contra esa nueva categoría "efectiva", mismo criterio que la propia.
-    level = 'red';
-    categoriaEfectiva = efectiva.categoria;
-    topeEfectivo = Number(efectiva.topeIngresosBrutos);
-    porcentajeEfectivo = topeEfectivo > 0 ? Math.round((facturacion12m / topeEfectivo) * 1000) / 10 : 0;
+    // Se pasó del tope de su categoría declarada — buscar la categoría superior que
+    // realmente cubre lo facturado, o ninguna si superó hasta la K (exclusión).
+    const efectiva = categoriaQueAlcanza(escalaActual, facturacion12m);
+    if (!efectiva) {
+      level = 'exclusion';
+    } else {
+      level = 'red';
+      categoriaEfectiva = efectiva.categoria;
+      topeEfectivo = Number(efectiva.topeIngresosBrutos);
+      porcentajeEfectivo = topeEfectivo > 0 ? Math.round((facturacion12m / topeEfectivo) * 1000) / 10 : 0;
+    }
   }
 
   // --- Ventana fija de la última recategorización formal (Feb/Ago) ---
+  // Mismo criterio que arriba: solo tiene sentido "sugerir" una categoría distinta si lo
+  // facturado en esa ventana superó el tope de la categoría declarada — si no, cae dentro
+  // de la propia, sin importar cuán por debajo del tope esté.
   const ventana = ventanaFormalMasReciente(hoy);
   const totalVentanaFormal = await computeFacturacionEnVentana(supabase, userId, ventana.from, ventana.to);
-  const categoriaVentanaFormal = categoriaQueAlcanza(escalaActual, totalVentanaFormal);
+  const categoriaSugerida = totalVentanaFormal > tope
+    ? categoriaQueAlcanza(escalaActual, totalVentanaFormal)?.categoria ?? null
+    : org.categoriaMonotributo;
 
   return {
     applicable: true,
@@ -214,7 +221,7 @@ export async function computeMonotributoStatus(
     ventanaFormal: {
       ...ventana,
       total: totalVentanaFormal,
-      categoriaSugerida: categoriaVentanaFormal?.categoria ?? null,
+      categoriaSugerida,
     },
   };
 }
