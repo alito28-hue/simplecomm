@@ -53,6 +53,8 @@ export interface InvoiceResult {
 }
 
 function buildAuth(ticket: AuthTicket, cuit: string): string {
+  // eslint-disable-next-line no-console
+  console.log(`[wsfe] Auth.Cuit enviado: "${cuit}" (len=${cuit.length}, signer=${ticket.signer})`);
   return `<ar:Auth>
     <ar:Token>${ticket.token}</ar:Token>
     <ar:Sign>${ticket.sign}</ar:Sign>
