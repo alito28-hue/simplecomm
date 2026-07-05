@@ -25,7 +25,8 @@ export async function POST(req: NextRequest) {
   }
 
   const bytes = await file.arrayBuffer();
-  const text = new TextDecoder('windows-1252').decode(bytes);
+  // El export de "Mis Comprobantes" de ARCA viene en UTF-8 (verificado con un archivo real).
+  const text = new TextDecoder('utf-8').decode(bytes);
   const parsed = parseArcaRecibidosCSV(text);
   if (!parsed.length) {
     return NextResponse.json(
