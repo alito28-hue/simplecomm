@@ -73,6 +73,10 @@ export default function RegisterPage() {
         </form>
 
         <p className={styles.footer}>
+          Al continuar, aceptás nuestros <Link href="/terminos" className={styles.link}>Términos y condiciones</Link>.
+        </p>
+
+        <p className={styles.footer}>
           {t.auth.alreadyHave}{' '}
           <Link href="/login" className={styles.link}>{t.auth.signInLink}</Link>
         </p>

@@ -1,0 +1,12 @@
+.page { max-width: 820px; margin: 0 auto; padding: 2rem; }
+.back { font-size: 0.85rem; color: var(--blue); font-weight: 500; text-decoration: none; display: inline-block; margin-bottom: 1.5rem; }
+.hero { padding: 1rem 0 2rem; border-bottom: 1px solid var(--border); margin-bottom: 2rem; }
+.heroTitle { font-size: 2rem; font-weight: 700; font-family: var(--font-heading); margin-bottom: 0.5rem; }
+.heroDesc { font-size: 0.9rem; color: var(--text-muted); }
+.content { display: flex; flex-direction: column; gap: 2rem; }
+.section {}
+.sectionTitle { font-size: 1.1rem; font-weight: 700; font-family: var(--font-heading); margin-bottom: 0.75rem; color: var(--navy); }
+.section p { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.7; margin-bottom: 0.75rem; }
+.section ul { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.7; margin: 0 0 0.75rem 1.25rem; }
+.section li { margin-bottom: 0.35rem; }
+.notice { background: var(--warning-bg); border: 1px solid var(--warning); border-radius: var(--radius-md); padding: 1rem 1.25rem; font-size: 0.85rem; color: #92400e; margin-bottom: 2rem; }

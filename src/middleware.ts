@@ -1,7 +1,9 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password', '/onboarding'];
+const PUBLIC_PATHS = ['/login', '/register', '/forgot-password', '/reset-password', '/onboarding', '/terminos', '/faq'];
+// Páginas públicas que también deben verse estando logueado (no son solo pantallas de auth).
+const ALWAYS_ACCESSIBLE = ['/reset-password', '/terminos', '/faq'];
 
 export async function middleware(request: NextRequest) {
   // Las rutas de API (incluidos los webhooks de integraciones: Tiendanube, Shopify,
@@ -47,7 +49,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user && isPublic && pathname !== '/reset-password') {
+  if (user && isPublic && !ALWAYS_ACCESSIBLE.some(p => pathname.startsWith(p))) {
     const url = request.nextUrl.clone();
     url.pathname = '/dashboard';
     return NextResponse.redirect(url);
