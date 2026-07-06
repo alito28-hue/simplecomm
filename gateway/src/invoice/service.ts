@@ -138,8 +138,6 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
     // ── Obtener TA válido ──────────────────────────────────────────────────
     await log(req.tenantId, dbInvoice.id, requestId, 'wsaa', null, true, 'Obteniendo TA');
     const ticket = await getValidTicket(req.tenantId);
-    // eslint-disable-next-line no-console
-    console.log(`[diag] TA obtenido, contenido: ${Buffer.from(ticket.token, 'base64').toString('utf8')}`);
 
     // ── Obtener último número de comprobante ──────────────────────────────
     await log(req.tenantId, dbInvoice.id, requestId, 'wsfe_last', 'pkijs', true, 'Consultando último comprobante');
@@ -226,8 +224,11 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
 
-    // Si es error de autenticación WSAA, invalidar el TA para forzar renovación
-    if (message.toLowerCase().includes('wsaa') || message.toLowerCase().includes('token')) {
+    // Si es error de autenticación WSAA (TA inválido/expirado), invalidar el TA cacheado para
+    // forzar renovación. OJO: no matchear por "token" en general — el error de WSFE
+    // "ValidacionDeToken: No aparecio CUIT en lista de relaciones" contiene "Token" en el nombre
+    // pero es un problema de relación/delegación, no de vigencia del TA, y no se arregla renovándolo.
+    if (message.startsWith('WSAA ')) {
       await invalidateTicket(req.tenantId).catch(() => {});
     }
 
