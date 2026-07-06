@@ -138,6 +138,8 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
     // ── Obtener TA válido ──────────────────────────────────────────────────
     await log(req.tenantId, dbInvoice.id, requestId, 'wsaa', null, true, 'Obteniendo TA');
     const ticket = await getValidTicket(req.tenantId);
+    // eslint-disable-next-line no-console
+    console.log(`[diag] TA obtenido, contenido: ${Buffer.from(ticket.token, 'base64').toString('utf8')}`);
 
     // ── Obtener último número de comprobante ──────────────────────────────
     await log(req.tenantId, dbInvoice.id, requestId, 'wsfe_last', 'pkijs', true, 'Consultando último comprobante');
