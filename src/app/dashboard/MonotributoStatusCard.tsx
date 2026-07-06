@@ -117,75 +117,88 @@ export default function MonotributoStatusCard() {
         </div>
       </div>
 
-      {!data.lastSalesImportAt && (
-        <div style={{ padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', background: 'var(--warning-bg)', color: '#92400e', fontSize: '0.85rem', marginBottom: '0.75rem' }}>
-          ⚠ Todavía no importaste tus comprobantes emitidos de ARCA — la facturación de abajo solo cuenta lo emitido desde SimpleComm, y probablemente te falte historial de antes de sumarte.
-          Para una estimación correcta: entrá a ARCA → <strong>Mis Comprobantes</strong> → <strong>Emitidos</strong> → filtrá por fecha (los últimos 12 meses) → exportá el CSV, y subilo acá con el botón de arriba.
-        </div>
-      )}
-      {data.lastSalesImportAt && (
-        <p className="text-sm text-muted" style={{ marginBottom: '0.75rem' }}>
-          Última importación de ARCA: {formatFechaHora(data.lastSalesImportAt)}
-        </p>
-      )}
-
-      <div style={{ padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', background: meta.bg, color: meta.color, fontWeight: 700, fontSize: '0.9rem', marginBottom: '1rem' }}>
-        {level === 'exclusion' && (
-          <>⛔ Tu facturación de los últimos 12 meses ({money(data.facturacion12m ?? 0)}) superó el tope máximo del régimen ({money(data.topeMaximo ?? 0)}, Categoría K). Ya no correspondería seguir en Monotributo — consultá con tu contador o gestor y actualizá tu condición fiscal a Responsable Inscripto en Configuración → Empresa.</>
-        )}
-        {level === 'red' && (
-          <>✗ Superaste el tope de tu Categoría {data.categoria} ({money(data.tope ?? 0)}). Tu categoría real ahora sería <strong>{data.categoriaEfectiva}</strong>, con tope {money(data.topeEfectivo ?? 0)} — llevás usado el {porcentajeMostrado}% de ese nuevo tope. Consultá con tu contador o gestor para recategorizarte.</>
-        )}
-        {level === 'yellow' && (
-          <>⚠ Acercándote al límite de tu Categoría {data.categoria} — llevás usado el {porcentajeMostrado}% del tope anual.</>
-        )}
-        {level === 'green' && (
-          <>✓ Dentro de tu Categoría {data.categoria} — llevás usado el {porcentajeMostrado}% del tope anual.</>
-        )}
-      </div>
-
-      <div className={styles.statsGrid}>
-        <div className="card">
-          <div className={styles.statCard}>
-            <div className={styles.statLabel}>Facturación últimos 12 meses (móvil)</div>
-            <div className={styles.statValue}>{money(data.facturacion12m ?? 0)}</div>
-          </div>
-        </div>
-        <div className="card">
-          <div className={styles.statCard}>
-            <div className={styles.statLabel}>{level === 'red' ? `Tope Categoría ${data.categoriaEfectiva}` : `Tope Categoría ${data.categoria}`}</div>
-            <div className={styles.statValue}>{money((level === 'red' ? data.topeEfectivo : data.tope) ?? 0)}</div>
-          </div>
-        </div>
-        <div className="card">
-          <div className={styles.statCard}>
-            <div className={styles.statLabel}>% usado del tope</div>
-            <div className={styles.statValue} style={{ color: meta.color === '#fff' ? 'var(--error)' : meta.color }}>{porcentajeMostrado}%</div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ height: 8, borderRadius: 'var(--radius-full)', background: 'var(--surface-low)', marginTop: '1rem', overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${Math.min(porcentajeMostrado, 100)}%`, background: meta.color === '#fff' ? 'var(--error)' : meta.color, transition: 'width 0.3s' }} />
-      </div>
-
-      <p className="text-sm text-muted" style={{ marginTop: '0.85rem' }}>
-        Estimación informativa en base a tu facturación real (propia + importada de ARCA), calculada con ventana móvil de 365 días como exige ARCA (no por año calendario). No reemplaza el cálculo oficial.
-        {(level === 'red' || level === 'exclusion') && <> Simplecomm no da asesoramiento impositivo.</>}
-      </p>
-
-      {data.ventanaFormal && (
-        <div style={{ marginTop: '1rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border)' }}>
-          <p className="text-sm" style={{ fontWeight: 600 }}>{data.ventanaFormal.label} (corte fijo: {formatFecha(data.ventanaFormal.from)} — {formatFecha(data.ventanaFormal.to)})</p>
-          <p className="text-sm text-muted" style={{ marginTop: '0.15rem' }}>
-            Facturación de ese período: {money(data.ventanaFormal.total)}
-            {data.ventanaFormal.categoriaSugerida && data.ventanaFormal.categoriaSugerida !== data.categoria && (
-              <> — correspondería a la Categoría {data.ventanaFormal.categoriaSugerida}</>
-            )}
-            {data.ventanaFormal.categoriaSugerida === data.categoria && <> — dentro de tu categoría actual</>}
-            {!data.ventanaFormal.categoriaSugerida && <> — superó el tope máximo del régimen</>}
+      {!data.lastSalesImportAt ? (
+        <div style={{ padding: '2rem 1.5rem', borderRadius: 'var(--radius-md)', background: 'var(--surface-low)', border: '1px dashed var(--border)', textAlign: 'center' }}>
+          <p style={{ fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+            📥 Importá acá los últimos 12 meses de tu facturación
           </p>
+          <p className="text-sm text-muted" style={{ marginBottom: '1rem', maxWidth: 520, marginLeft: 'auto', marginRight: 'auto' }}>
+            Para hacerlo, primero exportá esa información en ARCA (<strong>Mis Comprobantes → Emitidos</strong>, filtrando por los últimos 12 meses) y luego importala desde acá con el botón de arriba.
+          </p>
+          <a
+            href="https://www.youtube.com/watch?v=-6ts0h5N5es"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ color: 'var(--blue)', fontSize: '0.85rem', fontWeight: 600 }}
+          >
+            🎥 Video de ejemplo: cómo exportar e importar el archivo →
+          </a>
         </div>
+      ) : (
+        <>
+          <p className="text-sm text-muted" style={{ marginBottom: '0.75rem' }}>
+            Última importación de ARCA: {formatFechaHora(data.lastSalesImportAt)}
+          </p>
+
+          <div style={{ padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', background: meta.bg, color: meta.color, fontWeight: 700, fontSize: '0.9rem', marginBottom: '1rem' }}>
+            {level === 'exclusion' && (
+              <>⛔ Tu facturación de los últimos 12 meses ({money(data.facturacion12m ?? 0)}) superó el tope máximo del régimen ({money(data.topeMaximo ?? 0)}, Categoría K). Ya no correspondería seguir en Monotributo — consultá con tu contador o gestor y actualizá tu condición fiscal a Responsable Inscripto en Configuración → Empresa.</>
+            )}
+            {level === 'red' && (
+              <>✗ Superaste el tope de tu Categoría {data.categoria} ({money(data.tope ?? 0)}). Tu categoría real ahora sería <strong>{data.categoriaEfectiva}</strong>, con tope {money(data.topeEfectivo ?? 0)} — llevás usado el {porcentajeMostrado}% de ese nuevo tope. Consultá con tu contador o gestor para recategorizarte.</>
+            )}
+            {level === 'yellow' && (
+              <>⚠ Acercándote al límite de tu Categoría {data.categoria} — llevás usado el {porcentajeMostrado}% del tope anual.</>
+            )}
+            {level === 'green' && (
+              <>✓ Dentro de tu Categoría {data.categoria} — llevás usado el {porcentajeMostrado}% del tope anual.</>
+            )}
+          </div>
+
+          <div className={styles.statsGrid}>
+            <div className="card">
+              <div className={styles.statCard}>
+                <div className={styles.statLabel}>Facturación últimos 12 meses (móvil)</div>
+                <div className={styles.statValue}>{money(data.facturacion12m ?? 0)}</div>
+              </div>
+            </div>
+            <div className="card">
+              <div className={styles.statCard}>
+                <div className={styles.statLabel}>{level === 'red' ? `Tope Categoría ${data.categoriaEfectiva}` : `Tope Categoría ${data.categoria}`}</div>
+                <div className={styles.statValue}>{money((level === 'red' ? data.topeEfectivo : data.tope) ?? 0)}</div>
+              </div>
+            </div>
+            <div className="card">
+              <div className={styles.statCard}>
+                <div className={styles.statLabel}>% usado del tope</div>
+                <div className={styles.statValue} style={{ color: meta.color === '#fff' ? 'var(--error)' : meta.color }}>{porcentajeMostrado}%</div>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ height: 8, borderRadius: 'var(--radius-full)', background: 'var(--surface-low)', marginTop: '1rem', overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${Math.min(porcentajeMostrado, 100)}%`, background: meta.color === '#fff' ? 'var(--error)' : meta.color, transition: 'width 0.3s' }} />
+          </div>
+
+          <p className="text-sm text-muted" style={{ marginTop: '0.85rem' }}>
+            Estimación informativa en base a tu facturación real (propia + importada de ARCA), calculada con ventana móvil de 365 días como exige ARCA (no por año calendario). No reemplaza el cálculo oficial.
+            {(level === 'red' || level === 'exclusion') && <> Simplecomm no da asesoramiento impositivo.</>}
+          </p>
+
+          {data.ventanaFormal && (
+            <div style={{ marginTop: '1rem', paddingTop: '0.85rem', borderTop: '1px solid var(--border)' }}>
+              <p className="text-sm" style={{ fontWeight: 600 }}>{data.ventanaFormal.label} (corte fijo: {formatFecha(data.ventanaFormal.from)} — {formatFecha(data.ventanaFormal.to)})</p>
+              <p className="text-sm text-muted" style={{ marginTop: '0.15rem' }}>
+                Facturación de ese período: {money(data.ventanaFormal.total)}
+                {data.ventanaFormal.categoriaSugerida && data.ventanaFormal.categoriaSugerida !== data.categoria && (
+                  <> — correspondería a la Categoría {data.ventanaFormal.categoriaSugerida}</>
+                )}
+                {data.ventanaFormal.categoriaSugerida === data.categoria && <> — dentro de tu categoría actual</>}
+                {!data.ventanaFormal.categoriaSugerida && <> — superó el tope máximo del régimen</>}
+              </p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
