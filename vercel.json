@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/facturas-programadas",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/monotributo-categorias",
+      "schedule": "0 13 * * *"
     }
   ]
 }

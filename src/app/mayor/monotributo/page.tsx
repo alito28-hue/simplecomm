@@ -12,6 +12,10 @@ interface CategoriaRow {
 
 const CATEGORIAS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
 const EMPTY_MONTOS = Object.fromEntries(CATEGORIAS.map(c => [c, ''])) as Record<string, string>;
+// Si la última vigencia cargada tiene más de esto, avisamos — mejor un falso positivo (la
+// escala semestral sigue siendo la misma) que quedarnos meses sin darnos cuenta si ARCA
+// empieza a actualizar más seguido.
+const DIAS_AVISO_VENCIDA = 35;
 
 function money(n: number) { return `$${n.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`; }
 
@@ -38,6 +42,10 @@ export default function MonotributoAdminPage() {
   }, []);
 
   const vigencias = Array.from(new Set(rows.map(r => r.vigenteDesde))).sort((a, b) => b.localeCompare(a));
+  const diasDesdeUltima = vigencias.length
+    ? Math.floor((Date.now() - new Date(vigencias[0] + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24))
+    : null;
+  const escalaVencida = diasDesdeUltima !== null && diasDesdeUltima > DIAS_AVISO_VENCIDA;
 
   function openNew() {
     setVigenteDesde('');
@@ -119,11 +127,23 @@ export default function MonotributoAdminPage() {
           <h1 className={styles.title}>Categorías de Monotributo</h1>
           <p className={styles.subtitle}>
             Topes de ingresos brutos anuales por categoría, usados para las alertas de recategorización.
-            Actualizar cada vez que ARCA publique una nueva escala (ventanas de enero y julio).
+            Hay un chequeo automático diario que intenta cargar sola la escala nueva cuando ARCA la
+            publica (avisa por mail si falla o si carga una vigencia nueva) — esto es para revisar o
+            corregir a mano si hiciera falta.
           </p>
         </div>
         <button className="btn btn-primary" onClick={openNew}>+ Nueva vigencia</button>
       </div>
+
+      {!loading && escalaVencida && (
+        <div className="card" style={{ padding: '1rem 1.25rem', background: 'var(--warning-bg)', color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          ⚠ La última escala cargada es del {new Date(vigencias[0] + 'T00:00:00').toLocaleDateString('es-AR')}
+          {' '}({diasDesdeUltima} días). Verificá si ARCA publicó una escala nueva en{' '}
+          <a href="https://www.afip.gob.ar/monotributo/categorias.asp" target="_blank" rel="noreferrer" style={{ color: 'inherit', textDecoration: 'underline' }}>
+            afip.gob.ar/monotributo/categorias.asp
+          </a>.
+        </div>
+      )}
 
       {loading ? (
         <div className="card" style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)' }}>Cargando...</div>
