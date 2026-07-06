@@ -16,13 +16,18 @@ export default function OnboardingChecklist() {
   const [allDone, setAllDone] = useState(true);
 
   useEffect(() => {
-    fetch('/api/dashboard/onboarding')
-      .then(r => r.json())
-      .then(data => {
-        setSteps(data.steps ?? []);
-        setAllDone(data.allDone ?? true);
-      })
-      .catch(() => {});
+    function load() {
+      fetch('/api/dashboard/onboarding')
+        .then(r => r.json())
+        .then(data => {
+          setSteps(data.steps ?? []);
+          setAllDone(data.allDone ?? true);
+        })
+        .catch(() => {});
+    }
+    load();
+    window.addEventListener('onboarding:refresh', load);
+    return () => window.removeEventListener('onboarding:refresh', load);
   }, []);
 
   if (allDone || steps.length === 0) return null;

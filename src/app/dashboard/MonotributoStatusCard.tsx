@@ -71,6 +71,7 @@ export default function MonotributoStatusCard() {
       if (!res.ok) throw new Error(d.error || 'No se pudo importar el archivo');
       alert(`Importación completa: ${d.rowCount} comprobantes (${d.newCount} nuevos, ${d.updatedCount} actualizados).`);
       load();
+      window.dispatchEvent(new Event('onboarding:refresh'));
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Error al importar el archivo');
     } finally {
