@@ -6,6 +6,7 @@ import styles from './dashboard.module.css';
 import OnboardingChecklist from './OnboardingChecklist';
 import IvaPositionCard from './IvaPositionCard';
 import MonotributoStatusCard from './MonotributoStatusCard';
+import NegocioResumenCard from './NegocioResumenCard';
 
 interface LastInvoice {
   invoice_id?: string;
@@ -128,6 +129,7 @@ export default function DashboardData() {
         </div>
       </div>
 
+      <NegocioResumenCard />
       <IvaPositionCard />
       {isMonotributista && <MonotributoStatusCard />}
 
