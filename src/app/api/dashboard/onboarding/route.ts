@@ -58,7 +58,7 @@ export async function GET() {
       id: 'importar-arca',
       label: 'Comprobantes emitidos de ARCA importados (últimos 12 meses)',
       done: !!importLog,
-      href: '/dashboard',
+      href: '/dashboard/billing',
     });
   }
 

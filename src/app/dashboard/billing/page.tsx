@@ -1,6 +1,7 @@
 import styles from './billing.module.css';
 import Link from 'next/link';
 import BillingTable from './BillingTable';
+import ImportarVentasButton from './ImportarVentasButton';
 
 export default function BillingPage() {
   return (
@@ -11,6 +12,7 @@ export default function BillingPage() {
           <p className={styles.pageSubtitle}>Tus comprobantes electrónicos emitidos.</p>
         </div>
         <div className={styles.headerActions}>
+          <ImportarVentasButton />
           <Link href="/dashboard/facturacion/simplificada" className="btn btn-primary btn-sm">
             + Nueva factura
           </Link>

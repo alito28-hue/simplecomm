@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import styles from './dashboard.module.css';
 
@@ -49,8 +49,6 @@ const LEVEL_META = {
 
 export default function MonotributoStatusCard() {
   const [data, setData] = useState<MonotributoStatus | null>(null);
-  const [importing, setImporting] = useState(false);
-  const csvRef = useRef<HTMLInputElement>(null);
 
   function load() {
     fetch('/api/dashboard/monotributo-status')
@@ -60,25 +58,6 @@ export default function MonotributoStatusCard() {
   }
 
   useEffect(load, []);
-
-  async function importarVentas(file: File) {
-    setImporting(true);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const res = await fetch('/api/organizacion/iva/importar-emitidos', { method: 'POST', body: fd });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || 'No se pudo importar el archivo');
-      alert(`Importación completa: ${d.rowCount} comprobantes (${d.newCount} nuevos, ${d.updatedCount} actualizados).`);
-      load();
-      window.dispatchEvent(new Event('onboarding:refresh'));
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Error al importar el archivo');
-    } finally {
-      setImporting(false);
-      if (csvRef.current) csvRef.current.value = '';
-    }
-  }
 
   if (!data) return null;
 
@@ -108,12 +87,7 @@ export default function MonotributoStatusCard() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h2 className={styles.sectionTitle}>Posición de Monotributo — Categoría {data.categoria}</h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <input ref={csvRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }}
-            onChange={e => { const f = e.target.files?.[0]; if (f) importarVentas(f); }} />
-          <button className={styles.viewAll} style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-            onClick={() => csvRef.current?.click()} disabled={importing}>
-            {importing ? 'Importando...' : '📥 Importar comprobantes emitidos de ARCA'}
-          </button>
+          <Link href="/dashboard/billing" className={styles.viewAll}>📥 Importar comprobantes de ARCA →</Link>
           <Link href="/dashboard/organizacion/empresa" className={styles.viewAll}>Cambiar categoría →</Link>
         </div>
       </div>
@@ -121,10 +95,11 @@ export default function MonotributoStatusCard() {
       {!data.lastSalesImportAt ? (
         <div style={{ padding: '2rem 1.5rem', borderRadius: 'var(--radius-md)', background: 'var(--surface-low)', border: '1px dashed var(--border)', textAlign: 'center' }}>
           <p style={{ fontWeight: 700, marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-            📥 Importá acá los últimos 12 meses de tu facturación
+            📥 Importá los últimos 12 meses de tu facturación
           </p>
           <p className="text-sm text-muted" style={{ marginBottom: '1rem', maxWidth: 520, marginLeft: 'auto', marginRight: 'auto' }}>
-            Para hacerlo, primero exportá esa información en ARCA (<strong>Mis Comprobantes → Emitidos</strong>, filtrando por los últimos 12 meses) y luego importala desde acá con el botón de arriba.
+            Primero exportá esa información en ARCA (<strong>Mis Comprobantes → Emitidos</strong>, filtrando por los últimos 12 meses) y
+            luego importala desde <Link href="/dashboard/billing" style={{ color: 'var(--blue)' }}>Comprobantes</Link>.
           </p>
           <a
             href="https://www.youtube.com/watch?v=-6ts0h5N5es"

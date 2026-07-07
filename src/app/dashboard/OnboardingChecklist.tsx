@@ -45,13 +45,10 @@ export default function OnboardingChecklist() {
           <div key={step.id} className={`${styles.onboardingStep} ${step.done ? styles.stepDone : ''}`}>
             <span className={styles.stepCheck}>{step.done ? '✓' : '○'}</span>
             <span className={styles.stepLabel}>{step.label}</span>
-            {!step.done && step.id !== 'importar-arca' && (
+            {!step.done && (
               <Link href={step.href} className={styles.stepLink}>
-                {step.id === 'factura' ? 'Emitir →' : 'Configurar →'}
+                {step.id === 'factura' ? 'Emitir →' : step.id === 'importar-arca' ? 'Importar →' : 'Configurar →'}
               </Link>
-            )}
-            {!step.done && step.id === 'importar-arca' && (
-              <span className={styles.stepLink} style={{ cursor: 'default' }}>Ver abajo ↓</span>
             )}
           </div>
         ))}

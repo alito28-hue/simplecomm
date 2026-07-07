@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import styles from '../clientes/clientes.module.css';
 import dashStyles from '../../dashboard.module.css';
@@ -35,8 +35,6 @@ function formatDateTime(s: string) {
 export default function IvaPage() {
   const [data, setData] = useState<IvaPosition | null>(null);
   const [loading, setLoading] = useState(true);
-  const [importing, setImporting] = useState(false);
-  const csvRef = useRef<HTMLInputElement>(null);
 
   const [historial, setHistorial] = useState<HistorialMes[]>([]);
   const [vencimientoGrupo, setVencimientoGrupo] = useState<string | null>(null);
@@ -68,25 +66,6 @@ export default function IvaPage() {
     loadHistorial();
   }, []);
 
-  async function importVentas(file: File) {
-    setImporting(true);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const res = await fetch('/api/organizacion/iva/importar-emitidos', { method: 'POST', body: fd });
-      const d = await res.json();
-      if (!res.ok) throw new Error(d.error || 'No se pudo importar el archivo');
-      alert(`Importación completa: ${d.rowCount} comprobantes (${d.newCount} nuevos, ${d.updatedCount} actualizados).`);
-      load();
-      loadHistorial();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Error al importar el archivo');
-    } finally {
-      setImporting(false);
-      if (csvRef.current) csvRef.current.value = '';
-    }
-  }
-
   if (loading) {
     return (
       <div className={styles.page}>
@@ -116,19 +95,23 @@ export default function IvaPage() {
       <div className={styles.pageHeader}>
         <div>
           <h1 className={styles.pageTitle}>IVA</h1>
-          <p className={styles.pageSubtitle}>Posición de IVA (ventas menos compras) e importación de comprobantes de ARCA.</p>
+          <p className={styles.pageSubtitle}>Posición de IVA (ventas menos compras).</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <input ref={csvRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }}
-            onChange={e => { const f = e.target.files?.[0]; if (f) importVentas(f); }} />
-          <button className="btn btn-outline btn-sm" onClick={() => csvRef.current?.click()} disabled={importing}>
-            {importing ? 'Importando...' : '📥 Importar ventas de ARCA (emitidos)'}
-          </button>
+          <Link href="/dashboard/billing" className="btn btn-outline btn-sm">
+            📥 Importar ventas de ARCA →
+          </Link>
           <Link href="/dashboard/organizacion/compras" className="btn btn-primary btn-sm">
             🧾 Ir a Compras →
           </Link>
         </div>
       </div>
+
+      <p className="text-sm text-muted">
+        Los comprobantes de venta se importan desde <Link href="/dashboard/billing" style={{ color: 'var(--blue)' }}>Comprobantes</Link>, y
+        los de compra desde <Link href="/dashboard/organizacion/compras" style={{ color: 'var(--blue)' }}>Compras</Link>. Esta página solo
+        muestra la posición calculada a partir de esos comprobantes.
+      </p>
 
       <div className="card" style={{ padding: '1.25rem 1.5rem' }}>
         <h2 className={dashStyles.sectionTitle} style={{ marginBottom: '0.75rem' }}>Este mes</h2>

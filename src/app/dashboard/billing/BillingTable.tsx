@@ -50,6 +50,13 @@ export default function BillingTable() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const onRefresh = () => setRefreshKey(k => k + 1);
+    window.addEventListener('comprobantes:refresh', onRefresh);
+    return () => window.removeEventListener('comprobantes:refresh', onRefresh);
+  }, []);
   const [ncModal, setNcModal] = useState<NcModal | null>(null);
   const [ncLoading, setNcLoading] = useState(false);
   const [ncResult, setNcResult] = useState<string | null>(null);
@@ -93,7 +100,7 @@ export default function BillingTable() {
     return () => {
       cancelled = true;
     };
-  }, [page, statusFilter]);
+  }, [page, statusFilter, refreshKey]);
 
   async function togglePaid(inv: Invoice) {
     const current = payments[inv.invoice_id]?.status ?? 'PENDING';
