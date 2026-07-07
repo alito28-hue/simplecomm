@@ -68,7 +68,9 @@ export default function BillingTable() {
         const list: Invoice[] = data.data ?? [];
         setInvoices(list);
         setTotal(data.meta?.total ?? 0);
-        const ids = list.filter(i => i.editable !== false).map(i => i.invoice_id);
+        // El estado de cobro se puede marcar manualmente incluso para lo importado de ARCA
+        // (ARCA no notifica cobros, siempre se marca a mano igual que el resto).
+        const ids = list.map(i => i.invoice_id);
         if (ids.length > 0) {
           fetch(`/api/pagos?ids=${ids.join(',')}`)
             .then(r => r.json())
@@ -217,20 +219,17 @@ export default function BillingTable() {
                   )}
                 </td>
                 <td>
-                  {inv.status === 'issued' && inv.editable !== false && (
+                  {inv.status === 'issued' && (
                     <button
                       className={`badge ${payments[inv.invoice_id]?.status === 'PAID' ? 'badge-success' : 'badge-gray'}`}
                       style={{ border: 'none', cursor: 'pointer' }}
                       onClick={() => togglePaid(inv)}
-                      title={payments[inv.invoice_id]?.source === 'mercadopago' ? 'Cobrada automáticamente vía Mercado Pago' : 'Click para cambiar el estado de cobro'}
+                      title={payments[inv.invoice_id]?.source === 'mercadopago' ? 'Cobrada automáticamente vía Mercado Pago' : 'Click para cambiar el estado de cobro (manual)'}
                     >
                       {payments[inv.invoice_id]?.status === 'PAID'
                         ? (payments[inv.invoice_id]?.source === 'mercadopago' ? '✓ Cobrada · MP' : '✓ Cobrada')
                         : 'Pendiente'}
                     </button>
-                  )}
-                  {inv.status === 'issued' && inv.editable === false && (
-                    <span className="text-muted text-sm" title="Comprobante importado de ARCA, el cobro no se gestiona acá">—</span>
                   )}
                 </td>
                 <td>
