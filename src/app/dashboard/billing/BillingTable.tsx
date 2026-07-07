@@ -221,14 +221,14 @@ export default function BillingTable() {
                 <td>
                   {inv.status === 'issued' && (
                     <button
-                      className={`badge ${payments[inv.invoice_id]?.status === 'PAID' ? 'badge-success' : 'badge-gray'}`}
+                      className={`badge ${payments[inv.invoice_id]?.status === 'PAID' ? 'badge-success' : 'badge-error'}`}
                       style={{ border: 'none', cursor: 'pointer' }}
                       onClick={() => togglePaid(inv)}
                       title={payments[inv.invoice_id]?.source === 'mercadopago' ? 'Cobrada automáticamente vía Mercado Pago' : 'Click para cambiar el estado de cobro (manual)'}
                     >
                       {payments[inv.invoice_id]?.status === 'PAID'
-                        ? (payments[inv.invoice_id]?.source === 'mercadopago' ? '✓ Cobrada · MP' : '✓ Cobrada')
-                        : 'Pendiente'}
+                        ? (payments[inv.invoice_id]?.source === 'mercadopago' ? '✓ Sí · MP' : '✓ Sí')
+                        : '✗ No'}
                     </button>
                   )}
                 </td>
