@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { registrarVentaItem } from '@/lib/venta-items';
 import { randomUUID } from 'crypto';
 
 export interface OrderBuyer {
@@ -130,6 +131,16 @@ export async function processIncomingOrder(
             .eq('id', product.id);
         }
         productsMatched.push(product.id);
+        // La factura de este pedido la emite cada webhook aparte con el Gateway (no acá), así
+        // que no hay invoiceId todavía — se linkea por externalOrderId para Rentabilidad.
+        await registrarVentaItem({
+          organizationId,
+          productId: product.id,
+          origin: platform,
+          externalOrderId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        });
       } else {
         const { data: created, error } = await db.from('products').insert({
           id: randomUUID(),

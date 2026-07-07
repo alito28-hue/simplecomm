@@ -6,6 +6,7 @@ import { checkAndIncrementUsage } from '@/lib/usage';
 import { getAllowedInvoiceLetters } from '@/lib/fiscal';
 import { translateGatewayError } from '@/lib/afip-errors';
 import { buildInvoiceFilename } from '@/lib/invoice-filename';
+import { registrarVentaItem } from '@/lib/venta-items';
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -124,7 +125,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: translateGatewayError(data.error) }, { status: 502 });
   }
 
-  // Descontar stock del producto vendido (si tiene control de stock activado)
+  // Descontar stock del producto vendido (si tiene control de stock activado) y registrar el
+  // renglón de venta (cantidad + precio + costo copiado en este momento) para Rentabilidad.
   if (productId && quantity > 0) {
     const { data: product } = await supabase.from('products')
       .select('stock').eq('id', productId).eq('organizationId', user.id).maybeSingle();
@@ -133,6 +135,14 @@ export async function POST(req: NextRequest) {
         .update({ stock: Math.max(0, product.stock - quantity), updatedAt: new Date().toISOString() })
         .eq('id', productId).eq('organizationId', user.id);
     }
+    await registrarVentaItem({
+      organizationId: user.id,
+      productId,
+      origin: 'simplecomm',
+      invoiceId: data.invoice_id ?? null,
+      quantity,
+      unitPrice: amount / quantity,
+    });
   }
 
   // Send PDF by email if requested

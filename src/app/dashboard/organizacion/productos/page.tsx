@@ -5,12 +5,12 @@ import styles from '../clientes/clientes.module.css';
 
 interface Producto {
   id: string; code: string; sku: string | null; description: string; netPrice: number; ivaRate: string;
-  stock: number | null; needsReview: boolean;
+  stock: number | null; needsReview: boolean; costo: number | null;
   pesoKg: number | null; altoCm: number | null; anchoCm: number | null; profundidadCm: number | null;
 }
 const IVA_RATES = ['EXENTO','NO_GRAVADO','IVA_2_5','IVA_5','IVA_10_5','IVA_21','IVA_27'];
 const EMPTY = {
-  code: '', sku: '', description: '', netPrice: '', ivaRate: 'IVA_21', stock: '',
+  code: '', sku: '', description: '', netPrice: '', ivaRate: 'IVA_21', stock: '', costo: '',
   pesoKg: '', altoCm: '', anchoCm: '', profundidadCm: '',
 };
 
@@ -58,6 +58,7 @@ export default function ProductosPage() {
     setForm({
       code: p.code, sku: p.sku ?? '', description: p.description, netPrice: String(p.netPrice), ivaRate: p.ivaRate,
       stock: p.stock === null ? '' : String(p.stock),
+      costo: p.costo === null ? '' : String(p.costo),
       pesoKg: p.pesoKg === null ? '' : String(p.pesoKg),
       altoCm: p.altoCm === null ? '' : String(p.altoCm),
       anchoCm: p.anchoCm === null ? '' : String(p.anchoCm),
@@ -77,6 +78,7 @@ export default function ProductosPage() {
         sku: form.sku || null,
         netPrice: parseFloat(form.netPrice) || 0,
         stock: form.stock === '' ? null : parseInt(form.stock, 10),
+        costo: form.costo === '' ? null : parseFloat(form.costo),
         pesoKg: form.pesoKg === '' ? null : parseFloat(form.pesoKg),
         altoCm: form.altoCm === '' ? null : parseFloat(form.altoCm),
         anchoCm: form.anchoCm === '' ? null : parseFloat(form.anchoCm),
@@ -114,13 +116,13 @@ export default function ProductosPage() {
         <div className="table-wrap">
           <table className="table">
             <thead>
-              <tr><th>Código</th><th>SKU</th><th>Descripción</th><th>Precio neto</th><th>Alícuota IVA</th><th>Stock</th><th></th></tr>
+              <tr><th>Código</th><th>SKU</th><th>Descripción</th><th>Precio neto</th><th>Costo</th><th>Alícuota IVA</th><th>Stock</th><th></th></tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Cargando...</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Cargando...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Sin productos. Agregá el primero.</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Sin productos. Agregá el primero.</td></tr>
               ) : items.map(p => (
                 <tr key={p.id}>
                   <td><span className="mono text-sm">{p.code}</span></td>
@@ -130,6 +132,11 @@ export default function ProductosPage() {
                     {p.needsReview && <span className="badge badge-warning" style={{ marginLeft: '0.5rem' }} title="Creado automáticamente desde un pedido de una tienda conectada — revisá nombre y precio">⚠ Revisar</span>}
                   </td>
                   <td><strong>${Number(p.netPrice).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong></td>
+                  <td>
+                    {p.costo === null
+                      ? <span className="text-sm text-muted" title="Sin costo cargado — la rentabilidad de este producto no se puede calcular">—</span>
+                      : <span className="text-sm">${Number(p.costo).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>}
+                  </td>
                   <td><span className="badge badge-blue">{p.ivaRate.replace('_', ' ')}</span></td>
                   <td>
                     {p.stock === null ? <span className="text-sm text-muted">—</span> :
@@ -177,6 +184,12 @@ export default function ProductosPage() {
                 <div className={styles.field}>
                   <label>Stock</label>
                   <input className="input" type="number" min="0" step="1" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: e.target.value }))} placeholder="Vacío = sin control de stock" />
+                </div>
+              </div>
+              <div className={styles.row}>
+                <div className={styles.field}>
+                  <label>Costo (precio de compra)</label>
+                  <input className="input" type="number" step="0.01" min="0" value={form.costo} onChange={e => setForm(f => ({ ...f, costo: e.target.value }))} placeholder="Vacío = sin dato de costo" />
                 </div>
               </div>
               <div className={styles.row}>

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
+import { registrarVentaItem } from '@/lib/venta-items';
 
 /**
  * Detecta tipo de factura igual que en ML:
@@ -212,6 +213,14 @@ export async function POST(req: NextRequest) {
               .update({ stock: Math.max(0, product.stock - pendingSale.quantity), updatedAt: new Date().toISOString() })
               .eq('id', pendingSale.productId).eq('organizationId', integration.organizationId);
           }
+          await registrarVentaItem({
+            organizationId: integration.organizationId,
+            productId: pendingSale.productId,
+            origin: 'mercadopago',
+            invoiceId: invoiceData.invoice_id ?? null,
+            quantity: pendingSale.quantity,
+            unitPrice: pendingSale.amount / pendingSale.quantity,
+          });
         }
         await admin.from('pending_sales')
           .update({ status: 'PAID', paidAt: new Date().toISOString() })

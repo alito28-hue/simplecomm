@@ -45,6 +45,7 @@ const MODULES = [
   { href: '/dashboard/billing',                        icon: '🧾', title: 'Comprobantes',         desc: 'Ver, conciliar y descargar facturas' },
   { href: '/dashboard/contactos',                       icon: '👤', title: 'Clientes',             desc: 'Directorio y datos fiscales' },
   { href: '/dashboard/organizacion/productos',          icon: '📦', title: 'Productos y Stock',    desc: 'Catálogo, precios e inventario' },
+  { href: '/dashboard/organizacion/rentabilidad',        icon: '💹', title: 'Rentabilidad',         desc: 'Costo, margen y % de ganancia por venta' },
   { href: '/dashboard/organizacion/listas-precios',      icon: '💲', title: 'Listas de Precios',    desc: 'Precios especiales por lista' },
   { href: '/dashboard/organizacion/centros-costo',       icon: '🏷', title: 'Centros de Costo',     desc: 'Agrupá clientes por proyecto' },
   { href: '/dashboard/organizacion/iva',                icon: '📊', title: 'IVA',                  desc: 'Posición de IVA, compras e importación de ARCA', ivaOnly: true },
