@@ -14,6 +14,7 @@ interface LastInvoice {
   total_amount: number;
   created_at: string;
   status: string;
+  origin?: string;
 }
 
 interface KPIs {
@@ -152,6 +153,7 @@ export default function DashboardData() {
                   <th>Fecha</th>
                   <th>Receptor</th>
                   <th>Monto</th>
+                  <th>Origen</th>
                   <th>Estado</th>
                 </tr>
               </thead>
@@ -162,6 +164,7 @@ export default function DashboardData() {
                     <td className="text-sm text-muted">{formatDate(inv.created_at)}</td>
                     <td>{inv.buyer_name}</td>
                     <td><strong>{formatMoney(inv.total_amount)}</strong></td>
+                    <td><span className="badge badge-gray text-xs">{inv.origin ?? 'manual'}</span></td>
                     <td>
                       {inv.status === 'issued' && <span className="badge badge-success">✓ Emitida</span>}
                       {inv.status === 'pending' && <span className="badge badge-warning">⏳ Pendiente</span>}

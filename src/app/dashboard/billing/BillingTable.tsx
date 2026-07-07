@@ -18,9 +18,18 @@ interface Invoice {
   cae_due_date: string | null;
   description: string | null;
   source_app: string | null;
+  origin?: string;
+  editable?: boolean;
   created_at: string;
   error: string | null;
 }
+
+type StatusFilter = 'all' | 'issued' | 'error';
+const FILTERS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'Todas' },
+  { value: 'issued', label: 'Completas' },
+  { value: 'error', label: 'Error' },
+];
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -40,6 +49,7 @@ export default function BillingTable() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [ncModal, setNcModal] = useState<NcModal | null>(null);
   const [ncLoading, setNcLoading] = useState(false);
   const [ncResult, setNcResult] = useState<string | null>(null);
@@ -50,14 +60,15 @@ export default function BillingTable() {
   useEffect(() => {
     let cancelled = false;
 
-    fetch(`/api/facturas?page=${page}&limit=${limit}`)
+    setLoading(true);
+    fetch(`/api/facturas?page=${page}&limit=${limit}&status=${statusFilter}`)
       .then(r => r.json())
       .then(data => {
         if (cancelled) return;
         const list: Invoice[] = data.data ?? [];
         setInvoices(list);
         setTotal(data.meta?.total ?? 0);
-        const ids = list.map(i => i.invoice_id);
+        const ids = list.filter(i => i.editable !== false).map(i => i.invoice_id);
         if (ids.length > 0) {
           fetch(`/api/pagos?ids=${ids.join(',')}`)
             .then(r => r.json())
@@ -80,7 +91,7 @@ export default function BillingTable() {
     return () => {
       cancelled = true;
     };
-  }, [page]);
+  }, [page, statusFilter]);
 
   async function togglePaid(inv: Invoice) {
     const current = payments[inv.invoice_id]?.status ?? 'PENDING';
@@ -125,12 +136,6 @@ export default function BillingTable() {
     URL.revokeObjectURL(url);
   }
 
-  if (loading) return (
-    <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-      Cargando comprobantes...
-    </div>
-  );
-
   return (
     <div className="card">
       <div className={styles.tableHeader}>
@@ -138,6 +143,23 @@ export default function BillingTable() {
         <span className="badge badge-success">● ARCA Conectado</span>
       </div>
 
+      <div style={{ display: 'flex', gap: '0.5rem', padding: '0 1.25rem 1rem' }}>
+        {FILTERS.map(f => (
+          <button
+            key={f.value}
+            className={`btn btn-sm ${statusFilter === f.value ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => { setStatusFilter(f.value); setPage(1); }}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+          Cargando comprobantes...
+        </div>
+      ) : (
       <div className="table-wrap">
         <table className="table">
           <thead>
@@ -185,7 +207,7 @@ export default function BillingTable() {
                   {inv.cae_due_date ? formatCaeDate(inv.cae_due_date) : '—'}
                 </td>
                 <td>
-                  <span className="badge badge-gray text-xs">{inv.source_app ?? 'manual'}</span>
+                  <span className="badge badge-gray text-xs">{inv.origin ?? inv.source_app ?? 'manual'}</span>
                 </td>
                 <td>
                   {inv.status === 'issued' && <span className="badge badge-success">✓ Emitida</span>}
@@ -195,7 +217,7 @@ export default function BillingTable() {
                   )}
                 </td>
                 <td>
-                  {inv.status === 'issued' && (
+                  {inv.status === 'issued' && inv.editable !== false && (
                     <button
                       className={`badge ${payments[inv.invoice_id]?.status === 'PAID' ? 'badge-success' : 'badge-gray'}`}
                       style={{ border: 'none', cursor: 'pointer' }}
@@ -207,41 +229,49 @@ export default function BillingTable() {
                         : 'Pendiente'}
                     </button>
                   )}
+                  {inv.status === 'issued' && inv.editable === false && (
+                    <span className="text-muted text-sm" title="Comprobante importado de ARCA, el cobro no se gestiona acá">—</span>
+                  )}
                 </td>
                 <td>
-                  <div style={{ display: 'flex', gap: '0.25rem' }}>
-                    {inv.status === 'issued' && inv.invoice_number && (
+                  {inv.editable === false ? (
+                    <span className="text-muted text-sm" title="Comprobante importado de ARCA, sin PDF ni adjuntos propios de SimpleComm">—</span>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '0.25rem' }}>
+                      {inv.status === 'issued' && inv.invoice_number && (
+                        <button
+                          onClick={() => downloadPdf(inv.invoice_id, inv.invoice_number!)}
+                          className="btn btn-ghost btn-sm"
+                          title="Descargar PDF"
+                        >
+                          ⬇
+                        </button>
+                      )}
                       <button
-                        onClick={() => downloadPdf(inv.invoice_id, inv.invoice_number!)}
+                        onClick={() => setAttachmentsInvoiceId(inv.invoice_id)}
                         className="btn btn-ghost btn-sm"
-                        title="Descargar PDF"
+                        title="Adjuntos"
                       >
-                        ⬇
+                        📎
                       </button>
-                    )}
-                    <button
-                      onClick={() => setAttachmentsInvoiceId(inv.invoice_id)}
-                      className="btn btn-ghost btn-sm"
-                      title="Adjuntos"
-                    >
-                      📎
-                    </button>
-                    {inv.status === 'issued' && (
-                      <button
-                        onClick={() => { setNcModal({ invoiceId: inv.invoice_id, invoiceNumber: inv.invoice_number, amount: inv.total_amount }); setNcResult(null); }}
-                        className="btn btn-ghost btn-sm"
-                        title="Emitir Nota de Crédito"
-                      >
-                        NC
-                      </button>
-                    )}
-                  </div>
+                      {inv.status === 'issued' && (
+                        <button
+                          onClick={() => { setNcModal({ invoiceId: inv.invoice_id, invoiceNumber: inv.invoice_number, amount: inv.total_amount }); setNcResult(null); }}
+                          className="btn btn-ghost btn-sm"
+                          title="Emitir Nota de Crédito"
+                        >
+                          NC
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      )}
 
       {total > limit && (
         <div className={styles.tablePagination}>

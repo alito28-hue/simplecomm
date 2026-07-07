@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
+import { getComprobantesUnificados } from '@/lib/facturas';
 
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
@@ -8,21 +8,17 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
-  const page   = searchParams.get('page')   ?? '1';
-  const limit  = searchParams.get('limit')  ?? '20';
-  const status = searchParams.get('status') ?? '';
+  const page   = Math.max(1, Number(searchParams.get('page') ?? '1'));
+  const limit  = Math.min(100, Math.max(1, Number(searchParams.get('limit') ?? '20')));
+  const status = searchParams.get('status') ?? 'all'; // 'all' | 'issued' | 'error'
 
-  const params = new URLSearchParams({ page, limit });
-  if (status) params.set('status', status);
+  let all = await getComprobantesUnificados(supabase, user.id);
+  if (status === 'issued') all = all.filter(c => c.status === 'issued');
+  if (status === 'error') all = all.filter(c => c.status === 'error');
 
-  const apiKey = await getGatewayKey(user.id);
+  const total = all.length;
+  const start = (page - 1) * limit;
+  const data = all.slice(start, start + limit);
 
-  const res = await fetch(`${GATEWAY_URL}/v1/invoices?${params}`, {
-    headers: { 'Authorization': `Bearer ${apiKey}` },
-    signal: AbortSignal.timeout(15_000),
-  });
-
-  const data = await res.json();
-  if (!res.ok) return NextResponse.json({ error: data.error }, { status: res.status });
-  return NextResponse.json(data);
+  return NextResponse.json({ data, meta: { page, limit, total, pages: Math.ceil(total / limit) } });
 }
