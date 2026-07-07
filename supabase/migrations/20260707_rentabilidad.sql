@@ -15,7 +15,7 @@ alter table organizations add column if not exists "costoLogisticaDefault" numer
 create table if not exists venta_items (
   id                    uuid primary key default gen_random_uuid(),
   "organizationId"      uuid not null references auth.users(id) on delete cascade,
-  "productId"           uuid references products(id) on delete set null,
+  "productId"           text references products(id) on delete set null,
   origin                text not null check (origin in ('simplecomm', 'tiendanube', 'shopify', 'mercadolibre', 'mercadopago')),
   "invoiceId"           text,
   "externalOrderId"     text,
