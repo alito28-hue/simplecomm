@@ -24,6 +24,11 @@ interface HistorialMes {
   position: number;
 }
 
+const MESES = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
 function money(n: number) {
   return `$${n.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 }
@@ -89,6 +94,9 @@ export default function IvaPage() {
 
   const position = data.position ?? 0;
   const owes = position > 0;
+  const now = new Date();
+  const mesActual = `${MESES[now.getMonth()]} ${now.getFullYear()}`;
+  const mesVacioConHistorial = (data.purchasesCount ?? 0) === 0 && !!data.lastPurchasesImportAt;
 
   return (
     <div className={styles.page}>
@@ -114,7 +122,13 @@ export default function IvaPage() {
       </p>
 
       <div className="card" style={{ padding: '1.25rem 1.5rem' }}>
-        <h2 className={dashStyles.sectionTitle} style={{ marginBottom: '0.75rem' }}>Este mes</h2>
+        <h2 className={dashStyles.sectionTitle} style={{ marginBottom: '0.75rem' }}>Este mes — {mesActual}</h2>
+        {mesVacioConHistorial && (
+          <div style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)', background: 'var(--surface-low)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+            ℹ Todavía no hay compras cargadas de {mesActual} — los números de abajo están en $0 porque este mes recién empieza.
+            Tu importación de ARCA sí se guardó: mirá <strong>Posición por mes</strong> más abajo para ver junio y meses anteriores.
+          </div>
+        )}
         <div className={dashStyles.statsGrid}>
           <div className="card">
             <div className={dashStyles.statCard}>

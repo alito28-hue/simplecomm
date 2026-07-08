@@ -290,7 +290,10 @@ export default function ComprasPage() {
               {loading ? (
                 <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Cargando...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Sin compras cargadas este mes.</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                  Sin compras cargadas para el mes elegido arriba.
+                  {lastImportAt && <> Ya importaste comprobantes de ARCA antes — probá cambiar el mes de arriba para verlos.</>}
+                </td></tr>
               ) : items.map(p => (
                 <tr key={p.id}>
                   <td className="text-sm text-muted">{p.issueDate ?? '—'}</td>

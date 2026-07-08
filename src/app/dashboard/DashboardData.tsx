@@ -42,13 +42,13 @@ function formatDate(iso: string) {
 
 const MODULES = [
   { href: '/dashboard/facturacion/simplificada',       icon: '⚡', title: 'Facturación Rápida',  desc: 'Emitir una factura al instante' },
-  { href: '/dashboard/billing',                        icon: '🧾', title: 'Comprobantes',         desc: 'Ver, conciliar y descargar facturas' },
+  { href: '/dashboard/billing',                        icon: '🧾', title: 'Comprobantes',         desc: 'Emitidos — ver, conciliar y descargar facturas' },
+  { href: '/dashboard/organizacion/compras',             icon: '🧾', title: 'Compras',              desc: 'Recibidos — comprobantes de compra e importación de ARCA', ivaOnly: true },
   { href: '/dashboard/contactos',                       icon: '👤', title: 'Clientes',             desc: 'Directorio y datos fiscales' },
   { href: '/dashboard/organizacion/productos',          icon: '📦', title: 'Productos y Stock',    desc: 'Catálogo, precios e inventario' },
   { href: '/dashboard/organizacion/rentabilidad',        icon: '💹', title: 'Rentabilidad',         desc: 'Costo, margen y % de ganancia por venta' },
   { href: '/dashboard/organizacion/listas-precios',      icon: '💲', title: 'Listas de Precios',    desc: 'Precios especiales por lista' },
   { href: '/dashboard/organizacion/centros-costo',       icon: '🏷', title: 'Centros de Costo',     desc: 'Agrupá clientes por proyecto' },
-  { href: '/dashboard/organizacion/compras',             icon: '🧾', title: 'Compras',              desc: 'Comprobantes de compra e importación de ARCA', ivaOnly: true },
   { href: '/dashboard/organizacion/iva',                icon: '📊', title: 'IVA',                  desc: 'Posición de IVA (ventas menos compras)', ivaOnly: true },
   { href: '/dashboard/organizacion/calendario-impositivo', icon: '📅', title: 'Vencimientos',       desc: 'Calendario impositivo y recordatorios' },
   { href: '/dashboard/organizacion/usuarios',            icon: '👥', title: 'Usuarios y Permisos',  desc: 'Equipo y accesos por rol' },
