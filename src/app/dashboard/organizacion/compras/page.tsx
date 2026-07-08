@@ -3,6 +3,23 @@
 import { useEffect, useRef, useState } from 'react';
 import styles from '../clientes/clientes.module.css';
 import ImportCsvModal, { type ImportCsvStatus } from '@/components/ImportCsvModal';
+import ComprobantesTabs from '@/components/ComprobantesTabs';
+
+const MESES_LARGO = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+function monthLabel(monthStr: string) {
+  const [y, m] = monthStr.split('-').map(Number);
+  return `${MESES_LARGO[m - 1]} ${y}`;
+}
+
+function fechaCorta(iso: string | null) {
+  if (!iso) return '—';
+  const [, m, d] = iso.split('-');
+  return `${d}/${m}`;
+}
 
 interface Purchase {
   id: string;
@@ -190,8 +207,8 @@ export default function ComprasPage() {
     <div className={styles.page}>
       <div className={styles.pageHeader}>
         <div>
-          <h1 className={styles.pageTitle}>Compras</h1>
-          <p className={styles.pageSubtitle}>Facturas de proveedores para calcular tu posición de IVA. Cargalas a mano o subí una foto/PDF y dejá que la IA complete los datos.</p>
+          <h1 className={styles.pageTitle}>Comprobantes</h1>
+          <p className={styles.pageSubtitle}>Recibidos — facturas de proveedores para calcular tu posición de IVA. Cargalas a mano o subí una foto/PDF y dejá que la IA complete los datos.</p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
           <input type="month" className="input" value={month} onChange={e => setMonth(e.target.value)} style={{ maxWidth: 160 }} />
@@ -202,6 +219,8 @@ export default function ComprasPage() {
           )}
         </div>
       </div>
+
+      <ComprobantesTabs />
 
       <div className="card" style={{ padding: '1.25rem' }}>
         {!showForm ? (
@@ -278,6 +297,9 @@ export default function ComprasPage() {
       </div>
 
       <div className="card">
+        <div style={{ padding: '1rem 1.25rem 0', fontWeight: 700, fontSize: '0.95rem', textTransform: 'capitalize' }}>
+          {monthLabel(month)}
+        </div>
         <div className="table-wrap">
           <table className="table">
             <thead>
@@ -296,7 +318,7 @@ export default function ComprasPage() {
                 </td></tr>
               ) : items.map(p => (
                 <tr key={p.id}>
-                  <td className="text-sm text-muted">{p.issueDate ?? '—'}</td>
+                  <td className="text-sm text-muted">{fechaCorta(p.issueDate)}</td>
                   <td>{p.signedUrl ? <a href={p.signedUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--blue)' }}>{p.issuerName || '(sin nombre)'}</a> : (p.issuerName || '(sin nombre)')}</td>
                   <td className="mono text-sm">{p.issuerCuit || '—'}</td>
                   <td className="text-sm">{p.invoiceLetter} {p.invoiceNumber}</td>

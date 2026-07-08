@@ -42,8 +42,7 @@ function formatDate(iso: string) {
 
 const MODULES = [
   { href: '/dashboard/facturacion/simplificada',       icon: '⚡', title: 'Facturación Rápida',  desc: 'Emitir una factura al instante' },
-  { href: '/dashboard/billing',                        icon: '🧾', title: 'Comprobantes',         desc: 'Emitidos — ver, conciliar y descargar facturas' },
-  { href: '/dashboard/organizacion/compras',             icon: '🧾', title: 'Compras',              desc: 'Recibidos — comprobantes de compra e importación de ARCA', ivaOnly: true },
+  { href: '/dashboard/billing',                        icon: '🧾', title: 'Comprobantes',         desc: 'Emitidos y recibidos — facturas, cobros e importación de ARCA' },
   { href: '/dashboard/contactos',                       icon: '👤', title: 'Clientes',             desc: 'Directorio y datos fiscales' },
   { href: '/dashboard/organizacion/productos',          icon: '📦', title: 'Productos y Stock',    desc: 'Catálogo, precios e inventario' },
   { href: '/dashboard/organizacion/rentabilidad',        icon: '💹', title: 'Rentabilidad',         desc: 'Costo, margen y % de ganancia por venta' },
