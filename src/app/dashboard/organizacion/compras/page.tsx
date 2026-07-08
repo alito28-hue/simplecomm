@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import styles from '../clientes/clientes.module.css';
+import ImportCsvModal, { type ImportCsvStatus } from '@/components/ImportCsvModal';
 
 interface Purchase {
   id: string;
@@ -62,7 +63,7 @@ export default function ComprasPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [lastImportAt, setLastImportAt] = useState<string | null>(null);
-  const [importing, setImporting] = useState(false);
+  const [importModal, setImportModal] = useState<{ status: ImportCsvStatus; message: string | null } | null>(null);
   const csvRef = useRef<HTMLInputElement>(null);
 
   function load() {
@@ -80,19 +81,18 @@ export default function ComprasPage() {
   }
 
   async function importCsv(file: File) {
-    setImporting(true);
+    setImportModal({ status: 'importing', message: null });
     try {
       const fd = new FormData();
       fd.append('file', file);
       const res = await fetch('/api/organizacion/iva/importar-recibidos', { method: 'POST', body: fd });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || 'No se pudo importar el archivo');
-      alert(`Importación completa: ${d.rowCount} comprobantes (${d.newCount} nuevos, ${d.updatedCount} actualizados).`);
+      setImportModal({ status: 'success', message: `${d.rowCount} comprobantes (${d.newCount} nuevos, ${d.updatedCount} actualizados).` });
       load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Error al importar el archivo');
+      setImportModal({ status: 'error', message: e instanceof Error ? e.message : 'Error al importar el archivo' });
     } finally {
-      setImporting(false);
       if (csvRef.current) csvRef.current.value = '';
     }
   }
@@ -211,8 +211,8 @@ export default function ComprasPage() {
             <input ref={csvRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0]; if (f) importCsv(f); }} />
             <button className="btn btn-primary btn-sm" onClick={() => fileRef.current?.click()}>📷 Subir foto o PDF</button>
-            <button className="btn btn-outline btn-sm" onClick={() => csvRef.current?.click()} disabled={importing}>
-              {importing ? 'Importando...' : '📥 Importar CSV de ARCA (recibidos)'}
+            <button className="btn btn-outline btn-sm" onClick={() => csvRef.current?.click()} disabled={importModal?.status === 'importing'}>
+              📥 Importar CSV de ARCA (recibidos)
             </button>
             <button className="btn btn-outline btn-sm" onClick={() => setShowForm(true)}>✏️ Cargar manualmente</button>
           </div>
@@ -318,6 +318,10 @@ export default function ComprasPage() {
           </table>
         </div>
       </div>
+
+      {importModal && (
+        <ImportCsvModal status={importModal.status} message={importModal.message} onClose={() => setImportModal(null)} />
+      )}
     </div>
   );
 }

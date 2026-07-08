@@ -285,11 +285,12 @@ export default function BillingTable() {
             Mostrando {Math.min(page * limit, total)} de {total}
           </span>
           <div className={styles.paginationBtns}>
-            <button className="btn btn-ghost btn-sm" onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}>
-              Ant.
+            <button className={styles.pageBtn} onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+              ‹ Anterior
             </button>
-            <button className="btn btn-ghost btn-sm" onClick={() => setPage(p => p+1)} disabled={page * limit >= total}>
-              Sig.
+            <span className={styles.pageIndicator}>Página {page} de {Math.max(1, Math.ceil(total / limit))}</span>
+            <button className={styles.pageBtn} onClick={() => setPage(p => p + 1)} disabled={page * limit >= total}>
+              Siguiente ›
             </button>
           </div>
         </div>

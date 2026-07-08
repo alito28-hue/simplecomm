@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import ImportCsvModal, { type ImportCsvStatus } from '@/components/ImportCsvModal';
 
 /**
  * Único punto de importación de "Mis Comprobantes emitidos" de ARCA en toda la app — antes
@@ -9,24 +10,23 @@ import { useRef, useState } from 'react';
  * ven los comprobantes es acá (Comprobantes / Facturación), no en esos reportes derivados.
  */
 export default function ImportarVentasButton() {
-  const [importing, setImporting] = useState(false);
+  const [modal, setModal] = useState<{ status: ImportCsvStatus; message: string | null } | null>(null);
   const csvRef = useRef<HTMLInputElement>(null);
 
   async function importVentas(file: File) {
-    setImporting(true);
+    setModal({ status: 'importing', message: null });
     try {
       const fd = new FormData();
       fd.append('file', file);
       const res = await fetch('/api/organizacion/iva/importar-emitidos', { method: 'POST', body: fd });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || 'No se pudo importar el archivo');
-      alert(`Importación completa: ${d.rowCount} comprobantes (${d.newCount} nuevos, ${d.updatedCount} actualizados).`);
+      setModal({ status: 'success', message: `${d.rowCount} comprobantes (${d.newCount} nuevos, ${d.updatedCount} actualizados).` });
       window.dispatchEvent(new Event('comprobantes:refresh'));
       window.dispatchEvent(new Event('onboarding:refresh'));
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'Error al importar el archivo');
+      setModal({ status: 'error', message: e instanceof Error ? e.message : 'Error al importar el archivo' });
     } finally {
-      setImporting(false);
       if (csvRef.current) csvRef.current.value = '';
     }
   }
@@ -35,9 +35,10 @@ export default function ImportarVentasButton() {
     <>
       <input ref={csvRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }}
         onChange={e => { const f = e.target.files?.[0]; if (f) importVentas(f); }} />
-      <button className="btn btn-outline btn-sm" onClick={() => csvRef.current?.click()} disabled={importing}>
-        {importing ? 'Importando...' : '📥 Importar de ARCA'}
+      <button className="btn btn-outline btn-sm" onClick={() => csvRef.current?.click()} disabled={modal?.status === 'importing'}>
+        📥 Importar de ARCA
       </button>
+      {modal && <ImportCsvModal status={modal.status} message={modal.message} onClose={() => setModal(null)} />}
     </>
   );
 }
