@@ -154,17 +154,19 @@ export default function BillingTable() {
         <span className="badge badge-success">● ARCA Conectado</span>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', padding: '0 1.25rem 1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        {FILTERS.map(f => (
-          <button
-            key={f.value}
-            className={`btn btn-sm ${statusFilter === f.value ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => { setStatusFilter(f.value); setPage(1); }}
-          >
-            {f.label}
-          </button>
-        ))}
-        <span style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 0.25rem' }} />
+      <div className={styles.toolbar}>
+        <div className={styles.segmented}>
+          {FILTERS.map(f => (
+            <button
+              key={f.value}
+              className={`${styles.segmentBtn} ${statusFilter === f.value ? styles.segmentBtnActive : ''}`}
+              onClick={() => { setStatusFilter(f.value); setPage(1); }}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <span className={styles.toolbarDivider} />
         <input
           type="month"
           className="input"

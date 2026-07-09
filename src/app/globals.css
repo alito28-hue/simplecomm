@@ -183,6 +183,7 @@ input, select, textarea { font-family: inherit; }
   border-radius: var(--radius-full);
   font-size: 0.75rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 .badge-success { background: var(--success-bg); color: #065f46; }
 .badge-warning { background: var(--warning-bg); color: #92400e; }
