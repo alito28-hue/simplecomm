@@ -14,6 +14,8 @@ export async function GET(req: NextRequest) {
   const now = new Date();
   const from = searchParams.get('from') ?? firstDayOfMonth(now.getFullYear(), now.getMonth());
   const to = searchParams.get('to') ?? now.toISOString();
+  const page = Math.max(1, Number(searchParams.get('page') ?? '1'));
+  const limit = Math.min(100, Math.max(1, Number(searchParams.get('limit') ?? '20')));
 
   const { data: items, error } = await supabase
     .from('venta_items')
@@ -49,8 +51,12 @@ export async function GET(req: NextRequest) {
   const { data: org } = await supabase.from('organizations')
     .select('costoLogisticaDefault').eq('id', user.id).maybeSingle();
 
+  const start = (page - 1) * limit;
+  const pageItems = rows.slice(start, start + limit);
+
   return NextResponse.json({
-    items: rows,
+    items: pageItems,
+    meta: { page, limit, total: rows.length, pages: Math.max(1, Math.ceil(rows.length / limit)) },
     resumen: {
       unidades,
       vendido,

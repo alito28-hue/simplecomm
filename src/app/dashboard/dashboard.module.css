@@ -96,8 +96,27 @@
   justify-content: space-between;
   padding: 0.75rem 1.5rem;
   border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
-.paginationBtns { display: flex; gap: 0.5rem; }
+.paginationBtns { display: flex; align-items: center; gap: 0.75rem; }
+.pageBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.825rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.pageBtn:hover:not(:disabled) { background: var(--surface-low); border-color: var(--blue); color: var(--blue); }
+.pageBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.pageIndicator { font-size: 0.825rem; font-weight: 600; color: var(--text-muted); }
 
 /* Bottom grid */
 .bottomGrid {

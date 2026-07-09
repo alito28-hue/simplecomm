@@ -43,6 +43,9 @@ export default function RentabilidadPage() {
   const [edits, setEdits] = useState<Record<string, { unitCost: string; shippingCost: string }>>({});
   const [savingRow, setSavingRow] = useState<string | null>(null);
   const [editingRows, setEditingRows] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ page: 1, limit: 20, total: 0, pages: 1 });
+  const limit = 20;
 
   function isEditing(item: VentaItem) {
     return editingRows.has(item.id) || item.unitCost === null || item.shippingCost === null;
@@ -50,18 +53,20 @@ export default function RentabilidadPage() {
 
   function load() {
     setLoading(true);
-    fetch('/api/organizacion/rentabilidad')
+    fetch(`/api/organizacion/rentabilidad?page=${page}&limit=${limit}`)
       .then(r => r.json())
       .then(data => {
         setItems(data.items ?? []);
         setResumen(data.resumen ?? null);
+        setMeta(data.meta ?? { page: 1, limit, total: 0, pages: 1 });
         setCostoDefault(data.costoLogisticaDefault === null || data.costoLogisticaDefault === undefined ? '' : String(data.costoLogisticaDefault));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }
 
-  useEffect(load, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(load, [page]);
 
   function editFor(item: VentaItem) {
     return edits[item.id] ?? {
@@ -245,6 +250,23 @@ export default function RentabilidadPage() {
                 </tbody>
               </table>
             </div>
+
+            {meta.total > meta.limit && (
+              <div className={styles.tablePagination}>
+                <span className="text-muted text-sm">
+                  Mostrando {Math.min(page * limit, meta.total)} de {meta.total}
+                </span>
+                <div className={styles.paginationBtns}>
+                  <button className={styles.pageBtn} onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                    ‹ Anterior
+                  </button>
+                  <span className={styles.pageIndicator}>Página {page} de {meta.pages}</span>
+                  <button className={styles.pageBtn} onClick={() => setPage(p => p + 1)} disabled={page >= meta.pages}>
+                    Siguiente ›
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
