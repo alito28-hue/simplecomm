@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import styles from '../../dashboard.module.css';
+import MonthPicker from '@/components/MonthPicker';
 
 interface VentaItem {
   id: string;
@@ -138,13 +139,7 @@ export default function RentabilidadPage() {
             cada producto al momento de la venta — cambiarlo ahora en Productos no modifica ventas ya hechas.
           </p>
         </div>
-        <input
-          type="month"
-          className="input"
-          style={{ maxWidth: 160 }}
-          value={month}
-          onChange={e => { setMonth(e.target.value); setPage(1); }}
-        />
+        <MonthPicker value={month} onChange={v => { setMonth(v); setPage(1); }} />
       </div>
 
       {resumen && resumen.totalItems === 0 && (

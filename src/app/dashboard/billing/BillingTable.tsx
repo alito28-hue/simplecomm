@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import AttachmentsPanel from '@/components/AttachmentsPanel';
+import MonthPicker from '@/components/MonthPicker';
 import styles from './billing.module.css';
 
 interface NcModal { invoiceId: string; invoiceNumber: string | null; amount: number; }
@@ -167,13 +168,7 @@ export default function BillingTable() {
           ))}
         </div>
         <span className={styles.toolbarDivider} />
-        <input
-          type="month"
-          className="input"
-          style={{ maxWidth: 160 }}
-          value={month}
-          onChange={e => { setMonth(e.target.value); setPage(1); }}
-        />
+        <MonthPicker value={month} onChange={v => { setMonth(v); setPage(1); }} />
         {month && (
           <button className="btn btn-ghost btn-sm" onClick={() => { setMonth(''); setPage(1); }}>
             Ver todos los meses

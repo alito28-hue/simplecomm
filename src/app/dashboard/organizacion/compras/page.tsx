@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import styles from '../clientes/clientes.module.css';
 import ImportCsvModal, { type ImportCsvStatus } from '@/components/ImportCsvModal';
 import ComprobantesTabs from '@/components/ComprobantesTabs';
+import MonthPicker from '@/components/MonthPicker';
 
 const MESES_LARGO = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -211,7 +212,7 @@ export default function ComprasPage() {
           <p className={styles.pageSubtitle}>Recibidos — facturas de proveedores para calcular tu posición de IVA. Cargalas a mano o subí una foto/PDF y dejá que la IA complete los datos.</p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
-          <input type="month" className="input" value={month} onChange={e => setMonth(e.target.value)} style={{ maxWidth: 160 }} />
+          <MonthPicker value={month} onChange={setMonth} />
           {lastImportAt && (
             <span className="text-sm text-muted">
               Última importación ARCA: {new Date(lastImportAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
