@@ -26,12 +26,30 @@ interface Resumen {
   totalItems: number;
 }
 
+const MESES_LARGO = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
 function money(n: number) {
   return `$${n.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 }
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function monthLabel(monthStr: string) {
+  const [y, m] = monthStr.split('-').map(Number);
+  return `${MESES_LARGO[m - 1]} ${y}`;
+}
+
+function monthRange(monthStr: string) {
+  const [y, m] = monthStr.split('-').map(Number);
+  const from = `${monthStr}-01T00:00:00.000Z`;
+  const lastDay = new Date(y, m, 0).getDate();
+  const to = `${monthStr}-${String(lastDay).padStart(2, '0')}T23:59:59.999Z`;
+  return { from, to };
 }
 
 export default function RentabilidadPage() {
@@ -45,6 +63,7 @@ export default function RentabilidadPage() {
   const [editingRows, setEditingRows] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState({ page: 1, limit: 20, total: 0, pages: 1 });
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const limit = 20;
 
   function isEditing(item: VentaItem) {
@@ -53,7 +72,8 @@ export default function RentabilidadPage() {
 
   function load() {
     setLoading(true);
-    fetch(`/api/organizacion/rentabilidad?page=${page}&limit=${limit}`)
+    const { from, to } = monthRange(month);
+    fetch(`/api/organizacion/rentabilidad?page=${page}&limit=${limit}&from=${from}&to=${to}`)
       .then(r => r.json())
       .then(data => {
         setItems(data.items ?? []);
@@ -66,7 +86,7 @@ export default function RentabilidadPage() {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(load, [page]);
+  useEffect(load, [page, month]);
 
   function editFor(item: VentaItem) {
     return edits[item.id] ?? {
@@ -110,17 +130,26 @@ export default function RentabilidadPage() {
 
   return (
     <div className={styles.page} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-      <div>
-        <h1 className={styles.sectionTitle} style={{ fontSize: '1.4rem' }}>Rentabilidad</h1>
-        <p className="text-sm text-muted">
-          Costo y margen de lo vendido este mes, producto por producto. El costo se toma del que tenía cargado
-          cada producto al momento de la venta — cambiarlo ahora en Productos no modifica ventas ya hechas.
-        </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h1 className={styles.sectionTitle} style={{ fontSize: '1.4rem' }}>Rentabilidad — {monthLabel(month)}</h1>
+          <p className="text-sm text-muted">
+            Costo y margen de lo vendido ese mes, producto por producto. El costo se toma del que tenía cargado
+            cada producto al momento de la venta — cambiarlo ahora en Productos no modifica ventas ya hechas.
+          </p>
+        </div>
+        <input
+          type="month"
+          className="input"
+          style={{ maxWidth: 160 }}
+          value={month}
+          onChange={e => { setMonth(e.target.value); setPage(1); }}
+        />
       </div>
 
       {resumen && resumen.totalItems === 0 && (
         <div className="card" style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-          Todavía no hay ventas de productos registradas este mes.
+          Todavía no hay ventas de productos registradas en {monthLabel(month)}.
         </div>
       )}
 
