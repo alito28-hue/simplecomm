@@ -11,10 +11,12 @@ export async function GET(req: NextRequest) {
   const page   = Math.max(1, Number(searchParams.get('page') ?? '1'));
   const limit  = Math.min(100, Math.max(1, Number(searchParams.get('limit') ?? '20')));
   const status = searchParams.get('status') ?? 'all'; // 'all' | 'issued' | 'error'
+  const month  = searchParams.get('month'); // 'YYYY-MM', o ausente/'' = todos los meses
 
   let all = await getComprobantesUnificados(supabase, user.id);
   if (status === 'issued') all = all.filter(c => c.status === 'issued');
   if (status === 'error') all = all.filter(c => c.status === 'error');
+  if (month) all = all.filter(c => c.created_at.slice(0, 7) === month);
 
   const total = all.length;
   const start = (page - 1) * limit;

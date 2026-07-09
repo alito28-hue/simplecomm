@@ -50,6 +50,7 @@ export default function BillingTable() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -68,7 +69,8 @@ export default function BillingTable() {
     let cancelled = false;
 
     setLoading(true);
-    fetch(`/api/facturas?page=${page}&limit=${limit}&status=${statusFilter}`)
+    const monthParam = month ? `&month=${month}` : '';
+    fetch(`/api/facturas?page=${page}&limit=${limit}&status=${statusFilter}${monthParam}`)
       .then(r => r.json())
       .then(data => {
         if (cancelled) return;
@@ -100,7 +102,7 @@ export default function BillingTable() {
     return () => {
       cancelled = true;
     };
-  }, [page, statusFilter, refreshKey]);
+  }, [page, statusFilter, month, refreshKey]);
 
   async function togglePaid(inv: Invoice) {
     const current = payments[inv.invoice_id]?.status ?? 'PENDING';
@@ -152,7 +154,7 @@ export default function BillingTable() {
         <span className="badge badge-success">● ARCA Conectado</span>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', padding: '0 1.25rem 1rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', padding: '0 1.25rem 1rem', flexWrap: 'wrap', alignItems: 'center' }}>
         {FILTERS.map(f => (
           <button
             key={f.value}
@@ -162,6 +164,19 @@ export default function BillingTable() {
             {f.label}
           </button>
         ))}
+        <span style={{ width: 1, height: 20, background: 'var(--border)', margin: '0 0.25rem' }} />
+        <input
+          type="month"
+          className="input"
+          style={{ maxWidth: 160 }}
+          value={month}
+          onChange={e => { setMonth(e.target.value); setPage(1); }}
+        />
+        {month && (
+          <button className="btn btn-ghost btn-sm" onClick={() => { setMonth(''); setPage(1); }}>
+            Ver todos los meses
+          </button>
+        )}
       </div>
 
       {loading ? (
