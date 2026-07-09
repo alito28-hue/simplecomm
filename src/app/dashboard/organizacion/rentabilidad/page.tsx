@@ -42,6 +42,11 @@ export default function RentabilidadPage() {
   const [savingDefault, setSavingDefault] = useState(false);
   const [edits, setEdits] = useState<Record<string, { unitCost: string; shippingCost: string }>>({});
   const [savingRow, setSavingRow] = useState<string | null>(null);
+  const [editingRows, setEditingRows] = useState<Set<string>>(new Set());
+
+  function isEditing(item: VentaItem) {
+    return editingRows.has(item.id) || item.unitCost === null || item.shippingCost === null;
+  }
 
   function load() {
     setLoading(true);
@@ -74,6 +79,7 @@ export default function RentabilidadPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ unitCost: e.unitCost, shippingCost: e.shippingCost }),
       });
+      setEditingRows(prev => { const next = new Set(prev); next.delete(item.id); return next; });
       load();
     } finally {
       setSavingRow(null);
@@ -193,6 +199,7 @@ export default function RentabilidadPage() {
                 <tbody>
                   {items.map(item => {
                     const e = editFor(item);
+                    const editing = isEditing(item);
                     return (
                       <tr key={item.id}>
                         <td className="text-sm text-muted">{formatDate(item.createdAt)}</td>
@@ -201,21 +208,36 @@ export default function RentabilidadPage() {
                         <td>{item.quantity}</td>
                         <td>{money(item.unitPrice)}</td>
                         <td>
-                          <input className="input" type="number" step="0.01" min="0" style={{ maxWidth: 110 }}
-                            value={e.unitCost}
-                            onChange={ev => setEdits(prev => ({ ...prev, [item.id]: { ...e, unitCost: ev.target.value } }))}
-                            placeholder="Sin cargar" />
+                          {editing ? (
+                            <input className="input" type="number" step="0.01" min="0" style={{ maxWidth: 110 }}
+                              value={e.unitCost}
+                              onChange={ev => setEdits(prev => ({ ...prev, [item.id]: { ...e, unitCost: ev.target.value } }))}
+                              placeholder="Sin cargar" />
+                          ) : (
+                            <span className="text-sm">{money(item.unitCost ?? 0)}</span>
+                          )}
                         </td>
                         <td>
-                          <input className="input" type="number" step="0.01" min="0" style={{ maxWidth: 110 }}
-                            value={e.shippingCost}
-                            onChange={ev => setEdits(prev => ({ ...prev, [item.id]: { ...e, shippingCost: ev.target.value } }))}
-                            placeholder="Sin cargar" />
+                          {editing ? (
+                            <input className="input" type="number" step="0.01" min="0" style={{ maxWidth: 110 }}
+                              value={e.shippingCost}
+                              onChange={ev => setEdits(prev => ({ ...prev, [item.id]: { ...e, shippingCost: ev.target.value } }))}
+                              placeholder="Sin cargar" />
+                          ) : (
+                            <span className="text-sm">{money(item.shippingCost ?? 0)}</span>
+                          )}
                         </td>
                         <td>
-                          <button className="btn btn-ghost btn-sm" onClick={() => saveRow(item)} disabled={savingRow === item.id}>
-                            {savingRow === item.id ? '...' : 'Guardar'}
-                          </button>
+                          {editing ? (
+                            <button className="btn btn-ghost btn-sm" onClick={() => saveRow(item)} disabled={savingRow === item.id}>
+                              {savingRow === item.id ? '...' : 'Guardar'}
+                            </button>
+                          ) : (
+                            <button className="btn btn-ghost btn-sm" title="Editar costos"
+                              onClick={() => setEditingRows(prev => new Set(prev).add(item.id))}>
+                              ✏️
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
