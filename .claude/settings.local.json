@@ -64,10 +64,15 @@
       "Bash(curl -s -A \"Mozilla/5.0\" \"https://www.afip.gob.ar/monotributo/categorias.asp\" -o /private/tmp/claude-502/-Users-alito28-Library-CloudStorage-Dropbox-Mac--2--Desktop-simplecomm/07d5acd9-fbbe-46de-aef8-3bb0b8e61341/scratchpad/afip_categorias.html)",
       "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" \"https://simplecomm-bgcwddcad-alex-smiths-projects-42892fbe.vercel.app/api/cron/monotributo-categorias\")",
       "Bash(vercel domains *)",
-      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" \"https://simplecomm.com.ar/api/cron/monotributo-categorias\")"
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\\\\n\" \"https://simplecomm.com.ar/api/cron/monotributo-categorias\")",
+      "Bash(grep -v \"^--$\")",
+      "Bash(grep -rln \"productId\" src/app/dashboard/facturacion src/app/api/invoices)",
+      "Bash(grep -rln \"products\" src/app/api/invoices/issue/route.ts src/app/dashboard/facturacion/*/page.tsx)",
+      "Bash(mkdir -p \"/Users/alito28/Library/CloudStorage/Dropbox/Mac \\(2\\)/Desktop/simplecomm/src/app/api/organizacion/rentabilidad/[id]\")"
     ],
     "additionalDirectories": [
-      "/Users/alito28/Library/CloudStorage/Dropbox/Mac (2)/Desktop/simplecomm/src/app/api/envios/[id]"
+      "/Users/alito28/Library/CloudStorage/Dropbox/Mac (2)/Desktop/simplecomm/src/app/api/envios/[id]",
+      "/Users/alito28/Library/CloudStorage/Dropbox/Mac (2)/Desktop/simplecomm/src/app/api/organizacion/rentabilidad"
     ]
   }
 }
