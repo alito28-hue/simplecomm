@@ -357,6 +357,12 @@
   gap: 1.5rem;
 }
 
+.profilesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
 .planCard {
   position: relative;
   display: flex;
@@ -540,7 +546,8 @@
   .flow,
   .modules,
   .comparison,
-  .plans {
+  .plans,
+  .profilesGrid {
     grid-template-columns: 1fr;
   }
 

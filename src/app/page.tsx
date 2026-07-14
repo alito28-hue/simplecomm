@@ -7,8 +7,8 @@ const channels = ['Mercado Libre', 'Tiendanube', 'Shopify', 'Mercado Pago'];
 const flowSteps = [
   {
     eyebrow: 'Venta nueva',
-    title: 'Entra un pedido pagado',
-    copy: 'SimpleComm detecta la venta desde tus canales conectados y trae cliente, total y productos.',
+    title: 'Entra un pedido o lo cargás vos',
+    copy: 'SimpleComm detecta la venta desde tus canales conectados, o la cargás en segundos desde Facturación Rápida.',
   },
   {
     eyebrow: 'Factura lista',
@@ -16,36 +16,53 @@ const flowSteps = [
     copy: 'Validamos con ARCA, obtenemos CAE y enviamos la factura sin que cargues datos a mano.',
   },
   {
-    eyebrow: 'Panel claro',
-    title: 'Ves que queda pendiente',
-    copy: 'Errores, facturas emitidas y tareas importantes quedan en una bandeja pensada para actuar rápido.',
+    eyebrow: 'Negocio claro',
+    title: 'Ves dónde parás',
+    copy: 'IVA, Ganancias, categoría de Monotributo y rentabilidad por producto, siempre actualizados — no solo facturas emitidas.',
   },
 ];
 
-const modules = [
+const profiles = [
   {
-    kicker: 'Disponible primero',
-    title: 'Facturación automática para tiendas online',
-    body: 'La primera promesa es concreta: vender, facturar y seguir operando sin copiar pedidos entre plataformas.',
-    bullets: ['Facturas A, B y C', 'CAE y PDF en segundos', 'Estados claros para resolver errores'],
+    kicker: 'Para Responsables Inscriptos',
+    title: 'Tu empresa',
+    body: 'Vendas productos o servicios, SimpleComm arma el panorama completo: cuánto facturás, cuánto cobrás y cuánto te queda después de Ganancias.',
+    bullets: [
+      'Facturas A, B y C con CAE en segundos',
+      'Posición de IVA: ventas menos compras, mes a mes, con el detalle de cada comprobante',
+      'Posición de Ganancias: ganancia estimada e Impuesto a las Ganancias, respetando tu ejercicio fiscal (no todas las empresas cierran en diciembre)',
+      'Rentabilidad por producto: costo, margen y % de ganancia de cada venta',
+      'Compras: cargalas a mano, con una foto (IA completa los datos), o importalas directo de ARCA',
+      'Facturación por lotes y facturas programadas para servicios recurrentes',
+    ],
   },
   {
-    kicker: 'Para volumen',
-    title: 'Facturación por lotes',
-    body: 'Cuando hay muchos pedidos juntos, SimpleComm puede convertirlos en comprobantes sin cargar uno por uno.',
-    bullets: ['Importación de pedidos en bloque', 'Hasta cientos de comprobantes por corrida', 'Resumen de emitidas, pendientes y errores'],
+    kicker: 'Para Monotributistas',
+    title: 'Tu monotributo',
+    body: 'Facturá sin pelearte con ARCA, y enterate a tiempo si estás por pasarte de categoría — antes de que sea un problema.',
+    bullets: [
+      'Facturación C automática, sin formularios de ARCA',
+      'Alerta de categoría: te avisamos si te acercás al tope, con la ventana móvil de 365 días que exige ARCA (no por año calendario)',
+      'Importá tu historial de ARCA de los últimos 12 meses al sumarte, para no arrancar sin datos',
+      'Facturación por delegación si todavía no tenés certificado digital propio — nosotros lo gestionamos',
+      'Rentabilidad por producto, si además de servicios vendés productos',
+      'Facturas programadas para tus clientes recurrentes',
+    ],
+  },
+];
+
+const extras = [
+  {
+    title: 'Multi-canal',
+    body: 'Mercado Libre, Tiendanube, Shopify y Mercado Pago conectados — la venta entra sola.',
   },
   {
-    kicker: 'Conciliación y cobros',
-    title: 'Facturas desde movimientos bancarios',
-    body: 'Importá los movimientos de tu banco y generá facturas de manera semi automática directamente sobre los ingresos acreditados en tu cuenta.',
-    bullets: ['Evitá olvidar facturar cobros por transferencia', 'Creación de comprobantes a un clic', 'Conciliación bancaria integrada'],
+    title: 'Lotes y conciliación bancaria',
+    body: 'Muchos pedidos juntos se convierten en comprobantes sin cargar uno por uno, y podés facturar directo sobre lo que ya cobraste por transferencia.',
   },
   {
-    kicker: 'Próxima capa',
-    title: 'Meta Ads explicado como negocio',
-    body: 'No queremos replicar Ads Manager. Queremos mostrar si la inversión está ayudando a vender o solo consumiendo margen.',
-    bullets: ['Gasto, ventas y ROAS en lenguaje simple', 'Alertas para pausar o revisar campañas', 'Lectura por producto y canal'],
+    title: 'Publicidad',
+    body: 'Inversión, ventas y ROAS de tus campañas en lenguaje simple, no como un Ads Manager más.',
   },
 ];
 
@@ -84,9 +101,9 @@ const plans = [
 
 const comparisons = [
   ['ARCA manual', 'Sirve, pero consume tiempo y te obliga a copiar datos.'],
-  ['ERP tradicional', 'Tiene de todo, pero suele sobrar para una tienda simple.'],
-  ['Facturador genérico', 'Resuelve comprobantes, no necesariamente tu operación diaria.'],
-  ['SimpleComm', 'Automatiza tareas repetitivas para que puedas enfocarte en vender.'],
+  ['ERP tradicional', 'Tiene de todo, pero suele sobrar para una tienda o un monotributo simple.'],
+  ['Facturador genérico', 'Resuelve comprobantes, no necesariamente tu posición de IVA o Ganancias.'],
+  ['SimpleComm', 'Factura y además te dice cómo está parado tu negocio.'],
 ];
 
 export default function Home() {
@@ -95,10 +112,8 @@ export default function Home() {
       <nav className={styles.nav} aria-label="Principal">
         <Logo size="md" />
         <div className={styles.navLinks}>
-          <a href="#facturacion">Facturación</a>
-          <a href="#lotes">Lotes</a>
-          <a href="#bancos">Bancos</a>
-          <a href="#anuncios">Anuncios</a>
+          <a href="#como-funciona">Cómo funciona</a>
+          <a href="#perfiles">Para vos</a>
           <a href="#planes">Planes</a>
           <a href="#diferencia">Diferencia</a>
         </div>
@@ -110,12 +125,12 @@ export default function Home() {
 
       <section className={styles.hero}>
         <div className={styles.heroContent}>
-          <p className={styles.heroBadge}>Hecho para tiendas online simples en Argentina</p>
+          <p className={styles.heroBadge}>Facturación electrónica de ARCA para empresas y Monotributistas</p>
           <h1 className={styles.heroTitle}>
-            Tu tienda vende. SimpleComm se encarga del trabajo repetitivo.
+            Facturá, cobrá y entendé tu negocio sin perseguir planillas.
           </h1>
           <p className={styles.heroDesc}>
-            Automatizá facturas de ARCA, conectá tus canales de venta y prepará el camino para entender si tus anuncios de Meta están dejando plata o quemándola.
+            Automatizá tus facturas de ARCA, conectá tus canales de venta, y seguí tu posición de IVA, Ganancias o categoría de Monotributo — todo en un solo lugar, actualizado solo.
           </p>
           <div className={styles.heroActions}>
             <Link href="/register" className="btn btn-primary btn-lg">Empezar prueba gratis</Link>
@@ -127,7 +142,7 @@ export default function Home() {
         <div className={styles.heroScene} aria-label="Resumen visual de SimpleComm">
           <div className={styles.scenePanel}>
             <div className={styles.sceneHeader}>
-              <span>Hoy en tu tienda</span>
+              <span>Hoy en tu negocio</span>
               <strong>Online</strong>
             </div>
             <div className={styles.sceneGrid}>
@@ -137,14 +152,14 @@ export default function Home() {
                 <span>sin carga manual</span>
               </div>
               <div>
-                <small>Pendientes</small>
-                <strong>3</strong>
-                <span>requieren acción</span>
+                <small>Posición de IVA</small>
+                <strong>A favor</strong>
+                <span>este mes</span>
               </div>
               <div>
-                <small>Meta ROAS</small>
-                <strong>4.2x</strong>
-                <span>ayer</span>
+                <small>Categoría Monotributo</small>
+                <strong>68%</strong>
+                <span>de tu tope anual</span>
               </div>
             </div>
             <div className={styles.sceneList}>
@@ -153,9 +168,9 @@ export default function Home() {
               <em>CAE aprobado</em>
             </div>
             <div className={styles.sceneList}>
-              <span>Tiendanube #2031</span>
-              <strong>Cliente sin DNI</strong>
-              <em>Resolver</em>
+              <span>Rentabilidad</span>
+              <strong>Margen 34% este mes</strong>
+              <em>Ver detalle</em>
             </div>
           </div>
         </div>
@@ -173,7 +188,7 @@ export default function Home() {
       <section className={styles.section} id="como-funciona">
         <div className={styles.sectionHeader}>
           <p className={styles.kicker}>Cómo funciona</p>
-          <h2>De venta online a factura enviada, sin perseguir pantallas.</h2>
+          <h2>De venta a factura, y de factura a saber cómo estás parado.</h2>
           <p>
             El frente del producto tiene que sentirse como una bandeja de trabajo: qué pasó, qué se resolvió y qué necesita tu atención.
           </p>
@@ -191,23 +206,38 @@ export default function Home() {
         </div>
       </section>
 
-      <section className={styles.modules}>
-        {modules.map((module, index) => (
-          <article
-            className={styles.module}
-            id={index === 0 ? 'facturacion' : index === 1 ? 'lotes' : index === 2 ? 'bancos' : 'anuncios'}
-            key={module.title}
-          >
+      <section className={styles.section} id="perfiles">
+        <div className={styles.sectionHeader}>
+          <p className={styles.kicker}>Para vos</p>
+          <h2>Empresa o Monotributo — cada uno ve lo que le sirve.</h2>
+          <p>
+            No es la misma pregunta la de un Responsable Inscripto que la de un Monotributista. SimpleComm arma el panel según tu condición fiscal.
+          </p>
+        </div>
+
+        <div className={styles.profilesGrid}>
+          {profiles.map((profile) => (
+            <article className={styles.planCard} key={profile.title}>
+              <p className={styles.kicker}>{profile.kicker}</p>
+              <h3 className={styles.planName}>{profile.title}</h3>
+              <p className={styles.planDesc}>{profile.body}</p>
+              <ul className={styles.planFeatures}>
+                {profile.bullets.map((bullet) => (
+                  <li key={bullet}><span>✓</span>{bullet}</li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className={styles.modules} aria-label="Además">
+        {extras.map((extra) => (
+          <article className={styles.module} key={extra.title}>
             <div>
-              <p className={styles.kicker}>{module.kicker}</p>
-              <h2>{module.title}</h2>
-              <p>{module.body}</p>
+              <h2 style={{ fontSize: '1.4rem' }}>{extra.title}</h2>
+              <p>{extra.body}</p>
             </div>
-            <ul>
-              {module.bullets.map((bullet) => (
-                <li key={bullet}>{bullet}</li>
-              ))}
-            </ul>
           </article>
         ))}
       </section>
@@ -217,7 +247,7 @@ export default function Home() {
           <p className={styles.kicker}>Planes</p>
           <h2>Planes simples según cuántos comprobantes emitís.</h2>
           <p>
-            La idea es que el precio acompañe el tamaño de la tienda, sin obligarte a comprar un ERP completo.
+            La idea es que el precio acompañe el tamaño de tu negocio, sin obligarte a comprar un ERP completo.
           </p>
         </div>
 
@@ -275,8 +305,8 @@ export default function Home() {
       </section>
 
       <section className={styles.finalCta}>
-        <p className={styles.kicker}>Operación simple, tienda enfocada</p>
-        <h2>Empezá por automatizar la facturación. Después medimos dónde conviene invertir.</h2>
+        <p className={styles.kicker}>Operación simple, negocio enfocado</p>
+        <h2>Empezá por automatizar la facturación. Después vas viendo IVA, Ganancias y rentabilidad.</h2>
         <div className={styles.heroActions}>
           <Link href="/register" className="btn btn-primary btn-lg">Crear cuenta</Link>
           <Link href="/login" className="btn btn-ghost btn-lg">Ya tengo cuenta</Link>
