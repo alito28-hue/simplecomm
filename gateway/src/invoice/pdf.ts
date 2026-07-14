@@ -328,7 +328,9 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
     y += 22;
     const rowH = 20;
     for (const item of lineItems) {
-      doc.rect(leftCol, y, pageWidth, rowH).stroke(BLACK);
+      // Solo una línea separadora abajo de cada renglón, no un recuadro cerrado — un
+      // rectángulo por ítem se ve como si la descripción estuviera "enjaulada".
+      doc.moveTo(leftCol, y + rowH).lineTo(leftCol + pageWidth, y + rowH).stroke(BLACK);
       doc.fillColor(BLACK).font('Helvetica').fontSize(8)
         .text(data.description ?? 'Venta', colX.desc + 6, y + 6, { width: descW - 12 })
         .text('1', colX.cant, y + 6, { width: colCant, align: 'center' })
