@@ -13,11 +13,15 @@ async function notifyAdminNewDelegation(orgName: string, cuit: string) {
   await resend.emails.send({
     from:    FROM_EMAIL,
     to:      ADMIN_EMAIL,
-    subject: `Nueva delegación ARCA pendiente de aceptar — ${orgName} (${cuit})`,
+    subject: `Nueva delegación ARCA pendiente — ${orgName} (${cuit})`,
     html: `
       <p><strong>${orgName}</strong> (CUIT ${cuit}) acaba de dar de alta su punto de venta y autorizar la delegación en ARCA.</p>
-      <p>Tenés que entrar a <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml">mi.afip.gov.ar</a> con el CUIT 30715371622 (Mocla SA), ir a <strong>Administrador de Relaciones de Clave Fiscal</strong> y <strong>aceptar</strong> la relación pendiente de este cliente. Hasta que no la aceptes, el cliente no va a poder facturar.</p>
-      <p>Después podés marcarla como verificada desde el panel: <a href="https://simplecomm.com.ar/mayor/clientes">simplecomm.com.ar/mayor/clientes</a></p>
+      <p>Entrá a <a href="https://auth.afip.gob.ar/contribuyente_/login.xhtml">mi.afip.gov.ar</a> con el CUIT 30715371622 (Mocla SA) y hacé, EN ESTE ORDEN, los dos pasos — el primero solo no alcanza:</p>
+      <ol>
+        <li><strong>Aceptar la delegación:</strong> Administrador de Relaciones de Clave Fiscal → "Consultar" (la opción de "Autorizaciones pendientes de Aceptación") → Aceptar la relación de este cliente.</li>
+        <li><strong>Vincular el Computador Fiscal:</strong> en el mismo Administrador de Relaciones, ahora usar <strong>"Nueva Relación"</strong> → Representado: elegir a este cliente (ya debería aparecer en el desplegable) → Servicio: Facturación Electrónica → en la pantalla siguiente elegir el <strong>Computador Fiscal</strong> del desplegable (no cargar un CUIT) → Confirmar. Sin este segundo paso, ARCA acepta la relación pero WSFE la sigue rechazando igual.</li>
+      </ol>
+      <p>Recién ahí andá al panel y tocá "Verificar relación ahora" para confirmar que quedó bien y avisarle al cliente automáticamente: <a href="https://simplecomm.com.ar/mayor/clientes">simplecomm.com.ar/mayor/clientes</a></p>
     `,
   }).catch(err => console.error('[Resend] Failed to notify admin of new delegation:', err));
 }
