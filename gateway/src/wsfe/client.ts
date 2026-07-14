@@ -199,16 +199,22 @@ export async function feCAESolicitar(
   cuit: string,
   req: InvoiceRequest
 ): Promise<InvoiceResult> {
-  const ivaXml = req.ivaItems
-    .map(
-      (item) => `
+  // AFIP rechaza (error 10071) si el elemento <ar:Iva> está presente para comprobantes que no
+  // discriminan IVA (ej. Factura C de Monotributistas) — no alcanza con que esté vacío, tiene
+  // que no existir el tag.
+  const ivaBlock = req.ivaItems.length
+    ? `<ar:Iva>${req.ivaItems
+        .map(
+          (item) => `
           <ar:AlicIva>
             <ar:Id>${item.id}</ar:Id>
             <ar:BaseImp>${formatAmount(item.baseImp)}</ar:BaseImp>
             <ar:Importe>${formatAmount(item.importe)}</ar:Importe>
           </ar:AlicIva>`
-    )
-    .join('');
+        )
+        .join('')}
+          </ar:Iva>`
+    : '';
 
   const body = `<ar:FECAESolicitar>
     ${buildAuth(ticket, cuit)}
@@ -237,8 +243,7 @@ export async function feCAESolicitar(
           ${req.fchVtoPago ? `<ar:FchVtoPago>${req.fchVtoPago}</ar:FchVtoPago>` : ''}
           <ar:MonId>${req.monId ?? 'PES'}</ar:MonId>
           <ar:MonCotiz>${(req.monCotiz ?? 1).toFixed(4)}</ar:MonCotiz>
-          <ar:Iva>${ivaXml}
-          </ar:Iva>
+          ${ivaBlock}
         </ar:FECAEDetRequest>
       </ar:FeDetReq>
     </ar:FeCAEReq>
