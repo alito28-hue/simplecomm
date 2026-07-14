@@ -6,6 +6,7 @@ import styles from './empresa.module.css';
 const FISCAL = ['RESPONSABLE_INSCRIPTO', 'MONOTRIBUTISTA', 'EXENTO', 'CONSUMIDOR_FINAL', 'NO_CATEGORIZADO'];
 const CATEGORIAS_MONOTRIBUTO = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
 const PROVINCES = ['Buenos Aires', 'Ciudad Autónoma de Buenos Aires', 'Córdoba', 'Santa Fe', 'Mendoza', 'Tucumán', 'Salta', 'Entre Ríos', 'Misiones', 'Chaco', 'Corrientes', 'Santiago del Estero', 'San Juan', 'Jujuy', 'Río Negro', 'Neuquén', 'Formosa', 'La Pampa', 'Catamarca', 'La Rioja', 'San Luis', 'Santa Cruz', 'Chubut', 'Tierra del Fuego'];
+const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 export default function EmpresaPage() {
   const [form, setForm] = useState({
@@ -14,6 +15,7 @@ export default function EmpresaPage() {
     phone: '', emailAlerts: '', emailAccountant: '', iibb: '', cbu: '',
     startDate: '',
     validateVouchers: true,
+    cierreFiscalMes: '', alicuotaGanancias: '',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -25,7 +27,12 @@ export default function EmpresaPage() {
       .then(r => r.json())
       .then(data => {
         if (data && data.name) {
-          setForm(f => ({ ...f, ...data, startDate: data.startDate ? data.startDate.slice(0, 10) : '' }));
+          setForm(f => ({
+            ...f, ...data,
+            startDate: data.startDate ? data.startDate.slice(0, 10) : '',
+            cierreFiscalMes: data.cierreFiscalMes ?? '',
+            alicuotaGanancias: data.alicuotaGanancias ?? '',
+          }));
         }
       })
       .catch(() => {})
@@ -123,7 +130,29 @@ export default function EmpresaPage() {
               <label>Fecha de inicio de actividades</label>
               <input className="input" type="date" value={form.startDate} onChange={e => update('startDate', e.target.value)} />
             </div>
+            {form.fiscalTreatment === 'RESPONSABLE_INSCRIPTO' && (
+              <>
+                <div className={styles.field}>
+                  <label>Mes de cierre del ejercicio fiscal</label>
+                  <select className="select" value={form.cierreFiscalMes} onChange={e => update('cierreFiscalMes', e.target.value)}>
+                    <option value="">Seleccionar</option>
+                    {MESES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                  </select>
+                </div>
+                <div className={styles.field}>
+                  <label>Alícuota Impuesto a las Ganancias (%)</label>
+                  <input className="input" type="number" step="0.01" min="0" max="100" value={form.alicuotaGanancias}
+                    onChange={e => update('alicuotaGanancias', e.target.value)} placeholder="Ej: 35" />
+                </div>
+              </>
+            )}
           </div>
+          {form.fiscalTreatment === 'RESPONSABLE_INSCRIPTO' && (
+            <p className="text-sm text-muted" style={{ marginTop: '-0.5rem' }}>
+              Estos dos datos los necesita la sección <strong>Posición de Ganancias</strong> para estimar
+              tu ganancia y el impuesto sobre el ejercicio fiscal correcto (no todas las empresas cierran en diciembre).
+            </p>
+          )}
           <div className={styles.grid3}>
             <div className={styles.field}>
               <label>Email de alertas</label>

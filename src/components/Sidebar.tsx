@@ -34,6 +34,7 @@ const NAV: { href: string; label: string; icon: string; permission?: PermissionK
   { href: '/dashboard/organizacion/productos',          label: 'Productos y Stock',   icon: '📦', permission: 'manage_products' },
   { href: '/dashboard/organizacion/rentabilidad',       label: 'Rentabilidad',        icon: '💹', permission: 'manage_products' },
   { href: '/dashboard/organizacion/iva',                label: 'IVA',                 icon: '📊', permission: 'view_reports', ivaOnly: true },
+  { href: '/dashboard/organizacion/ganancias',          label: 'Posición de Ganancias', icon: '💵', permission: 'view_reports', ivaOnly: true },
   { href: '/dashboard/organizacion/listas-precios',     label: 'Listas de Precios',   icon: '💲', permission: 'manage_products' },
   { href: '/dashboard/organizacion/centros-costo',      label: 'Centros de Costo',    icon: '🏷', permission: 'manage_clients' },
   { href: '/dashboard/organizacion/calendario-impositivo', label: 'Vencimientos',     icon: '📅' },

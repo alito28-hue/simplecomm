@@ -49,6 +49,7 @@ const MODULES = [
   { href: '/dashboard/organizacion/listas-precios',      icon: '💲', title: 'Listas de Precios',    desc: 'Precios especiales por lista' },
   { href: '/dashboard/organizacion/centros-costo',       icon: '🏷', title: 'Centros de Costo',     desc: 'Agrupá clientes por proyecto' },
   { href: '/dashboard/organizacion/iva',                icon: '📊', title: 'IVA',                  desc: 'Posición de IVA (ventas menos compras)', ivaOnly: true },
+  { href: '/dashboard/organizacion/ganancias',           icon: '💵', title: 'Posición de Ganancias', desc: 'Ganancia estimada e Impuesto a las Ganancias por ejercicio', ivaOnly: true },
   { href: '/dashboard/organizacion/calendario-impositivo', icon: '📅', title: 'Vencimientos',       desc: 'Calendario impositivo y recordatorios' },
   { href: '/dashboard/organizacion/usuarios',            icon: '👥', title: 'Usuarios y Permisos',  desc: 'Equipo y accesos por rol' },
   { href: '/dashboard/integraciones',                    icon: '🔗', title: 'Integraciones',        desc: 'Mercado Pago, Tiendanube y más' },

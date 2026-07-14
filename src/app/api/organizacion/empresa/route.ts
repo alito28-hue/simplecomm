@@ -23,8 +23,12 @@ export async function PUT(req: NextRequest) {
 
   const body = await req.json();
   if (typeof body.cuit === 'string') body.cuit = body.cuit.replace(/\D/g, '');
-  // Postgres no acepta '' para una columna timestamp — lo normalizamos a null.
+  // Postgres no acepta '' para una columna timestamp/numérica — lo normalizamos a null.
   if (body.startDate === '') body.startDate = null;
+  if (body.cierreFiscalMes === '') body.cierreFiscalMes = null;
+  else if (body.cierreFiscalMes != null) body.cierreFiscalMes = Number(body.cierreFiscalMes);
+  if (body.alicuotaGanancias === '') body.alicuotaGanancias = null;
+  else if (body.alicuotaGanancias != null) body.alicuotaGanancias = Number(body.alicuotaGanancias);
   const now = new Date().toISOString();
 
   // Verificar si ya existe
