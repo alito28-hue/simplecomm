@@ -25,6 +25,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/mayor/tickets" className={styles.navItem}>🎫 Tickets</Link>
           <Link href="/mayor/planes" className={styles.navItem}>📊 Planes</Link>
           <Link href="/mayor/monotributo" className={styles.navItem}>📉 Monotributo</Link>
+          <Link href="/mayor/guia-alta-cliente" className={styles.navItem}>📋 Guía de alta ARCA</Link>
         </nav>
         <div className={styles.bottom}>
           <Link href="/dashboard" className={styles.bottomLink}>← Ir a mi dashboard</Link>

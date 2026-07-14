@@ -166,7 +166,8 @@ export default async function ClienteDetailPage({ params }: { params: Promise<{ 
             <p className="text-sm">✅ Relación verificada el {fmt(org.afipRelationVerifiedAt)}.</p>
           ) : (
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-              ⏳ Este cliente usa delegación y todavía no verificaste que ARCA la haya aceptado. Aceptala en el Administrador de Relaciones (CUIT 30715371622) y después verificá acá.
+              ⏳ Este cliente usa delegación y todavía no verificaste que ARCA la haya aceptado.
+              Seguí los pasos de la <a href="/mayor/guia-alta-cliente" style={{ color: 'var(--blue)' }}>Guía de alta ARCA</a> (aceptar + vincular Computador Fiscal) y después verificá acá.
             </p>
           )}
           <VerificarArcaButton orgId={org.id} />
