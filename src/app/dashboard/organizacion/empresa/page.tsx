@@ -6,7 +6,7 @@ import styles from './empresa.module.css';
 const FISCAL = ['RESPONSABLE_INSCRIPTO', 'MONOTRIBUTISTA', 'EXENTO', 'CONSUMIDOR_FINAL', 'NO_CATEGORIZADO'];
 const CATEGORIAS_MONOTRIBUTO = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
 const PROVINCES = ['Buenos Aires', 'Ciudad Autónoma de Buenos Aires', 'Córdoba', 'Santa Fe', 'Mendoza', 'Tucumán', 'Salta', 'Entre Ríos', 'Misiones', 'Chaco', 'Corrientes', 'Santiago del Estero', 'San Juan', 'Jujuy', 'Río Negro', 'Neuquén', 'Formosa', 'La Pampa', 'Catamarca', 'La Rioja', 'San Luis', 'Santa Cruz', 'Chubut', 'Tierra del Fuego'];
-const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+const MESES_CIERRE = [{ mes: 6, label: 'Junio' }, { mes: 12, label: 'Diciembre' }];
 
 export default function EmpresaPage() {
   const [form, setForm] = useState({
@@ -136,7 +136,7 @@ export default function EmpresaPage() {
                   <label>Mes de cierre del ejercicio fiscal</label>
                   <select className="select" value={form.cierreFiscalMes} onChange={e => update('cierreFiscalMes', e.target.value)}>
                     <option value="">Seleccionar</option>
-                    {MESES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
+                    {MESES_CIERRE.map(({ mes, label }) => <option key={mes} value={mes}>{label}</option>)}
                   </select>
                 </div>
                 <div className={styles.field}>

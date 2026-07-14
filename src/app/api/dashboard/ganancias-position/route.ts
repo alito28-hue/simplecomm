@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { computeIvaPosition } from '@/lib/iva-position';
-import { fiscalYearRange } from '@/lib/ganancias-position';
+import { fiscalYearRange, fiscalYearMonths } from '@/lib/ganancias-position';
 
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
@@ -29,6 +29,21 @@ export async function GET(req: NextRequest) {
   const alicuota = org.alicuotaGanancias !== null ? Number(org.alicuotaGanancias) : null;
   const impuestoEstimado = alicuota !== null ? Math.round(ganancia * (alicuota / 100) * 100) / 100 : null;
 
+  const meses = await Promise.all(
+    fiscalYearMonths(org.cierreFiscalMes, ejerciciosAtras).map(async m => {
+      const mPos = await computeIvaPosition(supabase, user.id, m.from, m.to);
+      const mGanancia = Math.round((mPos.salesNet - mPos.purchasesNet) * 100) / 100;
+      return {
+        year: m.year,
+        month: m.month,
+        label: m.label,
+        ventasNetas: mPos.salesNet,
+        comprasNetas: mPos.purchasesNet,
+        ganancia: mGanancia,
+      };
+    }),
+  );
+
   return NextResponse.json({
     applicable: true,
     configured: true,
@@ -38,5 +53,6 @@ export async function GET(req: NextRequest) {
     ganancia,
     alicuota,
     impuestoEstimado,
+    meses,
   });
 }

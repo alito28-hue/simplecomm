@@ -15,3 +15,30 @@ export function fiscalYearRange(cierreFiscalMes: number, ejerciciosAtras: number
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
   return { from: fmt(from), to: fmt(to), label: `Ejercicio ${endYear}` };
 }
+
+const MESES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+/** Los 12 meses calendario que componen el ejercicio, en orden (empieza el mes siguiente al cierre). */
+export function fiscalYearMonths(cierreFiscalMes: number, ejerciciosAtras: number = 0) {
+  const { from } = fiscalYearRange(cierreFiscalMes, ejerciciosAtras);
+  const [startYear, startMonth] = from.split('-').map(Number);
+
+  const months: { year: number; month: number; label: string; from: string; to: string }[] = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(startYear, startMonth - 1 + i, 1);
+    const year = d.getFullYear();
+    const month = d.getMonth() + 1;
+    const lastDay = new Date(year, month, 0).getDate();
+    months.push({
+      year,
+      month,
+      label: MESES[month - 1],
+      from: `${year}-${String(month).padStart(2, '0')}-01`,
+      to: `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
+    });
+  }
+  return months;
+}

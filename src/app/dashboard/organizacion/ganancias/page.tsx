@@ -5,6 +5,15 @@ import Link from 'next/link';
 import styles from '../../dashboard.module.css';
 import pageStyles from '../clientes/clientes.module.css';
 
+interface MesGanancia {
+  year: number;
+  month: number;
+  label: string;
+  ventasNetas: number;
+  comprasNetas: number;
+  ganancia: number;
+}
+
 interface GananciasData {
   applicable: boolean;
   configured?: boolean;
@@ -14,6 +23,7 @@ interface GananciasData {
   ganancia?: number;
   alicuota?: number | null;
   impuestoEstimado?: number | null;
+  meses?: MesGanancia[];
 }
 
 function money(n: number) {
@@ -142,6 +152,38 @@ export default function GananciasPage() {
           impositivos — no reemplaza la liquidación oficial ante ARCA. Consultá con tu contador o gestor.
         </p>
       </div>
+
+      {data.meses && data.meses.length > 0 && (
+        <div className="card">
+          <div className={styles.tableHeader}>
+            <h2 className={styles.sectionTitle}>Mes a mes — {data.ejercicio?.label}</h2>
+          </div>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Mes</th>
+                  <th>Ventas netas</th>
+                  <th>Compras netas</th>
+                  <th>Ganancia</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.meses.map(m => (
+                  <tr key={`${m.year}-${m.month}`}>
+                    <td>{m.label} {m.year}</td>
+                    <td className="text-sm">{money(m.ventasNetas)}</td>
+                    <td className="text-sm">{money(m.comprasNetas)}</td>
+                    <td className="text-sm" style={{ fontWeight: 700, color: m.ganancia >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                      {money(m.ganancia)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
