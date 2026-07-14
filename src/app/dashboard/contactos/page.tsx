@@ -359,7 +359,7 @@ export default function ContactosPage() {
                   </select>
                 </div>
                 <div className={styles.field}>
-                  <label>N° documento</label>
+                  <label>Número</label>
                   <input className="input" value={form.docNumber} onChange={e => setForm(f => ({ ...f, docNumber: e.target.value }))} placeholder="12345678" />
                 </div>
               </div>

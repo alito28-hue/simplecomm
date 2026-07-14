@@ -8,6 +8,7 @@ interface GatewayInvoiceRow {
   invoice_number_int: number | null;
   status: string;
   buyer_name: string;
+  buyer_doc: string | null;
   total_amount: number;
   invoice_type: number | null;
   cae: string | null;
@@ -23,6 +24,8 @@ export interface ComprobanteUnificado {
   invoice_number: string | null;
   status: 'issued' | 'pending' | 'error';
   buyer_name: string;
+  /** CUIT/CUIL/DNI del receptor, sin separadores — null si no se pudo determinar. */
+  buyer_doc: string | null;
   total_amount: number;
   cae: string | null;
   cae_due_date: string | null;
@@ -74,6 +77,7 @@ export async function getComprobantesUnificados(
           invoice_number: r.invoice_number,
           status: (r.status as ComprobanteUnificado['status']) ?? 'error',
           buyer_name: r.buyer_name,
+          buyer_doc: r.buyer_doc ? r.buyer_doc.replace(/\D/g, '') || null : null,
           total_amount: Number(r.total_amount ?? 0),
           cae: r.cae,
           cae_due_date: r.cae_due_date,
@@ -96,7 +100,7 @@ export async function getComprobantesUnificados(
 
   const { data: arcaRows } = await supabase
     .from('arca_sales_invoices')
-    .select('id, tipoComprobante, puntoVenta, numeroComprobante, issueDate, receptorNombre, totalAmount, cae')
+    .select('id, tipoComprobante, puntoVenta, numeroComprobante, issueDate, receptorNombre, receptorCuit, totalAmount, cae')
     .eq('organizationId', userId);
 
   const arcaMapped: ComprobanteUnificado[] = (arcaRows ?? [])
@@ -106,6 +110,7 @@ export async function getComprobantesUnificados(
       invoice_number: `${String(r.puntoVenta).padStart(4, '0')}-${String(r.numeroComprobante).padStart(8, '0')}`,
       status: 'issued' as const,
       buyer_name: r.receptorNombre ?? 'Consumidor Final',
+      buyer_doc: r.receptorCuit ? r.receptorCuit.replace(/\D/g, '') || null : null,
       total_amount: Number(r.totalAmount ?? 0),
       cae: r.cae,
       cae_due_date: null,

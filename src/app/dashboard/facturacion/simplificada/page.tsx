@@ -28,6 +28,26 @@ const LETTER_INFO = {
   C: { label: 'Factura C', desc: 'Para monotributistas. Sin IVA.', inputLabel: 'Monto total' },
 };
 
+/** Deja solo dígitos y como mucho una coma decimal — el usuario tipea números "en limpio",
+ * los puntos de miles se agregan solos al formatear para mostrar. */
+function parseArgInput(raw: string): string {
+  let cleaned = raw.replace(/[^\d,]/g, '');
+  const firstComma = cleaned.indexOf(',');
+  if (firstComma !== -1) {
+    cleaned = cleaned.slice(0, firstComma + 1) + cleaned.slice(firstComma + 1).replace(/,/g, '');
+  }
+  const [intPart, decPart] = cleaned.split(',');
+  if (!intPart && decPart === undefined) return '';
+  return decPart !== undefined ? `${intPart || '0'}.${decPart.slice(0, 2)}` : (intPart || '');
+}
+
+function formatArgDisplay(numeric: string): string {
+  if (!numeric) return '';
+  const [intPart, decPart] = numeric.split('.');
+  const intFormatted = intPart ? Number(intPart).toLocaleString('es-AR') : '0';
+  return decPart !== undefined ? `${intFormatted},${decPart}` : intFormatted;
+}
+
 function PersonaCard({ data }: { data: PadronData }) {
   const activo = data.estadoClave === 'ACTIVO';
   const lugar = [data.domicilio?.localidad, data.domicilio?.provincia].filter(Boolean).join(', ');
@@ -63,6 +83,7 @@ export default function FacturacionSimplificadaPage() {
 
   const [selectedProduct, setSelectedProduct] = useState<ProductOption | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [displayAmount, setDisplayAmount] = useState('');
   const amountRef = useRef<HTMLInputElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
   const ivaRateRef = useRef<HTMLSelectElement>(null);
@@ -80,6 +101,7 @@ export default function FacturacionSimplificadaPage() {
     const netTotal = Number(p.netPrice) * qty;
     const amount = currentLetter === 'B' ? netTotal * (1 + ivaPct / 100) : netTotal;
     if (amountRef.current) amountRef.current.value = amount.toFixed(2);
+    setDisplayAmount(formatArgDisplay(amount.toFixed(2)));
     if (descRef.current) descRef.current.value = qty === 1 ? p.description : `${p.description} x${qty}`;
   }
 
@@ -416,8 +438,20 @@ export default function FacturacionSimplificadaPage() {
                 </div>
                 <div className={styles.amountField}>
                   <span className={styles.currencySign}>$</span>
-                  <input ref={amountRef} name="amount" type="number" step="0.01" min="0.01" required
-                    placeholder={info.inputLabel} className={styles.amountInput} />
+                  <input type="hidden" ref={amountRef} name="amount" />
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    required
+                    placeholder={info.inputLabel}
+                    className={styles.amountInput}
+                    value={displayAmount}
+                    onChange={e => {
+                      const numeric = parseArgInput(e.target.value);
+                      if (amountRef.current) amountRef.current.value = numeric;
+                      setDisplayAmount(formatArgDisplay(numeric));
+                    }}
+                  />
                 </div>
                 {selectedProduct && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem' }}>
