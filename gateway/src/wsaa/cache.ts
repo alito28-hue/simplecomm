@@ -106,3 +106,18 @@ export async function invalidateTicket(tenantId: string, service: string = 'wsfe
   const { cacheKey } = await resolveCredentials(tenantId);
   await db.authTicket.deleteMany({ where: { tenantId: cacheKey, service } });
 }
+
+/**
+ * CUIT del dueño real del certificado que se va a usar para este tenant (el propio tenant si
+ * tiene certificado propio, o Mocla si usa delegación) — distinto del CUIT del tenant en sí.
+ * Necesario para webservices como Consulta de Padrón, donde el parámetro "cuitRepresentada"
+ * tiene que ser quien realmente posee el certificado/token, no el CUIT que se está facturando
+ * (a diferencia de WSFE, la consulta de Padrón de un tercero no depende de que ese tercero
+ * haya delegado nada — solo depende de que el dueño del certificado tenga el servicio propio).
+ */
+export async function getCredentialOwnerCuit(tenantId: string): Promise<string> {
+  const { cacheKey } = await resolveCredentials(tenantId);
+  const owner = await db.tenant.findUnique({ where: { id: cacheKey } });
+  if (!owner) throw new Error(`No se encontró el tenant dueño del certificado (id: ${cacheKey})`);
+  return owner.cuit;
+}

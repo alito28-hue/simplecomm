@@ -1,9 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { getPersona, getIdPersonaListByDocumento } from '../padron/client';
-import { getValidTicket } from '../wsaa/cache';
+import { getValidTicket, getCredentialOwnerCuit } from '../wsaa/cache';
 import { endpoints } from '../config';
 import { authenticateApiKey } from '../middleware/apikey';
-import { db } from '../db/client';
 
 export async function padronRoutes(app: FastifyInstance): Promise<void> {
   app.get<{ Params: { cuil: string } }>('/v1/padron/:cuil', {
@@ -15,11 +14,13 @@ export async function padronRoutes(app: FastifyInstance): Promise<void> {
     }
 
     try {
-      const tenant = await db.tenant.findUnique({ where: { id: request.tenantId } });
-      if (!tenant) return reply.status(404).send({ error: 'Tenant no encontrado' });
-
+      // "cuitRepresentada" tiene que ser el dueño real del certificado (Mocla, si el tenant
+      // factura por delegación) — no el CUIT del tenant. La consulta de Padrón de un tercero
+      // no depende de que ese tercero haya delegado nada, solo de que el dueño del
+      // certificado tenga el servicio de Padrón habilitado en su propia cuenta de ARCA.
+      const cuitRepresentada = await getCredentialOwnerCuit(request.tenantId);
       const ticket = await getValidTicket(request.tenantId, 'ws_sr_padron_a13');
-      const persona = await getPersona(endpoints.padron, ticket, tenant.cuit, clean);
+      const persona = await getPersona(endpoints.padron, ticket, cuitRepresentada, clean);
       return reply.send(persona);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -44,11 +45,9 @@ export async function padronRoutes(app: FastifyInstance): Promise<void> {
     }
 
     try {
-      const tenant = await db.tenant.findUnique({ where: { id: request.tenantId } });
-      if (!tenant) return reply.status(404).send({ error: 'Tenant no encontrado' });
-
+      const cuitRepresentada = await getCredentialOwnerCuit(request.tenantId);
       const ticket = await getValidTicket(request.tenantId, 'ws_sr_padron_a13');
-      const cuils = await getIdPersonaListByDocumento(endpoints.padron, ticket, tenant.cuit, clean);
+      const cuils = await getIdPersonaListByDocumento(endpoints.padron, ticket, cuitRepresentada, clean);
 
       if (cuils.length === 0) {
         return reply.status(404).send({ error: 'DNI no encontrado en el Padrón AFIP' });
@@ -57,7 +56,7 @@ export async function padronRoutes(app: FastifyInstance): Promise<void> {
       const resultados = (
         await Promise.all(
           cuils.map(cuil =>
-            getPersona(endpoints.padron, ticket, tenant.cuit, cuil).catch(() => null)
+            getPersona(endpoints.padron, ticket, cuitRepresentada, cuil).catch(() => null)
           )
         )
       ).filter(Boolean);

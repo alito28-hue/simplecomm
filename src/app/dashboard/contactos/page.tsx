@@ -380,19 +380,34 @@ export default function ContactosPage() {
 
               <div className={styles.row}>
                 <div className={styles.field}>
-                  <label>Nombre</label>
+                  <label>Nombre {padronData?.tipoPersona === 'JURIDICA' && <span className="text-sm text-muted">(persona de contacto)</span>}</label>
                   <input className="input" value={form.firstName ?? ''}
                     onChange={e => {
                       const firstName = e.target.value;
-                      setForm(f => ({ ...f, firstName, businessName: `${firstName} ${f.lastName ?? ''}`.trim() || f.businessName }));
+                      setForm(f => ({
+                        ...f,
+                        firstName,
+                        // Si el padrón ya identificó una empresa (razón social), el nombre de
+                        // contacto NUNCA debe pisar el nombre principal — solo se auto-completa
+                        // businessName con Nombre+Apellido cuando es una persona física.
+                        businessName: padronData?.tipoPersona === 'JURIDICA'
+                          ? f.businessName
+                          : `${firstName} ${f.lastName ?? ''}`.trim() || f.businessName,
+                      }));
                     }} placeholder="Juan" />
                 </div>
                 <div className={styles.field}>
-                  <label>Apellido</label>
+                  <label>Apellido {padronData?.tipoPersona === 'JURIDICA' && <span className="text-sm text-muted">(persona de contacto)</span>}</label>
                   <input className="input" value={form.lastName ?? ''}
                     onChange={e => {
                       const lastName = e.target.value;
-                      setForm(f => ({ ...f, lastName, businessName: `${f.firstName ?? ''} ${lastName}`.trim() || f.businessName }));
+                      setForm(f => ({
+                        ...f,
+                        lastName,
+                        businessName: padronData?.tipoPersona === 'JURIDICA'
+                          ? f.businessName
+                          : `${f.firstName ?? ''} ${lastName}`.trim() || f.businessName,
+                      }));
                     }} placeholder="Pérez" />
                 </div>
               </div>
