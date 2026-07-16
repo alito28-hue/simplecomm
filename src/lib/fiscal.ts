@@ -18,13 +18,18 @@ export function getDefaultInvoiceLetter(fiscalTreatment?: string | null): Invoic
 export interface PadronFiscalInfo {
   monotributo?: boolean;
   ivaCondition?: 'INSCRIPTO' | 'EXENTO' | null;
+  tipoPersona?: string;
 }
 
 /**
  * Sugiere una condición fiscal a partir de los datos crudos del padrón de AFIP.
  * Devuelve null si el padrón no aporta información suficiente (no se debe forzar nada).
+ * Una persona jurídica (empresa) siempre es Responsable Inscripto en Argentina — el
+ * monotributo solo existe para personas físicas — así que ese dato prima incluso si
+ * ivaCondition vino null desde el padrón.
  */
 export function suggestFiscalTreatment(info: PadronFiscalInfo): 'RESPONSABLE_INSCRIPTO' | 'MONOTRIBUTISTA' | 'EXENTO' | null {
+  if (info.tipoPersona === 'JURIDICA') return 'RESPONSABLE_INSCRIPTO';
   if (info.monotributo) return 'MONOTRIBUTISTA';
   if (info.ivaCondition === 'EXENTO') return 'EXENTO';
   if (info.ivaCondition === 'INSCRIPTO') return 'RESPONSABLE_INSCRIPTO';

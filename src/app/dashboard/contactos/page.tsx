@@ -141,7 +141,7 @@ export default function ContactosPage() {
           if (res.ok && info.nombre) {
             setPadronData(info);
             setPadronStatus('found');
-            const suggestion = suggestFiscalTreatment({ monotributo: info.monotributo, ivaCondition: info.ivaCondition });
+            const suggestion = suggestFiscalTreatment({ monotributo: info.monotributo, ivaCondition: info.ivaCondition, tipoPersona: info.tipoPersona });
             setForm(f => ({
               ...f,
               businessName: f.businessName.trim() ? f.businessName : info.nombre,

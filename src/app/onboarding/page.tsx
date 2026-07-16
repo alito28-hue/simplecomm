@@ -127,7 +127,7 @@ export default function OnboardingPage() {
         const info: PadronData = await res.json();
         setPadronData(info);
         setPadronStatus('found');
-        const suggestion = suggestFiscalTreatment({ monotributo: info.monotributo, ivaCondition: info.ivaCondition });
+        const suggestion = suggestFiscalTreatment({ monotributo: info.monotributo, ivaCondition: info.ivaCondition, tipoPersona: info.tipoPersona });
         if (suggestion && !fiscalTouchedRef.current) setFiscalSuggested(true);
         const startDateSuggestion = periodoToIsoDate(info.periodoActividadPrincipal);
         if (startDateSuggestion) setStartDateSuggested(true);
