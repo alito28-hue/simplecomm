@@ -1,8 +1,9 @@
 .page {
   min-height: 100vh;
-  background: #f6f8fb;
+  background: var(--bg);
   color: var(--text-primary);
   scroll-behavior: smooth;
+  overflow-x: hidden;
 }
 
 .nav {
@@ -14,9 +15,9 @@
   align-items: center;
   gap: 1.5rem;
   padding: 1rem 2rem;
-  border-bottom: 1px solid rgba(13, 28, 49, 0.08);
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(18px);
+  border-bottom: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
 }
 
 .navLinks {
@@ -40,150 +41,187 @@
   align-items: center;
 }
 
+/* ── Hero ───────────────────────────────────────────────────────────────── */
+
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(380px, 0.9fr);
   align-items: center;
-  gap: 3rem;
-  max-width: 1200px;
+  gap: 3.5rem;
+  max-width: 1360px;
   margin: 0 auto;
-  min-height: calc(100vh - 78px);
-  padding: 5rem 2rem 4rem;
-}
-
-.heroScene {
-  width: 100%;
-  min-width: 0;
-}
-
-.scenePanel {
-  width: 100%;
-  border: 1px solid rgba(13, 28, 49, 0.12);
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 18px 52px rgba(13, 28, 49, 0.14);
-  overflow: hidden;
-}
-
-.sceneHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.2rem;
-  border-bottom: 1px solid var(--border);
-  color: var(--text-secondary);
-  font-size: 0.88rem;
-  font-weight: 700;
-}
-
-.sceneHeader strong {
-  color: #065f46;
-  background: var(--success-bg);
-  padding: 0.24rem 0.55rem;
-  border-radius: var(--radius-full);
-  font-size: 0.72rem;
-}
-
-.sceneGrid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.85rem;
-  padding: 1rem;
-}
-
-.sceneGrid div {
-  display: grid;
-  gap: 0.25rem;
-  min-height: 116px;
-  padding: 1rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: #f9fbfd;
-}
-
-.sceneGrid small,
-.sceneGrid span,
-.sceneList span,
-.sceneList em {
-  color: var(--text-muted);
-  font-size: 0.78rem;
-  font-style: normal;
-}
-
-.sceneGrid strong {
-  color: var(--navy);
-  font-family: var(--font-heading);
-  font-size: 2rem;
-  line-height: 1;
-}
-
-.sceneList {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 1rem;
-  align-items: center;
-  margin: 0 1rem 1rem;
-  padding: 0.85rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: #ffffff;
-}
-
-.sceneList strong {
-  color: var(--text-primary);
-  font-size: 0.86rem;
+  padding: 6rem 2rem 6.5rem;
 }
 
 .heroContent {
-  max-width: 570px;
+  max-width: 560px;
 }
 
 .heroBadge,
 .kicker {
   color: var(--blue-hover);
   font-size: 0.78rem;
-  font-weight: 800;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.kickerLight {
+  color: #7cc3ff;
+  font-size: 0.78rem;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  margin-bottom: 0.9rem;
 }
 
 .heroBadge {
   display: inline-flex;
-  margin-bottom: 1.25rem;
-  padding: 0.45rem 0.75rem;
-  border: 1px solid rgba(0, 122, 255, 0.16);
+  margin-bottom: 1.5rem;
+  padding: 0.45rem 0.9rem;
   border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--blue-light);
+  letter-spacing: normal;
 }
 
 .heroTitle {
-  margin: 0 0 1.35rem;
+  margin: 0 0 1.5rem;
   color: var(--navy);
   font-family: var(--font-heading);
-  font-size: 3.7rem;
+  font-size: 3.5rem;
   font-weight: 800;
-  line-height: 1;
+  letter-spacing: -0.02em;
+  line-height: 1.08;
 }
 
 .heroDesc {
-  margin: 0 0 2rem;
+  margin: 0 0 2.25rem;
   color: var(--text-secondary);
-  font-size: 1.16rem;
-  line-height: 1.7;
+  font-size: 1.18rem;
+  line-height: 1.55;
 }
 
 .heroActions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-start;
-  gap: 0.85rem;
+  gap: 1rem;
+  align-items: center;
 }
 
 .heroCta {
-  margin-top: 1rem;
+  margin-top: 1.25rem;
   color: var(--text-muted);
-  font-size: 0.88rem;
+  font-size: 0.8rem;
 }
+
+.heroCard {
+  width: 100%;
+  min-width: 0;
+  padding: 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: 0 20px 60px -20px rgba(13, 28, 49, 0.25);
+}
+
+.heroCardTitle {
+  margin-bottom: 1.25rem;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.heroStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.heroStatsGrid div {
+  padding: 0.85rem;
+  border-radius: var(--radius-md);
+  background: var(--surface-low);
+}
+
+.heroStatsGrid small {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.heroStatsGrid strong {
+  color: var(--navy);
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.statGreen {
+  color: var(--success) !important;
+}
+
+.heroBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  background: var(--navy);
+  color: #ffffff;
+}
+
+.heroBanner small {
+  display: block;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.72rem;
+}
+
+.heroBanner span {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+}
+
+.heroBannerCta {
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: var(--blue);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.heroProgress {
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  background: var(--surface-low);
+}
+
+.heroProgressLabel {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.progressTrack {
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--border);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--blue);
+}
+
+/* ── Channels ───────────────────────────────────────────────────────────── */
 
 .channels {
   display: grid;
@@ -192,169 +230,131 @@
   gap: 1.5rem;
   max-width: 1120px;
   margin: 0 auto 5rem;
-  padding: 1rem 1.2rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: #ffffff;
-  box-shadow: var(--shadow-sm);
+  padding: 1.25rem 1.5rem;
 }
 
 .channels span {
   color: var(--text-muted);
   font-size: 0.86rem;
-  font-weight: 700;
 }
 
 .channels div {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.7rem;
+  gap: 2.5rem;
 }
 
 .channels strong {
-  padding: 0.45rem 0.7rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-full);
-  color: var(--navy);
-  background: #f8fafc;
-  font-size: 0.86rem;
+  color: var(--text-secondary);
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
 }
 
+/* ── Shared section shell ──────────────────────────────────────────────── */
+
 .section,
-.modules,
 .finalCta {
   max-width: 1120px;
   margin: 0 auto;
   padding: 0 2rem;
 }
 
-.section,
-.module {
-  scroll-margin-top: 104px;
-}
-
 .section {
+  scroll-margin-top: 104px;
   margin-bottom: 6rem;
 }
 
 .sectionHeader {
-  max-width: 760px;
-  margin-bottom: 2rem;
+  max-width: 720px;
+  margin-bottom: 3rem;
 }
 
 .sectionHeader h2,
-.module h2,
 .finalCta h2 {
   margin: 0.55rem 0 0.75rem;
   color: var(--navy);
   font-family: var(--font-heading);
   font-size: 2.35rem;
-  line-height: 1.08;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
 }
 
 .sectionHeader p:not(.kicker),
-.module p,
 .finalCta p:not(.kicker) {
   color: var(--text-secondary);
-  font-size: 1rem;
-  line-height: 1.7;
+  font-size: 1.02rem;
+  line-height: 1.65;
 }
+
+/* ── Cómo funciona ──────────────────────────────────────────────────────── */
 
 .flow {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .flowCard {
-  min-height: 260px;
-  padding: 1.4rem;
+  padding: 2rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: #ffffff;
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
 }
 
 .flowCard span {
   display: inline-flex;
-  margin-bottom: 2rem;
-  color: var(--blue-hover);
+  margin-bottom: 1.25rem;
+  color: var(--text-muted);
   font-family: var(--font-mono);
-  font-size: 0.8rem;
-  font-weight: 700;
+  font-size: 0.85rem;
 }
 
 .flowCard p {
   color: var(--text-muted);
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .flowCard h3 {
-  margin: 0.45rem 0 0.7rem;
+  margin: 0.5rem 0 0.75rem;
   color: var(--navy);
   font-size: 1.25rem;
+  font-weight: 700;
 }
 
 .flowCard small {
   color: var(--text-secondary);
-  font-size: 0.92rem;
-  line-height: 1.65;
+  font-size: 0.95rem;
+  line-height: 1.6;
 }
 
-.modules {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
+/* ── Para vos (dark) ───────────────────────────────────────────────────── */
+
+.paraVos {
+  background: var(--navy);
+  color: #ffffff;
+  padding: 6rem 2rem;
   margin-bottom: 6rem;
 }
 
-.module {
-  display: grid;
-  gap: 2rem;
-  align-content: space-between;
-  min-height: 420px;
-  padding: 2rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: #ffffff;
-  box-shadow: var(--shadow-sm);
+.paraVosInner {
+  max-width: 1120px;
+  margin: 0 auto;
 }
 
-.module:first-child {
-  background: #0d1c31;
-}
-
-.module:first-child h2,
-.module:first-child p:not(.kicker),
-.module:first-child li {
+.paraVosTitle {
+  max-width: 680px;
+  margin: 0 0 3rem;
   color: #ffffff;
-}
-
-.module:first-child .kicker {
-  color: #7cc3ff;
-}
-
-.module ul {
-  display: grid;
-  gap: 0.75rem;
-  list-style: none;
-}
-
-.module li {
-  padding: 0.85rem 0;
-  border-top: 1px solid rgba(117, 119, 125, 0.22);
-  color: var(--text-primary);
-  font-weight: 700;
-}
-
-.plans {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1.5rem;
+  font-family: var(--font-heading);
+  font-size: 2.35rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.12;
 }
 
 .profilesGrid {
@@ -363,22 +363,190 @@
   gap: 1.5rem;
 }
 
+.profileCardDark,
+.profileCardLight {
+  padding: 2rem;
+  border-radius: var(--radius-lg);
+}
+
+.profileCardDark {
+  border: 1px solid var(--navy-hover);
+  background: var(--navy-muted);
+}
+
+.profileCardLight {
+  background: #ffffff;
+}
+
+.profileCardDark h3 {
+  color: #ffffff;
+}
+
+.profileCardLight h3 {
+  color: var(--navy);
+}
+
+.profileCardDark h3,
+.profileCardLight h3 {
+  margin: 0 0 1.25rem;
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.profileCardDark ul,
+.profileCardLight ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  list-style: none;
+}
+
+.profileCardDark li,
+.profileCardLight li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.profileCardDark li {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.profileCardLight li {
+  color: var(--text-secondary);
+}
+
+.profileCardDark li span,
+.profileCardLight li span {
+  flex-shrink: 0;
+  color: var(--success);
+  font-weight: 800;
+}
+
+/* ── Extras + Publicidad ──────────────────────────────────────────────── */
+
+.extrasSection {
+  max-width: 1120px;
+  margin: 0 auto 6rem;
+  padding: 0 2rem;
+}
+
+.extras {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.extraCard {
+  padding: 2.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.extraIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 1.25rem;
+  border-radius: var(--radius-md);
+  background: var(--blue-light);
+  color: var(--blue-hover);
+  font-size: 1.1rem;
+}
+
+.extraCard h3 {
+  margin: 0 0 0.6rem;
+  color: var(--navy);
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.extraCard p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.publicidadBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2.5rem;
+  padding: 2.75rem 3rem;
+  border-radius: var(--radius-lg);
+  background: var(--navy);
+  flex-wrap: wrap;
+}
+
+.publicidadBanner h3 {
+  max-width: 460px;
+  margin: 0;
+  color: #ffffff;
+  font-family: var(--font-heading);
+  font-size: 1.55rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.roasCard {
+  min-width: 200px;
+  padding: 1.5rem 2rem;
+  border-radius: var(--radius-md);
+  background: var(--navy-muted);
+  text-align: center;
+}
+
+.roasCard span {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.8rem;
+}
+
+.roasCard strong {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: #ffffff;
+  font-family: var(--font-heading);
+  font-size: 2.1rem;
+  font-weight: 800;
+}
+
+.roasCard .progressTrack {
+  background: var(--navy-hover);
+}
+
+/* ── Planes ─────────────────────────────────────────────────────────────── */
+
+.plans {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
 .planCard {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  min-height: 520px;
+  gap: 0.4rem;
   padding: 2rem;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: #ffffff;
-  box-shadow: var(--shadow-sm);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  text-align: left;
 }
 
 .planHighlighted {
   border: 2px solid var(--blue);
-  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.08);
+  box-shadow: 0 20px 50px -20px rgba(0, 122, 255, 0.3);
 }
 
 .planBadge {
@@ -386,24 +554,24 @@
   top: -14px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 0.25rem 0.8rem;
+  padding: 0.3rem 0.9rem;
   border-radius: var(--radius-full);
   background: var(--blue);
   color: #ffffff;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
-.planIcon {
-  color: var(--blue);
-  font-family: var(--font-heading);
-  font-size: 3rem;
-  font-weight: 800;
-  line-height: 1;
+.planEyebrow {
+  color: var(--text-muted);
+  font-size: 0.82rem;
 }
 
 .planName {
+  margin: 0.15rem 0 0;
   color: var(--navy);
   font-family: var(--font-heading);
   font-size: 1.25rem;
@@ -411,15 +579,16 @@
 }
 
 .planDesc {
+  margin-bottom: 0.75rem;
   color: var(--text-muted);
-  font-size: 0.92rem;
+  font-size: 0.9rem;
 }
 
 .priceWrap {
   display: flex;
   align-items: baseline;
   gap: 0.3rem;
-  margin: 1rem 0 0.75rem;
+  margin: 0.25rem 0 1.5rem;
 }
 
 .price {
@@ -440,6 +609,7 @@
   flex: 1;
   flex-direction: column;
   gap: 0.65rem;
+  margin-bottom: 1.75rem;
   list-style: none;
 }
 
@@ -448,7 +618,7 @@
   align-items: flex-start;
   gap: 0.55rem;
   color: var(--text-secondary);
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   line-height: 1.45;
 }
 
@@ -460,54 +630,56 @@
 
 .planCta {
   width: 100%;
-  margin-top: 1rem;
 }
+
+/* ── Eficiencia / comparación ──────────────────────────────────────────── */
 
 .comparison {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: #ffffff;
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
 }
 
 .comparison article {
-  min-height: 220px;
-  padding: 1.35rem;
-  border-right: 1px solid var(--border);
+  padding: 1.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
 }
 
-.comparison article:last-child {
-  border-right: none;
-}
-
-.comparison h3 {
-  margin-bottom: 0.75rem;
+.comparison h4 {
+  margin-bottom: 0.6rem;
   color: var(--navy);
-  font-size: 1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
 }
 
 .comparison p {
   color: var(--text-secondary);
-  font-size: 0.92rem;
-  line-height: 1.65;
+  font-size: 0.9rem;
+  line-height: 1.6;
 }
 
-.highlightComparison {
-  background: #eef7ff;
+.comparisonDark {
+  border: none !important;
+  background: var(--navy) !important;
 }
+
+.comparisonDark h4 {
+  color: #ffffff !important;
+}
+
+.comparisonDark p {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+
+/* ── CTA final ──────────────────────────────────────────────────────────── */
 
 .finalCta {
   margin-bottom: 5rem;
-  padding-top: 4rem;
-  padding-bottom: 4rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: #ffffff;
+  padding-top: 1rem;
+  padding-bottom: 2rem;
   text-align: center;
-  box-shadow: var(--shadow-sm);
 }
 
 .finalCta h2 {
@@ -516,11 +688,69 @@
   margin-right: auto;
 }
 
-.finalCta .heroActions {
-  justify-content: center;
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+
+.footer {
+  background: var(--navy);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 4rem 2rem 2rem;
 }
 
-@media (max-width: 900px) {
+.footerGrid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
+  gap: 2.5rem;
+  max-width: 1120px;
+  margin: 0 auto 3rem;
+}
+
+.footerGrid p {
+  max-width: 320px;
+  margin-top: 0.9rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.footerGrid h4 {
+  margin-bottom: 1rem;
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.footerGrid > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.footerGrid a {
+  margin-bottom: 0.6rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+}
+
+.footerGrid a:hover {
+  color: #ffffff;
+}
+
+.footerBottom {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--navy-hover);
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 960px) {
   .nav {
     grid-template-columns: 1fr auto;
   }
@@ -531,40 +761,34 @@
 
   .hero {
     grid-template-columns: 1fr;
-    min-height: auto;
-    padding-top: 4rem;
+    padding-top: 3.5rem;
   }
 
   .heroTitle {
-    font-size: 3rem;
+    font-size: 2.7rem;
   }
 
-  .heroScene {
+  .heroCard {
     order: 2;
   }
 
   .flow,
-  .modules,
+  .extras,
   .comparison,
   .plans,
-  .profilesGrid {
+  .profilesGrid,
+  .footerGrid {
     grid-template-columns: 1fr;
   }
 
-  .comparison article {
-    min-height: auto;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .comparison article:last-child {
-    border-bottom: none;
+  .publicidadBanner {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 
 @media (max-width: 640px) {
   .nav {
-    position: relative;
     padding: 0.9rem 1rem;
   }
 
@@ -573,57 +797,51 @@
   }
 
   .hero {
-    padding: 3rem 1rem 3.5rem;
+    padding: 2.5rem 1rem 3rem;
   }
 
   .heroTitle {
-    font-size: 2.28rem;
-    line-height: 1.06;
+    font-size: 2.1rem;
+    line-height: 1.1;
   }
 
   .heroDesc {
     font-size: 1rem;
   }
 
-  .sceneGrid {
+  .heroStatsGrid {
     grid-template-columns: 1fr;
-  }
-
-  .sceneGrid div:nth-child(2),
-  .sceneGrid div:nth-child(3),
-  .sceneList:last-child {
-    display: none;
-  }
-
-  .sceneList {
-    grid-template-columns: 1fr;
-    gap: 0.35rem;
   }
 
   .channels {
     grid-template-columns: 1fr;
-    margin: -1.4rem 1rem 4rem;
+    margin: -2rem 0 3rem;
+    padding: 1.25rem 1rem;
   }
 
   .channels div {
     justify-content: flex-start;
+    gap: 1.25rem;
   }
 
   .section,
-  .modules,
+  .extrasSection,
   .finalCta {
     padding-left: 1rem;
     padding-right: 1rem;
   }
 
-  .sectionHeader h2,
-  .module h2,
-  .finalCta h2 {
-    font-size: 1.9rem;
+  .paraVos {
+    padding: 3.5rem 1rem;
   }
 
-  .module,
-  .flowCard {
-    min-height: auto;
+  .sectionHeader h2,
+  .paraVosTitle,
+  .finalCta h2 {
+    font-size: 1.85rem;
+  }
+
+  .publicidadBanner {
+    padding: 2rem;
   }
 }
