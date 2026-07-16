@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: oklch(98.5% 0.004 90); }
+  a { color: oklch(58% 0.15 258); text-decoration: none; }
+  a:hover { color: oklch(50% 0.16 258); }
+  * { box-sizing: border-box; }
+</style>
+</helmet>
+
+<div style="font-family: 'IBM Plex Sans', sans-serif; color: oklch(24% 0.02 260); background: oklch(98.5% 0.004 90); width: 100%; overflow-x: hidden;">
+
+  <!-- NAV -->
+  <nav style="display:flex; align-items:center; justify-content:space-between; padding: 20px 64px; border-bottom: 1px solid oklch(92% 0.005 90); position: sticky; top:0; background: oklch(98.5% 0.004 90 / 0.9); backdrop-filter: blur(8px); z-index: 10; flex-wrap:wrap; row-gap:12px; column-gap:24px;">
+    <div style="display:flex; align-items:center; gap:36px; flex-wrap:wrap; row-gap:10px;">
+      <div style="font-family:'Sora',sans-serif; font-weight:700; font-size:22px; letter-spacing:-0.02em; white-space:nowrap;">SimpleComm</div>
+      <div style="display:flex; gap:24px; font-size:15px; color: oklch(40% 0.02 260); flex-wrap:wrap; row-gap:8px;">
+        <a href="#como-funciona" style="color:inherit; white-space:nowrap;">Cómo funciona</a>
+        <a href="#para-vos" style="color:inherit; white-space:nowrap;">Para vos</a>
+        <a href="#planes" style="color:inherit; white-space:nowrap;">Planes</a>
+        <a href="#eficiencia" style="color:inherit; white-space:nowrap;">Eficiencia</a>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap; row-gap:8px;">
+      <a href="#" style="font-size:15px; color: oklch(40% 0.02 260); white-space:nowrap;">Iniciar sesión</a>
+      <a href="#" style="background: oklch(58% 0.15 258); color: white; padding: 11px 22px; border-radius: 8px; font-size:15px; font-weight:600; white-space:nowrap;" style-hover="background: oklch(52% 0.16 258);">Empezar gratis</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section style="display:grid; grid-template-columns: 1.1fr 0.9fr; gap: 60px; align-items:center; padding: 96px 64px 100px; max-width: 1360px; margin: 0 auto;">
+    <div>
+      <div style="display:inline-flex; align-items:center; gap:8px; background: oklch(94% 0.03 258); color: oklch(45% 0.14 258); font-size:13px; font-weight:600; padding:7px 14px; border-radius:999px; margin-bottom:24px;">Facturación electrónica ARCA</div>
+      <h1 style="font-family:'Sora',sans-serif; font-size:56px; line-height:1.08; font-weight:700; letter-spacing:-0.02em; margin:0 0 24px;">Facturá, cobrá y entendé tu negocio sin perseguir planillas.</h1>
+      <p style="font-size:19px; line-height:1.55; color: oklch(45% 0.02 260); max-width:520px; margin:0 0 36px;">Automatizá tus facturas de ARCA, conectá tus canales de venta y entendé tu posición de IVA, Ganancias y categoría de Monotributo &mdash; todo en un solo lugar.</p>
+      <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+        <a href="#" style="background: oklch(58% 0.15 258); color:white; padding:15px 28px; border-radius:10px; font-weight:600; font-size:16px;" style-hover="background: oklch(52% 0.16 258);">Empezá gratis</a>
+        <a href="#" style="color: oklch(30% 0.02 260); padding:15px 8px; font-weight:600; font-size:16px; display:flex; align-items:center; gap:8px;">▷ Ver video funciona</a>
+      </div>
+      <p style="font-size:13px; color: oklch(58% 0.02 260); margin-top:20px;">Sin tarjeta. Configurás tu cuenta en un minuto.</p>
+    </div>
+
+    <div style="background: white; border-radius: 20px; padding: 28px; box-shadow: 0 20px 60px -20px oklch(30% 0.03 260 / 0.25); border: 1px solid oklch(93% 0.005 90);">
+      <div style="font-size:14px; font-weight:600; color: oklch(30% 0.02 260); margin-bottom:20px;">Hoy en tu negocio</div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom:20px;">
+        <div style="background: oklch(97% 0.01 90); border-radius:12px; padding:14px;">
+          <div style="font-size:12px; color: oklch(55% 0.02 260); margin-bottom:6px;">Comprobantes hoy</div>
+          <div style="font-family:'Sora',sans-serif; font-size:22px; font-weight:700;">38</div>
+        </div>
+        <div style="background: oklch(97% 0.01 90); border-radius:12px; padding:14px;">
+          <div style="font-size:12px; color: oklch(55% 0.02 260); margin-bottom:6px;">Posición de IVA</div>
+          <div style="font-family:'Sora',sans-serif; font-size:22px; font-weight:700; color: oklch(60% 0.14 160);">A favor</div>
+        </div>
+        <div style="background: oklch(97% 0.01 90); border-radius:12px; padding:14px;">
+          <div style="font-size:12px; color: oklch(55% 0.02 260); margin-bottom:6px;">Cat. Monotributo</div>
+          <div style="font-family:'Sora',sans-serif; font-size:22px; font-weight:700;">66%</div>
+        </div>
+      </div>
+      <div style="background: oklch(20% 0.03 260); border-radius:12px; padding:16px; color:white; display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+        <div>
+          <div style="font-size:12px; color: oklch(75% 0.02 260);">MP MERCADO</div>
+          <div style="font-size:13px; color: oklch(85% 0.02 260);">120 pendientes</div>
+        </div>
+        <div style="font-size:14px; font-weight:600; background: oklch(58% 0.15 258); padding:8px 14px; border-radius:8px;">Facturar lote</div>
+      </div>
+      <div style="background: oklch(97% 0.01 90); border-radius:12px; padding:16px;">
+        <div style="display:flex; justify-content:space-between; font-size:13px; color: oklch(50% 0.02 260); margin-bottom:8px;">
+          <span>Rentabilidad</span><span>Margen 34% este mes</span>
+        </div>
+        <div style="height:8px; background: oklch(90% 0.01 90); border-radius:99px; overflow:hidden;">
+          <div style="width:34%; height:100%; background: oklch(58% 0.15 258);"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOGOS -->
+  <section style="padding: 36px 64px 80px; max-width:1200px; margin:0 auto; text-align:center;">
+    <div style="font-size:13px; color: oklch(55% 0.02 260); margin-bottom:28px; letter-spacing:0.02em;">Conectate con tus canales de venta</div>
+    <div style="display:flex; justify-content:center; gap:64px; flex-wrap:wrap; align-items:center; font-family:'Sora',sans-serif; font-weight:600; font-size:19px; color: oklch(55% 0.02 260);">
+      <span>Mercado Libre</span>
+      <span>Tiendanube</span>
+      <span>Shopify</span>
+      <span>Mercado Pago</span>
+    </div>
+  </section>
+
+  <!-- COMO FUNCIONA -->
+  <section id="como-funciona" style="padding: 40px 64px 100px; max-width:1200px; margin:0 auto;">
+    <div style="text-align:center; margin-bottom:56px;">
+      <div style="font-size:13px; font-weight:700; color: oklch(58% 0.15 258); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:14px;">Cómo funciona</div>
+      <h2 style="font-family:'Sora',sans-serif; font-size:38px; font-weight:700; letter-spacing:-0.01em; margin:0 0 14px;">De venta a factura, y de factura a saber cómo estás parado.</h2>
+      <p style="font-size:17px; color: oklch(48% 0.02 260); max-width:620px; margin:0 auto;">El mismo producto que resuelve tu bandeja de trabajo diaria y te da el panel que necesitás para tomar decisiones.</p>
+    </div>
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:24px;">
+      <div style="background:white; border:1px solid oklch(93% 0.005 90); border-radius:16px; padding:32px;">
+        <div style="font-family:'Sora',sans-serif; font-size:14px; color: oklch(65% 0.02 260); margin-bottom:20px;">01</div>
+        <h3 style="font-family:'Sora',sans-serif; font-size:20px; font-weight:700; margin:0 0 12px;">Venta nueva</h3>
+        <p style="font-size:15px; color: oklch(48% 0.02 260); line-height:1.6; margin:0;">Entra un pedido o lo cargás vos. SimpleComm detecta la venta ni bien se confirma, sin conciliar en Excel.</p>
+      </div>
+      <div style="background:white; border:1px solid oklch(93% 0.005 90); border-radius:16px; padding:32px;">
+        <div style="font-family:'Sora',sans-serif; font-size:14px; color: oklch(65% 0.02 260); margin-bottom:20px;">02</div>
+        <h3 style="font-family:'Sora',sans-serif; font-size:20px; font-weight:700; margin:0 0 12px;">Factura lista</h3>
+        <p style="font-size:15px; color: oklch(48% 0.02 260); line-height:1.6; margin:0;">Validamos con ARCA, obtenemos el CAE y emitimos el comprobante correcto para cada canal.</p>
+      </div>
+      <div style="background:white; border:1px solid oklch(93% 0.005 90); border-radius:16px; padding:32px;">
+        <div style="font-family:'Sora',sans-serif; font-size:14px; color: oklch(65% 0.02 260); margin-bottom:20px;">03</div>
+        <h3 style="font-family:'Sora',sans-serif; font-size:20px; font-weight:700; margin:0 0 12px;">Negocio claro</h3>
+        <p style="font-size:15px; color: oklch(48% 0.02 260); line-height:1.6; margin:0;">IVA, Ganancias, categoría de Monotributo y rentabilidad por producto, siempre actualizado.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PARA VOS (dark) -->
+  <section id="para-vos" style="background: oklch(20% 0.03 260); color:white; padding: 100px 64px;">
+    <div style="max-width:1200px; margin:0 auto;">
+      <div style="font-size:13px; font-weight:700; color: oklch(70% 0.1 258); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:14px;">Para vos</div>
+      <h2 style="font-family:'Sora',sans-serif; font-size:38px; font-weight:700; letter-spacing:-0.01em; margin:0 0 48px; max-width:700px;">Empresa o Monotributo &mdash; cada uno lo ve a su manera.</h2>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
+        <div style="background: oklch(25% 0.03 260); border:1px solid oklch(32% 0.03 260); border-radius:16px; padding:32px;">
+          <h3 style="font-family:'Sora',sans-serif; font-size:20px; font-weight:700; margin:0 0 20px;">Tu empresa</h3>
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <div style="display:flex; gap:10px; font-size:15px; color: oklch(85% 0.01 260);"><span style="color: oklch(65% 0.14 160);">✓</span>Factura A, B y C con CAE en segundos</div>
+            <div style="display:flex; gap:10px; font-size:15px; color: oklch(85% 0.01 260);"><span style="color: oklch(65% 0.14 160);">✓</span>Posición de IVA: ventas menos compras cargadas</div>
+            <div style="display:flex; gap:10px; font-size:15px; color: oklch(85% 0.01 260);"><span style="color: oklch(65% 0.14 160);">✓</span>Estimación de Ganancias respetando su esquema</div>
+            <div style="display:flex; gap:10px; font-size:15px; color: oklch(85% 0.01 260);"><span style="color: oklch(65% 0.14 160);">✓</span>Rentabilidad por producto, costo, margen y % ganancia</div>
+          </div>
+        </div>
+        <div style="background: white; color: oklch(24% 0.02 260); border-radius:16px; padding:32px;">
+          <h3 style="font-family:'Sora',sans-serif; font-size:20px; font-weight:700; margin:0 0 20px;">Tu monotributo</h3>
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <div style="display:flex; gap:10px; font-size:15px; color: oklch(35% 0.02 260);"><span style="color: oklch(55% 0.14 160);">✓</span>Facturación C automática, sin formularios de ARCA</div>
+            <div style="display:flex; gap:10px; font-size:15px; color: oklch(35% 0.02 260);"><span style="color: oklch(55% 0.14 160);">✓</span>Alerta de categoría: revisás antes del 20 del mes</div>
+            <div style="display:flex; gap:10px; font-size:15px; color: oklch(35% 0.02 260);"><span style="color: oklch(55% 0.14 160);">✓</span>Importás historial de ARCA de los últimos 12 meses</div>
+            <div style="display:flex; gap:10px; font-size:15px; color: oklch(35% 0.02 260);"><span style="color: oklch(55% 0.14 160);">✓</span>Facturación por delegación con certificado propio</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MULTI CANAL + LOTES -->
+  <section style="padding: 96px 64px; max-width:1200px; margin:0 auto; display:grid; grid-template-columns: 1fr 1fr; gap:24px;">
+    <div style="background:white; border:1px solid oklch(93% 0.005 90); border-radius:16px; padding:36px;">
+      <div style="width:40px; height:40px; border-radius:10px; background: oklch(94% 0.03 258); color: oklch(50% 0.15 258); display:flex; align-items:center; justify-content:center; font-size:18px; margin-bottom:20px;">✳</div>
+      <h3 style="font-family:'Sora',sans-serif; font-size:20px; font-weight:700; margin:0 0 10px;">Multi-canal</h3>
+      <p style="font-size:15px; color: oklch(48% 0.02 260); line-height:1.6; margin:0 0 20px;">Mercado Libre, Tiendanube, Shopify y Mercado Pago conectados, la venta entra sola.</p>
+      <div style="display:flex; gap:12px; font-size:14px; font-weight:600; color: oklch(45% 0.02 260);">
+        <span>Meli</span><span>Shopify</span>
+      </div>
+    </div>
+    <div style="background:white; border:1px solid oklch(93% 0.005 90); border-radius:16px; padding:36px;">
+      <div style="width:40px; height:40px; border-radius:10px; background: oklch(94% 0.03 258); color: oklch(50% 0.15 258); display:flex; align-items:center; justify-content:center; font-size:18px; margin-bottom:20px;">◎</div>
+      <h3 style="font-family:'Sora',sans-serif; font-size:20px; font-weight:700; margin:0 0 10px;">Lotes y conciliación bancaria</h3>
+      <p style="font-size:15px; color: oklch(48% 0.02 260); line-height:1.6; margin:0 0 20px;">Muchos pedidos juntos se convierten en un comprobante de lote, y podés facturar sobre lo cobrado.</p>
+      <div style="height:8px; background: oklch(93% 0.005 90); border-radius:99px; overflow:hidden;">
+        <div style="width:70%; height:100%; background: oklch(58% 0.15 258);"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PUBLICIDAD -->
+  <section style="padding: 0 64px 100px; max-width:1200px; margin:0 auto;">
+    <div style="background: oklch(20% 0.03 260); border-radius:20px; padding:44px 48px; display:flex; align-items:center; justify-content:space-between; gap:40px; flex-wrap:wrap;">
+      <div>
+        <div style="font-size:13px; font-weight:700; color: oklch(70% 0.1 258); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:14px;">Publicidad</div>
+        <h3 style="font-family:'Sora',sans-serif; color:white; font-size:26px; font-weight:700; margin:0; max-width:480px;">Inversión, ventas y ROAS de tus campañas en un lenguaje simple, sin Ads Manager complejo.</h3>
+      </div>
+      <div style="background: oklch(25% 0.03 260); border-radius:14px; padding:24px 32px; text-align:center; min-width:200px;">
+        <div style="font-size:13px; color: oklch(75% 0.02 260); margin-bottom:8px;">ROAS total</div>
+        <div style="font-family:'Sora',sans-serif; font-size:36px; font-weight:700; color:white; margin-bottom:12px;">14.2x</div>
+        <div style="height:6px; background: oklch(35% 0.03 260); border-radius:99px; overflow:hidden;">
+          <div style="width:75%; height:100%; background: oklch(58% 0.15 258);"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PLANES -->
+  <section id="planes" style="padding: 40px 64px 100px; max-width:1200px; margin:0 auto; text-align:center;">
+    <div style="font-size:13px; font-weight:700; color: oklch(58% 0.15 258); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:14px;">Planes</div>
+    <h2 style="font-family:'Sora',sans-serif; font-size:38px; font-weight:700; letter-spacing:-0.01em; margin:0 0 14px;">Planes simples según cuántos comprobantes emitís.</h2>
+    <p style="font-size:17px; color: oklch(48% 0.02 260); max-width:560px; margin:0 auto 56px;">La idea es que el precio acompañe el tamaño de tu negocio, sin obligarte a comprar un ERP completo.</p>
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:24px; text-align:left;">
+      <div style="background:white; border:1px solid oklch(93% 0.005 90); border-radius:16px; padding:32px;">
+        <div style="font-size:13px; color: oklch(55% 0.02 260); margin-bottom:8px;">Hasta 50</div>
+        <h3 style="font-family:'Sora',sans-serif; font-size:20px; font-weight:700; margin:0 0 4px;">Inicial</h3>
+        <p style="font-size:14px; color: oklch(55% 0.02 260); margin:0 0 20px;">Ideal para quienes arrancan.</p>
+        <div style="font-family:'Sora',sans-serif; font-size:32px; font-weight:700; margin-bottom:24px;">$4.990 <span style="font-size:14px; font-weight:400; color: oklch(55% 0.02 260);">/mes</span></div>
+        <div style="display:flex; flex-direction:column; gap:10px; font-size:14px; color: oklch(40% 0.02 260); margin-bottom:28px;">
+          <div>50 comprobantes por mes</div>
+          <div>Factura A, B y C</div>
+          <div>Integración con Mercado Libre</div>
+          <div>Reporte de IVA</div>
+          <div>Soporte básico</div>
+        </div>
+        <a href="#" style="display:block; text-align:center; padding:13px; border:1px solid oklch(85% 0.01 260); border-radius:9px; font-weight:600; color: oklch(30% 0.02 260);">Contratar Inicial</a>
+      </div>
+      <div style="background: white; border:2px solid oklch(58% 0.15 258); border-radius:16px; padding:32px; position:relative; box-shadow: 0 20px 50px -20px oklch(58% 0.15 258 / 0.3);">
+        <div style="position:absolute; top:-13px; left:50%; transform:translateX(-50%); background: oklch(58% 0.15 258); color:white; font-size:12px; font-weight:700; padding:5px 14px; border-radius:99px;">MÁS ELEGIDO</div>
+        <div style="font-size:13px; color: oklch(55% 0.02 260); margin-bottom:8px;">Hasta 200</div>
+        <h3 style="font-family:'Sora',sans-serif; font-size:20px; font-weight:700; margin:0 0 4px;">Intermedio</h3>
+        <p style="font-size:14px; color: oklch(55% 0.02 260); margin:0 0 20px;">Para el volumen que ya opera todos los días.</p>
+        <div style="font-family:'Sora',sans-serif; font-size:32px; font-weight:700; margin-bottom:24px;">$9.990 <span style="font-size:14px; font-weight:400; color: oklch(55% 0.02 260);">/mes</span></div>
+        <div style="display:flex; flex-direction:column; gap:10px; font-size:14px; color: oklch(40% 0.02 260); margin-bottom:28px;">
+          <div>200 comprobantes por mes</div>
+          <div>Factura A, B y C</div>
+          <div>Todos los canales conectados</div>
+          <div>Reporte de IVA y Ganancias</div>
+          <div>Soporte prioritario</div>
+        </div>
+        <a href="#" style="display:block; text-align:center; padding:13px; background: oklch(58% 0.15 258); color:white; border-radius:9px; font-weight:600;" style-hover="background: oklch(52% 0.16 258);">Contratar Intermedio</a>
+      </div>
+      <div style="background:white; border:1px solid oklch(93% 0.005 90); border-radius:16px; padding:32px;">
+        <div style="font-size:13px; color: oklch(55% 0.02 260); margin-bottom:8px;">Alto volumen</div>
+        <h3 style="font-family:'Sora',sans-serif; font-size:20px; font-weight:700; margin:0 0 4px;">Pro</h3>
+        <p style="font-size:14px; color: oklch(55% 0.02 260); margin:0 0 20px;">Para negocios con alto volumen de operaciones.</p>
+        <div style="font-family:'Sora',sans-serif; font-size:32px; font-weight:700; margin-bottom:24px;">A consultar</div>
+        <div style="display:flex; flex-direction:column; gap:10px; font-size:14px; color: oklch(40% 0.02 260); margin-bottom:28px;">
+          <div>Comprobantes ilimitados</div>
+          <div>Facturación masiva y multi-RUT</div>
+          <div>API personalizada</div>
+          <div>Onboarding dedicado</div>
+        </div>
+        <a href="#" style="display:block; text-align:center; padding:13px; border:1px solid oklch(85% 0.01 260); border-radius:9px; font-weight:600; color: oklch(30% 0.02 260);">Contactar ventas</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXPERIENCIA -->
+  <section id="eficiencia" style="padding: 40px 64px 100px; max-width:1200px; margin:0 auto;">
+    <div style="text-align:center; margin-bottom:56px;">
+      <h2 style="font-family:'Sora',sans-serif; font-size:34px; font-weight:700; letter-spacing:-0.01em; margin:0 0 14px; max-width:720px; margin-left:auto; margin-right:auto;">No competimos por ser el sistema más grande. Competimos por sacarte tareas de encima.</h2>
+      <p style="font-size:16px; color: oklch(48% 0.02 260);">SimpleComm debe vender bien, menos administración, menos copiar y pegar, menos señales para decidir.</p>
+    </div>
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:20px;">
+      <div style="background:white; border:1px solid oklch(93% 0.005 90); border-radius:14px; padding:26px;">
+        <h4 style="font-size:15px; font-weight:700; margin:0 0 10px;">ARCA manual</h4>
+        <p style="font-size:14px; color: oklch(52% 0.02 260); margin:0;">Cliente carga cada comprobante a mano, sin cruzar con las ventas reales.</p>
+      </div>
+      <div style="background:white; border:1px solid oklch(93% 0.005 90); border-radius:14px; padding:26px;">
+        <h4 style="font-size:15px; font-weight:700; margin:0 0 10px;">ERP tradicional</h4>
+        <p style="font-size:14px; color: oklch(52% 0.02 260); margin:0;">Resuelve mucho más de lo que necesita, con semanas de implementación.</p>
+      </div>
+      <div style="background: oklch(20% 0.03 260); border-radius:14px; padding:26px;">
+        <h4 style="font-size:15px; font-weight:700; margin:0 0 10px; color:white;">SimpleComm</h4>
+        <p style="font-size:14px; color: oklch(80% 0.01 260); margin:0;">Rápido y sin fricción. Anda listo en minutos y se adapta a tu operación, no al revés.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA FINAL -->
+  <section style="padding: 20px 64px 100px; max-width:1000px; margin:0 auto; text-align:center;">
+    <div style="font-size:13px; font-weight:700; color: oklch(58% 0.15 258); letter-spacing:0.08em; text-transform:uppercase; margin-bottom:14px;">Integración simple, negocio ordenado</div>
+    <h2 style="font-family:'Sora',sans-serif; font-size:34px; font-weight:700; letter-spacing:-0.01em; margin:0 0 36px;">Empezá por automatizar la facturación. Después vas viendo IVA, Ganancias y rentabilidad.</h2>
+    <div style="display:flex; gap:16px; justify-content:center;">
+      <a href="#" style="background: oklch(58% 0.15 258); color:white; padding:15px 28px; border-radius:10px; font-weight:600; font-size:16px;" style-hover="background: oklch(52% 0.16 258);">Crear cuenta</a>
+      <a href="#" style="border:1px solid oklch(85% 0.01 260); color: oklch(30% 0.02 260); padding:15px 28px; border-radius:10px; font-weight:600; font-size:16px;">Hablar con ventas</a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer style="background: oklch(20% 0.03 260); color: oklch(75% 0.02 260); padding: 64px 64px 32px;">
+    <div style="max-width:1200px; margin:0 auto; display:grid; grid-template-columns: 1.5fr 1fr 1fr; gap:40px; margin-bottom:48px;">
+      <div>
+        <div style="font-family:'Sora',sans-serif; font-weight:700; font-size:20px; color:white; margin-bottom:14px;">SimpleComm</div>
+        <p style="font-size:14px; line-height:1.6; max-width:320px; margin:0;">La plataforma de gestión financiera diseñada para e-commerce que buscan eficiencia sin complicaciones técnicas.</p>
+      </div>
+      <div>
+        <div style="font-size:13px; font-weight:700; color:white; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:16px;">Producto</div>
+        <div style="display:flex; flex-direction:column; gap:10px; font-size:14px;">
+          <a href="#" style="color: oklch(75% 0.02 260);">Cómo funciona</a>
+          <a href="#" style="color: oklch(75% 0.02 260);">Planes</a>
+          <a href="#" style="color: oklch(75% 0.02 260);">Integraciones</a>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:13px; font-weight:700; color:white; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:16px;">Compañía</div>
+        <div style="display:flex; flex-direction:column; gap:10px; font-size:14px;">
+          <a href="#" style="color: oklch(75% 0.02 260);">Sobre nosotros</a>
+          <a href="#" style="color: oklch(75% 0.02 260);">Ayuda y soporte</a>
+          <a href="#" style="color: oklch(75% 0.02 260);">Privacidad</a>
+          <a href="#" style="color: oklch(75% 0.02 260);">Términos</a>
+        </div>
+      </div>
+    </div>
+    <div style="max-width:1200px; margin:0 auto; padding-top:24px; border-top:1px solid oklch(30% 0.03 260); display:flex; justify-content:space-between; font-size:13px; color: oklch(58% 0.02 260);">
+      <span>© 2026 SimpleComm. Todos los derechos reservados.</span>
+      <span>Conectado con ARCA vía WSFE</span>
+    </div>
+  </footer>
+
+</div>
+
+</x-dc>
+</body>
+</html>
