@@ -25,6 +25,8 @@ export interface IvaPositionResult {
   purchasesIva: number;
   purchasesNet: number;
   purchasesCount: number;
+  purchasesRetenciones: number;
+  purchasesPercepciones: number;
   lastPurchasesImportAt: string | null;
   position: number;
 }
@@ -94,7 +96,7 @@ export async function computeIvaPosition(
 
   const { data: purchases } = await supabase
     .from('purchase_invoices')
-    .select('netAmount, ivaAmount')
+    .select('netAmount, ivaAmount, retencionesAmount, percepcionesAmount')
     .eq('organizationId', userId)
     .gte('issueDate', from)
     .lte('issueDate', to);
@@ -102,6 +104,8 @@ export async function computeIvaPosition(
   const purchasesIva = (purchases ?? []).reduce((sum, p) => sum + Number(p.ivaAmount ?? 0), 0);
   const purchasesNet = (purchases ?? []).reduce((sum, p) => sum + Number(p.netAmount ?? 0), 0);
   const purchasesCount = (purchases ?? []).length;
+  const purchasesRetenciones = (purchases ?? []).reduce((sum, p) => sum + Number(p.retencionesAmount ?? 0), 0);
+  const purchasesPercepciones = (purchases ?? []).reduce((sum, p) => sum + Number(p.percepcionesAmount ?? 0), 0);
 
   // Nota: se toma la importación más reciente en general (no acotada a [from, to]),
   // porque una importación siempre se registra con la fecha en que se hizo (hoy),
@@ -128,6 +132,8 @@ export async function computeIvaPosition(
     purchasesIva: Math.round(purchasesIva * 100) / 100,
     purchasesNet: Math.round(purchasesNet * 100) / 100,
     purchasesCount,
+    purchasesRetenciones: Math.round(purchasesRetenciones * 100) / 100,
+    purchasesPercepciones: Math.round(purchasesPercepciones * 100) / 100,
     lastPurchasesImportAt,
     position: Math.round((salesIva - purchasesIva) * 100) / 100,
   };

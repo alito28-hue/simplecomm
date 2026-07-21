@@ -28,6 +28,8 @@ export async function GET(req: NextRequest) {
   const ganancia = Math.round((pos.salesNet - pos.purchasesNet) * 100) / 100;
   const alicuota = org.alicuotaGanancias !== null ? Number(org.alicuotaGanancias) : null;
   const impuestoEstimado = alicuota !== null ? Math.round(ganancia * (alicuota / 100) * 100) / 100 : null;
+  const retencionesPercepciones = Math.round((pos.purchasesRetenciones + pos.purchasesPercepciones) * 100) / 100;
+  const saldoAPagar = impuestoEstimado !== null ? Math.round((impuestoEstimado - retencionesPercepciones) * 100) / 100 : null;
 
   const meses = await Promise.all(
     fiscalYearMonths(org.cierreFiscalMes, ejerciciosAtras).map(async m => {
@@ -40,6 +42,7 @@ export async function GET(req: NextRequest) {
         ventasNetas: mPos.salesNet,
         comprasNetas: mPos.purchasesNet,
         ganancia: mGanancia,
+        retencionesPercepciones: Math.round((mPos.purchasesRetenciones + mPos.purchasesPercepciones) * 100) / 100,
       };
     }),
   );
@@ -53,6 +56,9 @@ export async function GET(req: NextRequest) {
     ganancia,
     alicuota,
     impuestoEstimado,
+    retenciones: Math.round(pos.purchasesRetenciones * 100) / 100,
+    percepciones: Math.round(pos.purchasesPercepciones * 100) / 100,
+    saldoAPagar,
     meses,
   });
 }

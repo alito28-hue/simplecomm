@@ -34,7 +34,9 @@ export async function GET(req: NextRequest) {
     net: acc.net + Number(p.netAmount ?? 0),
     iva: acc.iva + Number(p.ivaAmount ?? 0),
     total: acc.total + Number(p.totalAmount ?? 0),
-  }), { net: 0, iva: 0, total: 0 });
+    retenciones: acc.retenciones + Number(p.retencionesAmount ?? 0),
+    percepciones: acc.percepciones + Number(p.percepcionesAmount ?? 0),
+  }), { net: 0, iva: 0, total: 0, retenciones: 0, percepciones: 0 });
 
   const { data: lastImport } = await supabase
     .from('arca_import_log')
@@ -67,6 +69,8 @@ export async function POST(req: NextRequest) {
   const netAmount = parseFloat((form.get('netAmount') as string | null) ?? '0');
   const ivaAmount = parseFloat((form.get('ivaAmount') as string | null) ?? '0');
   const totalAmount = parseFloat((form.get('totalAmount') as string | null) ?? '0');
+  const retencionesAmount = parseFloat((form.get('retencionesAmount') as string | null) ?? '0') || 0;
+  const percepcionesAmount = parseFloat((form.get('percepcionesAmount') as string | null) ?? '0') || 0;
   const source = (form.get('source') as string | null) ?? 'manual';
   const extractedRawStr = form.get('extractedRaw') as string | null;
 
@@ -76,12 +80,14 @@ export async function POST(req: NextRequest) {
   if (issuerCuit.length !== 11) {
     return NextResponse.json({ error: 'El CUIT/CUIL del emisor es obligatorio y debe tener 11 dígitos' }, { status: 400 });
   }
-  if (!Number.isFinite(puntoVenta) || puntoVenta <= 0) {
-    return NextResponse.json({ error: 'El punto de venta es obligatorio' }, { status: 400 });
-  }
   if (!invoiceNumber) {
     return NextResponse.json({ error: 'El número de comprobante es obligatorio' }, { status: 400 });
   }
+  // El punto de venta no es un dato relevante para el usuario en la carga manual — si no
+  // se manda (o no vino de la extracción por IA), se guarda como 0 para que la clave natural
+  // de dedup (organizationId, issuerCuit, tipoComprobante, puntoVenta, invoiceNumber) siga
+  // funcionando de forma estable en vez de quedar en null (null nunca matchea en upsert).
+  const puntoVentaValue = Number.isFinite(puntoVenta) && puntoVenta > 0 ? puntoVenta : 0;
 
   let fileUrl: string | null = null;
   if (file) {
@@ -107,12 +113,14 @@ export async function POST(req: NextRequest) {
     issuerCuit,
     invoiceLetter,
     invoiceNumber,
-    puntoVenta,
+    puntoVenta: puntoVentaValue,
     tipoComprobante: Number.isFinite(tipoComprobante) ? tipoComprobante : null,
     issueDate,
     netAmount,
     ivaAmount,
     totalAmount,
+    retencionesAmount,
+    percepcionesAmount,
     source,
     extractedRaw,
   };

@@ -12,6 +12,7 @@ interface MesGanancia {
   ventasNetas: number;
   comprasNetas: number;
   ganancia: number;
+  retencionesPercepciones: number;
 }
 
 interface GananciasData {
@@ -23,6 +24,9 @@ interface GananciasData {
   ganancia?: number;
   alicuota?: number | null;
   impuestoEstimado?: number | null;
+  retenciones?: number;
+  percepciones?: number;
+  saldoAPagar?: number | null;
   meses?: MesGanancia[];
 }
 
@@ -146,8 +150,22 @@ export default function GananciasPage() {
               </div>
             </div>
           </div>
+          <div className="card">
+            <div className={styles.statCard}>
+              <div className={styles.statLabel}>Retenciones y percepciones sufridas</div>
+              <div className={styles.statValue}>{money((data.retenciones ?? 0) + (data.percepciones ?? 0))}</div>
+            </div>
+          </div>
         </div>
-        <p className="text-sm text-muted" style={{ marginTop: '0.75rem' }}>
+        {data.alicuota != null && (
+          <p className="text-sm" style={{ marginTop: '0.75rem' }}>
+            Saldo a pagar estimado (impuesto menos retenciones y percepciones ya sufridas):{' '}
+            <strong style={{ color: (data.saldoAPagar ?? 0) >= 0 ? 'var(--text-primary)' : 'var(--success)' }}>
+              {money(data.saldoAPagar ?? 0)}
+            </strong>
+          </p>
+        )}
+        <p className="text-sm text-muted" style={{ marginTop: '0.5rem' }}>
           Estimación informativa. No contempla deducciones especiales, amortizaciones, quebrantos ni otros ajustes
           impositivos — no reemplaza la liquidación oficial ante ARCA. Consultá con tu contador o gestor.
         </p>
@@ -165,6 +183,7 @@ export default function GananciasPage() {
                   <th>Mes</th>
                   <th>Ventas netas</th>
                   <th>Compras netas</th>
+                  <th>Ret./Perc.</th>
                   <th>Ganancia</th>
                 </tr>
               </thead>
@@ -174,6 +193,7 @@ export default function GananciasPage() {
                     <td>{m.label} {m.year}</td>
                     <td className="text-sm">{money(m.ventasNetas)}</td>
                     <td className="text-sm">{money(m.comprasNetas)}</td>
+                    <td className="text-sm">{m.retencionesPercepciones > 0 ? money(m.retencionesPercepciones) : '—'}</td>
                     <td className="text-sm" style={{ fontWeight: 700, color: m.ganancia >= 0 ? 'var(--success)' : 'var(--error)' }}>
                       {money(m.ganancia)}
                     </td>

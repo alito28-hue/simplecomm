@@ -6,6 +6,15 @@ import ImportCsvModal, { type ImportCsvStatus } from '@/components/ImportCsvModa
 import ComprobantesTabs from '@/components/ComprobantesTabs';
 import MonthPicker from '@/components/MonthPicker';
 
+interface PadronData {
+  cuil: string;
+  nombre: string;
+  tipoPersona: string;
+  estadoClave: string;
+}
+
+type PadronStatus = 'idle' | 'loading' | 'found' | 'not_found' | 'error';
+
 const MESES_LARGO = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
@@ -32,15 +41,18 @@ interface Purchase {
   netAmount: string | number;
   ivaAmount: string | number;
   totalAmount: string | number;
+  retencionesAmount: string | number;
+  percepcionesAmount: string | number;
   source: string;
   signedUrl: string | null;
   createdAt: string;
 }
 
 const EMPTY_FORM = {
-  issuerName: '', issuerCuit: '', invoiceLetter: '', comprobanteKind: 'FACTURA',
+  issuerCuit: '', issuerName: '', invoiceLetter: '', comprobanteKind: 'FACTURA',
   puntoVenta: '', invoiceNumber: '',
   issueDate: '', netAmount: '', ivaAmount: '', totalAmount: '',
+  retencionesAmount: '', percepcionesAmount: '',
 };
 
 // Letra + tipo → código de comprobante AFIP (para no duplicar contra lo importado de ARCA).
@@ -66,7 +78,7 @@ function monthRange(monthStr: string) {
 export default function ComprasPage() {
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [items, setItems] = useState<Purchase[]>([]);
-  const [totals, setTotals] = useState({ net: 0, iva: 0, total: 0 });
+  const [totals, setTotals] = useState({ net: 0, iva: 0, total: 0, retenciones: 0, percepciones: 0 });
   const [loading, setLoading] = useState(true);
 
   const [showForm, setShowForm] = useState(false);
@@ -80,6 +92,9 @@ export default function ComprasPage() {
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const [padronStatus, setPadronStatus] = useState<PadronStatus>('idle');
+  const [padronData, setPadronData] = useState<PadronData | null>(null);
+
   const [lastImportAt, setLastImportAt] = useState<string | null>(null);
   const [importModal, setImportModal] = useState<{ status: ImportCsvStatus; message: string | null } | null>(null);
   const csvRef = useRef<HTMLInputElement>(null);
@@ -91,12 +106,43 @@ export default function ComprasPage() {
       .then(r => r.json())
       .then(d => {
         setItems(d.data ?? []);
-        setTotals(d.totals ?? { net: 0, iva: 0, total: 0 });
+        setTotals(d.totals ?? { net: 0, iva: 0, total: 0, retenciones: 0, percepciones: 0 });
         setLastImportAt(d.lastImportAt ?? null);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }
+
+  // Al cargar un CUIT/CUIL válido, consultamos el Padrón de ARCA y completamos
+  // el nombre del emisor automáticamente — igual que en Contactos.
+  useEffect(() => {
+    if (!showForm) return;
+    const clean = form.issuerCuit.replace(/\D/g, '');
+    if (clean.length !== 11) { setPadronStatus('idle'); setPadronData(null); return; }
+
+    setPadronStatus('loading');
+    const handle = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/padron/${clean}`);
+        const info = await res.json();
+        if (res.ok && info.nombre) {
+          setPadronData(info);
+          setPadronStatus('found');
+          setForm(f => (f.issuerCuit.replace(/\D/g, '') === clean
+            ? { ...f, issuerName: f.issuerName.trim() ? f.issuerName : info.nombre }
+            : f));
+        } else {
+          setPadronStatus(res.status === 404 ? 'not_found' : 'error');
+          setPadronData(null);
+        }
+      } catch {
+        setPadronStatus('error');
+        setPadronData(null);
+      }
+    }, 500);
+    return () => clearTimeout(handle);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.issuerCuit, showForm]);
 
   async function importCsv(file: File) {
     setImportModal({ status: 'importing', message: null });
@@ -124,6 +170,8 @@ export default function ComprasPage() {
     setExtractConfidence(null);
     setExtractNotes(null);
     setExtractError('');
+    setPadronStatus('idle');
+    setPadronData(null);
     if (fileRef.current) fileRef.current.value = '';
   }
 
@@ -139,8 +187,8 @@ export default function ComprasPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'No se pudo extraer los datos');
       setForm({
-        issuerName: data.issuer_name ?? '',
         issuerCuit: data.issuer_cuit ?? '',
+        issuerName: data.issuer_name ?? '',
         invoiceLetter: data.invoice_letter ?? '',
         comprobanteKind: data.comprobante_kind ?? 'FACTURA',
         puntoVenta: data.punto_venta ?? '',
@@ -149,6 +197,7 @@ export default function ComprasPage() {
         netAmount: data.net_amount != null ? String(data.net_amount) : '',
         ivaAmount: data.iva_amount != null ? String(data.iva_amount) : '',
         totalAmount: data.total_amount != null ? String(data.total_amount) : '',
+        retencionesAmount: '', percepcionesAmount: '',
       });
       setExtractedRaw(data);
       setExtractConfidence(data.confidence ?? null);
@@ -164,7 +213,6 @@ export default function ComprasPage() {
     const total = parseFloat(form.totalAmount);
     if (!total || total <= 0) { alert('El monto total debe ser mayor a cero'); return; }
     if (!/^\d{11}$/.test(form.issuerCuit)) { alert('El CUIT/CUIL del emisor es obligatorio y debe tener 11 dígitos'); return; }
-    if (!form.puntoVenta.trim()) { alert('El punto de venta es obligatorio'); return; }
     if (!form.invoiceNumber.trim()) { alert('El número de comprobante es obligatorio'); return; }
 
     const tipoComprobante = LETTER_KIND_TO_TIPO[form.invoiceLetter]?.[form.comprobanteKind] ?? null;
@@ -176,12 +224,14 @@ export default function ComprasPage() {
       fd.append('issuerCuit', form.issuerCuit);
       fd.append('invoiceLetter', form.invoiceLetter);
       if (tipoComprobante != null) fd.append('tipoComprobante', String(tipoComprobante));
-      fd.append('puntoVenta', form.puntoVenta);
+      if (form.puntoVenta.trim()) fd.append('puntoVenta', form.puntoVenta);
       fd.append('invoiceNumber', form.invoiceNumber);
       fd.append('issueDate', form.issueDate);
       fd.append('netAmount', form.netAmount || '0');
       fd.append('ivaAmount', form.ivaAmount || '0');
       fd.append('totalAmount', form.totalAmount);
+      fd.append('retencionesAmount', form.retencionesAmount || '0');
+      fd.append('percepcionesAmount', form.percepcionesAmount || '0');
       fd.append('source', pendingFile ? 'extracted' : 'manual');
       if (extractedRaw) fd.append('extractedRaw', JSON.stringify(extractedRaw));
       if (pendingFile) fd.append('file', pendingFile);
@@ -247,12 +297,18 @@ export default function ComprasPage() {
               </p>
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
-              <label className="text-sm">Emisor
-                <input className="input" value={form.issuerName} onChange={e => setForm(f => ({ ...f, issuerName: e.target.value }))} />
-              </label>
               <label className="text-sm">CUIT/CUIL *
                 <input className="input" value={form.issuerCuit} maxLength={11}
+                  placeholder="Empezá por acá — precarga el emisor"
                   onChange={e => setForm(f => ({ ...f, issuerCuit: e.target.value.replace(/[^0-9]/g, '') }))} />
+                {padronStatus === 'loading' && <span className="text-sm text-muted">Consultando ARCA...</span>}
+                {padronStatus === 'found' && padronData && (
+                  <span className="text-sm" style={{ color: 'var(--success)' }}>✓ {padronData.nombre}</span>
+                )}
+                {padronStatus === 'not_found' && <span className="text-sm text-muted">No encontrado en el Padrón — cargá el nombre a mano.</span>}
+              </label>
+              <label className="text-sm">Emisor
+                <input className="input" value={form.issuerName} onChange={e => setForm(f => ({ ...f, issuerName: e.target.value }))} />
               </label>
               <label className="text-sm">Letra
                 <select className="select" value={form.invoiceLetter} onChange={e => setForm(f => ({ ...f, invoiceLetter: e.target.value }))}>
@@ -267,10 +323,6 @@ export default function ComprasPage() {
                   <option value="NOTA_CREDITO">Nota de Crédito</option>
                 </select>
               </label>
-              <label className="text-sm">Punto de Venta *
-                <input className="input" value={form.puntoVenta}
-                  onChange={e => setForm(f => ({ ...f, puntoVenta: e.target.value.replace(/[^0-9]/g, '') }))} />
-              </label>
               <label className="text-sm">Número *
                 <input className="input" value={form.invoiceNumber}
                   onChange={e => setForm(f => ({ ...f, invoiceNumber: e.target.value.replace(/[^0-9]/g, '') }))} />
@@ -278,7 +330,6 @@ export default function ComprasPage() {
               <label className="text-sm">Fecha
                 <input type="date" className="input" value={form.issueDate} onChange={e => setForm(f => ({ ...f, issueDate: e.target.value }))} />
               </label>
-              <div />
               <label className="text-sm">Neto
                 <input type="number" step="0.01" className="input" value={form.netAmount} onChange={e => setForm(f => ({ ...f, netAmount: e.target.value }))} />
               </label>
@@ -287,6 +338,13 @@ export default function ComprasPage() {
               </label>
               <label className="text-sm">Total
                 <input type="number" step="0.01" className="input" value={form.totalAmount} onChange={e => setForm(f => ({ ...f, totalAmount: e.target.value }))} />
+              </label>
+              <div />
+              <label className="text-sm">Retenciones
+                <input type="number" step="0.01" className="input" placeholder="0" value={form.retencionesAmount} onChange={e => setForm(f => ({ ...f, retencionesAmount: e.target.value }))} />
+              </label>
+              <label className="text-sm">Percepciones
+                <input type="number" step="0.01" className="input" placeholder="0" value={form.percepcionesAmount} onChange={e => setForm(f => ({ ...f, percepcionesAmount: e.target.value }))} />
               </label>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
@@ -306,18 +364,20 @@ export default function ComprasPage() {
             <thead>
               <tr>
                 <th>Fecha</th><th>Emisor</th><th>CUIT</th><th>Comprobante</th>
-                <th>Neto</th><th>IVA</th><th>Total</th><th></th>
+                <th>Neto</th><th>IVA</th><th>Ret./Perc.</th><th>Total</th><th></th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Cargando...</td></tr>
+                <tr><td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Cargando...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={8} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                <tr><td colSpan={9} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                   Sin compras cargadas para el mes elegido arriba.
                   {lastImportAt && <> Ya importaste comprobantes de ARCA antes — probá cambiar el mes de arriba para verlos.</>}
                 </td></tr>
-              ) : items.map(p => (
+              ) : items.map(p => {
+                const retPerc = Number(p.retencionesAmount ?? 0) + Number(p.percepcionesAmount ?? 0);
+                return (
                 <tr key={p.id}>
                   <td className="text-sm text-muted">{fechaCorta(p.issueDate)}</td>
                   <td>{p.signedUrl ? <a href={p.signedUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--blue)' }}>{p.issuerName || '(sin nombre)'}</a> : (p.issuerName || '(sin nombre)')}</td>
@@ -325,10 +385,12 @@ export default function ComprasPage() {
                   <td className="text-sm">{p.invoiceLetter} {p.invoiceNumber}</td>
                   <td className="text-sm">{money(Number(p.netAmount))}</td>
                   <td className="text-sm">{money(Number(p.ivaAmount))}</td>
+                  <td className="text-sm">{retPerc > 0 ? money(retPerc) : '—'}</td>
                   <td><strong>{money(Number(p.totalAmount))}</strong></td>
                   <td><button className="btn btn-ghost btn-sm" style={{ color: 'var(--error)' }} onClick={() => remove(p.id)}>✕</button></td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
             {items.length > 0 && (
               <tfoot>
@@ -336,6 +398,7 @@ export default function ComprasPage() {
                   <td colSpan={4} style={{ textAlign: 'right', fontWeight: 700 }}>Totales del mes</td>
                   <td><strong>{money(totals.net)}</strong></td>
                   <td><strong>{money(totals.iva)}</strong></td>
+                  <td><strong>{money(totals.retenciones + totals.percepciones)}</strong></td>
                   <td><strong>{money(totals.total)}</strong></td>
                   <td></td>
                 </tr>
