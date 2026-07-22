@@ -7,6 +7,16 @@ function firstDayOfMonth(year: number, month: number) {
 
 const CHANNELS = ['mercadolibre', 'tiendanube', 'shopify', 'mercadopago', 'simplecomm'] as const;
 
+// Mapea el origin de venta_items a la plataforma de la tabla integrations — no hay
+// integración para 'simplecomm' (ventas directas, siempre disponibles, no dependen de
+// conectar nada), así que ese canal se muestra si tiene ventas, no si está "conectado".
+const ORIGIN_TO_PLATFORM: Partial<Record<typeof CHANNELS[number], string>> = {
+  mercadolibre: 'MERCADO_LIBRE',
+  tiendanube: 'TIENDANUBE',
+  shopify: 'SHOPIFY',
+  mercadopago: 'MERCADO_PAGO',
+};
+
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -16,6 +26,16 @@ export async function GET(req: NextRequest) {
   const now = new Date();
   const from = searchParams.get('from') ?? firstDayOfMonth(now.getFullYear(), now.getMonth());
   const to = searchParams.get('to') ?? now.toISOString();
+
+  const { data: integrations } = await supabase
+    .from('integrations')
+    .select('platform, status')
+    .eq('organizationId', user.id)
+    .eq('status', 'CONNECTED');
+  const connectedPlatforms = new Set((integrations ?? []).map(i => i.platform));
+  const connectedOrigins = new Set(
+    CHANNELS.filter(c => ORIGIN_TO_PLATFORM[c] && connectedPlatforms.has(ORIGIN_TO_PLATFORM[c]!))
+  );
 
   const { data: items, error } = await supabase
     .from('venta_items')
@@ -31,10 +51,17 @@ export async function GET(req: NextRequest) {
   const porCanal = Object.fromEntries(CHANNELS.map(c => [c, { revenue: 0, units: 0, orderKeys: new Set<string>() }]));
   const porProducto = new Map<string, { name: string; units: number; revenue: number }>();
 
+  // Solo cuentan para los totales, la tabla por canal y los productos más vendidos las
+  // ventas de canales realmente conectados (integrations.status = 'CONNECTED') — evita
+  // ruido de ventas históricas/de prueba en integraciones que ya no están activas.
+  // 'simplecomm' (ventas directas) no tiene concepto de "conectado": siempre cuenta.
+  const visibleOrigins = new Set<string>([...connectedOrigins, 'simplecomm']);
+
   let totalRevenue = 0;
   let totalUnits = 0;
 
   for (const r of rows) {
+    if (!visibleOrigins.has(r.origin)) continue;
     const canal = porCanal[r.origin as typeof CHANNELS[number]];
     const revenue = Number(r.unitPrice) * r.quantity;
     if (canal) {
@@ -55,12 +82,14 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const canales = CHANNELS.map(c => ({
-    canal: c,
-    revenue: Math.round(porCanal[c].revenue * 100) / 100,
-    units: porCanal[c].units,
-    orders: porCanal[c].orderKeys.size,
-  })).filter(c => c.units > 0);
+  const canales = CHANNELS
+    .filter(c => connectedOrigins.has(c) || (c === 'simplecomm' && porCanal[c].units > 0))
+    .map(c => ({
+      canal: c,
+      revenue: Math.round(porCanal[c].revenue * 100) / 100,
+      units: porCanal[c].units,
+      orders: porCanal[c].orderKeys.size,
+    }));
 
   const topProductos = Array.from(porProducto.entries())
     .map(([productId, v]) => ({ productId, name: v.name, units: v.units, revenue: Math.round(v.revenue * 100) / 100 }))
@@ -74,5 +103,6 @@ export async function GET(req: NextRequest) {
     totalUnits,
     canales,
     topProductos,
+    anyConnected: connectedOrigins.size > 0,
   });
 }

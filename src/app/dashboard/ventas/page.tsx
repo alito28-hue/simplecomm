@@ -24,6 +24,7 @@ interface VentasData {
   totalUnits: number;
   canales: CanalVentas[];
   topProductos: ProductoVenta[];
+  anyConnected: boolean;
 }
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -84,10 +85,13 @@ export default function VentasPage() {
       ) : !data || data.canales.length === 0 ? (
         <div className="card" style={{ padding: '2.5rem', textAlign: 'center' }}>
           <p className="text-sm text-muted" style={{ marginBottom: '1rem' }}>
-            Sin ventas registradas para el mes elegido. Las ventas aparecen acá automáticamente cuando facturás
-            (Facturación Rápida, Manual o Lotes) o cuando entra un pedido de un canal conectado.
+            {data?.anyConnected
+              ? 'No hubo ventas en tus canales conectados durante el mes elegido.'
+              : 'Sin ventas registradas para el mes elegido. Las ventas aparecen acá automáticamente cuando facturás (Facturación Rápida, Manual o Lotes) o cuando entra un pedido de un canal conectado.'}
           </p>
-          <Link href="/dashboard/integraciones" className="btn btn-primary btn-sm">Conectar un canal de venta →</Link>
+          {!data?.anyConnected && (
+            <Link href="/dashboard/integraciones" className="btn btn-primary btn-sm">Conectar un canal de venta →</Link>
+          )}
         </div>
       ) : (
         <>
