@@ -107,7 +107,20 @@ export async function processIncomingOrder(
   const now = new Date().toISOString();
 
   for (const item of lineItems) {
-    if (!item.sku) continue;
+    // Sin SKU no hay con qué matchear ni crear un producto — pero igual se registra el
+    // renglón de venta (sin productId) para que el monto/unidad no se pierda de los
+    // totales por canal del módulo de Ventas.
+    if (!item.sku) {
+      await registrarVentaItem({
+        organizationId,
+        productId: null,
+        origin: platform,
+        externalOrderId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      });
+      continue;
+    }
     try {
       // Dos consultas separadas (en vez de un .or() con el SKU interpolado) porque el SKU
       // viene de un pedido externo no confiable — evita filter injection en PostgREST.
@@ -131,16 +144,6 @@ export async function processIncomingOrder(
             .eq('id', product.id);
         }
         productsMatched.push(product.id);
-        // La factura de este pedido la emite cada webhook aparte con el Gateway (no acá), así
-        // que no hay invoiceId todavía — se linkea por externalOrderId para Rentabilidad.
-        await registrarVentaItem({
-          organizationId,
-          productId: product.id,
-          origin: platform,
-          externalOrderId,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-        });
       } else {
         const { data: created, error } = await db.from('products').insert({
           id: randomUUID(),
@@ -157,9 +160,31 @@ export async function processIncomingOrder(
         }).select('id').single();
         if (error) throw error;
         productsCreated.push(created.id);
+        product = { id: created.id, stock: null };
       }
+
+      // La factura de este pedido la emite cada webhook aparte con el Gateway (no acá), así
+      // que no hay invoiceId todavía — se linkea por externalOrderId para Rentabilidad.
+      await registrarVentaItem({
+        organizationId,
+        productId: product.id,
+        origin: platform,
+        externalOrderId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      });
     } catch (err) {
       console.error(`[order-processing] Error matcheando/creando producto SKU=${item.sku} (${platform}:${externalOrderId}):`, err);
+      // Aunque falle el match/creación del producto, igual registramos la venta sin
+      // productId para no perder el monto del total de Ventas por canal.
+      await registrarVentaItem({
+        organizationId,
+        productId: null,
+        origin: platform,
+        externalOrderId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+      });
     }
   }
 

@@ -7,6 +7,7 @@ import OnboardingChecklist from './OnboardingChecklist';
 import IvaPositionCard from './IvaPositionCard';
 import MonotributoStatusCard from './MonotributoStatusCard';
 import NegocioResumenCard from './NegocioResumenCard';
+import VentasPorCanalCard from './VentasPorCanalCard';
 
 interface LastInvoice {
   invoice_id?: string;
@@ -43,6 +44,7 @@ function formatDate(iso: string) {
 const MODULES = [
   { href: '/dashboard/facturacion/simplificada',       icon: '⚡', title: 'Facturación Rápida',  desc: 'Emitir una factura al instante' },
   { href: '/dashboard/billing',                        icon: '🧾', title: 'Comprobantes',         desc: 'Emitidos y recibidos — facturas, cobros e importación de ARCA' },
+  { href: '/dashboard/ventas',                          icon: '🛍', title: 'Ventas',               desc: 'Qué vendiste y por qué canal — ML, Tiendanube, Shopify y más' },
   { href: '/dashboard/contactos',                       icon: '👤', title: 'Clientes',             desc: 'Directorio y datos fiscales' },
   { href: '/dashboard/organizacion/productos',          icon: '📦', title: 'Productos y Stock',    desc: 'Catálogo, precios e inventario' },
   { href: '/dashboard/organizacion/rentabilidad',        icon: '💹', title: 'Rentabilidad',         desc: 'Costo, margen y % de ganancia por venta' },
@@ -132,6 +134,7 @@ export default function DashboardData() {
       </div>
 
       <NegocioResumenCard />
+      <VentasPorCanalCard />
       <IvaPositionCard />
       {isMonotributista && <MonotributoStatusCard />}
 
