@@ -30,6 +30,10 @@ const IVA_RATES = [
 
 const DOC_TYPES_BC = ['CUIT', 'CUIL', 'DNI', 'CONSUMIDOR_FINAL'];
 
+// No se importa de src/lib/venta-items.ts (server-only, arrastra el cliente admin de Supabase
+// al bundle del cliente) — se duplica acá, mismo criterio que otras constantes chicas del sitio.
+const CANAL_SUGGESTIONS = ['Instagram', 'WhatsApp', 'Facebook', 'Presencial / Local'];
+
 interface Item { description: string; quantity: number; unitPrice: number; ivaRate: string; }
 
 function PersonaCard({ data }: { data: PadronData }) {
@@ -65,6 +69,7 @@ export default function FacturacionManualPage() {
   const [exchangeRate, setExchangeRate] = useState('');
   const [sendEmail, setSendEmail] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState('');
+  const [manualChannel, setManualChannel] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ invoiceNumber: string; cae: string; pdfBase64: string; emailSent?: boolean } | null>(null);
   const [error, setError] = useState('');
@@ -259,6 +264,7 @@ export default function FacturacionManualPage() {
           currency,
           exchangeRate: currency !== 'PES' ? parseFloat(exchangeRate) : undefined,
           recipientEmail: sendEmail && recipientEmail ? recipientEmail : undefined,
+          manualChannel: manualChannel.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -460,6 +466,18 @@ export default function FacturacionManualPage() {
         <div className={styles.total}>
           <strong>Total{letter === 'C' ? '' : ' (con IVA)'}:</strong>
           <strong>${calcTotal().toLocaleString('es-AR', { minimumFractionDigits: 2 })}</strong>
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: '1.25rem' }}>
+        <div className={styles.field}>
+          <label>Canal de venta (opcional)</label>
+          <input type="text" list="canal-venta-sugerencias" className="input"
+            value={manualChannel} onChange={e => setManualChannel(e.target.value)}
+            placeholder="Ej: Instagram, WhatsApp..." />
+          <datalist id="canal-venta-sugerencias">
+            {CANAL_SUGGESTIONS.map(c => <option key={c} value={c} />)}
+          </datalist>
         </div>
       </div>
 

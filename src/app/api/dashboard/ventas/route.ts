@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
 
   const { data: items, error } = await supabase
     .from('venta_items')
-    .select('id, productId, origin, externalOrderId, quantity, unitPrice, products(description)')
+    .select('id, productId, origin, externalOrderId, quantity, unitPrice, manualChannel, products(description)')
     .eq('organizationId', user.id)
     .gte('createdAt', from)
     .lte('createdAt', to);
@@ -50,6 +50,7 @@ export async function GET(req: NextRequest) {
 
   const porCanal = Object.fromEntries(CHANNELS.map(c => [c, { revenue: 0, units: 0, orderKeys: new Set<string>() }]));
   const porProducto = new Map<string, { name: string; units: number; revenue: number }>();
+  const porCanalManual = new Map<string, { revenue: number; units: number; orderKeys: Set<string> }>();
 
   // Solo cuentan para los totales, la tabla por canal y los productos más vendidos las
   // ventas de canales realmente conectados (integrations.status = 'CONNECTED') — evita
@@ -80,6 +81,18 @@ export async function GET(req: NextRequest) {
       existing.revenue += revenue;
       porProducto.set(key, existing);
     }
+
+    // Desglose de "Directo" por la etiqueta manual cargada al facturar (Instagram, WhatsApp,
+    // etc.) — sin etiqueta va a "Sin especificar", así ayuda a ver qué canal manual funciona
+    // mejor sin perder de vista lo que nadie tagueó todavía.
+    if (r.origin === 'simplecomm') {
+      const label = r.manualChannel?.trim() || 'Sin especificar';
+      const existing = porCanalManual.get(label) ?? { revenue: 0, units: 0, orderKeys: new Set<string>() };
+      existing.revenue += revenue;
+      existing.units += r.quantity;
+      existing.orderKeys.add(r.id);
+      porCanalManual.set(label, existing);
+    }
   }
 
   const canales = CHANNELS
@@ -90,6 +103,10 @@ export async function GET(req: NextRequest) {
       units: porCanal[c].units,
       orders: porCanal[c].orderKeys.size,
     }));
+
+  const directoPorCanal = Array.from(porCanalManual.entries())
+    .map(([channel, v]) => ({ channel, revenue: Math.round(v.revenue * 100) / 100, units: v.units, orders: v.orderKeys.size }))
+    .sort((a, b) => b.revenue - a.revenue);
 
   const topProductos = Array.from(porProducto.entries())
     .map(([productId, v]) => ({ productId, name: v.name, units: v.units, revenue: Math.round(v.revenue * 100) / 100 }))
@@ -102,6 +119,7 @@ export async function GET(req: NextRequest) {
     totalRevenue: Math.round(totalRevenue * 100) / 100,
     totalUnits,
     canales,
+    directoPorCanal,
     topProductos,
     anyConnected: connectedOrigins.size > 0,
   });

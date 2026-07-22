@@ -19,10 +19,18 @@ interface ProductoVenta {
   revenue: number;
 }
 
+interface DirectoCanal {
+  channel: string;
+  revenue: number;
+  units: number;
+  orders: number;
+}
+
 interface VentasData {
   totalRevenue: number;
   totalUnits: number;
   canales: CanalVentas[];
+  directoPorCanal: DirectoCanal[];
   topProductos: ProductoVenta[];
   anyConnected: boolean;
 }
@@ -156,6 +164,34 @@ export default function VentasPage() {
               </table>
             </div>
           </div>
+
+          {data.directoPorCanal.length > 1 && (
+            <div className={`card ${styles.tableCard}`}>
+              <div className={styles.tableHeader}>
+                <h2 className={styles.sectionTitle}>Directo — desglose por canal</h2>
+              </div>
+              <p className="text-sm text-muted" style={{ padding: '0 1.5rem', marginTop: '-0.5rem' }}>
+                Etiqueta cargada a mano al facturar (Facturación Rápida o Manual) — "Sin especificar" son ventas directas sin canal indicado.
+              </p>
+              <div className="table-wrap">
+                <table className="table">
+                  <thead>
+                    <tr><th>Canal</th><th>Vendido</th><th>Unidades</th><th>Ventas</th></tr>
+                  </thead>
+                  <tbody>
+                    {data.directoPorCanal.map(c => (
+                      <tr key={c.channel}>
+                        <td>{c.channel}</td>
+                        <td><strong>{money(c.revenue)}</strong></td>
+                        <td className="text-sm">{c.units}</td>
+                        <td className="text-sm">{c.orders}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {data.topProductos.length > 0 && (
             <div className={`card ${styles.tableCard}`}>

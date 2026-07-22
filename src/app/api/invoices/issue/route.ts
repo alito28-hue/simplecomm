@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
     quantity,
     currency,
     exchangeRate,
+    manualChannel,
   } = await req.json();
 
   if (!amount || amount <= 0) {
@@ -126,8 +127,11 @@ export async function POST(req: NextRequest) {
   }
 
   // Descontar stock del producto vendido (si tiene control de stock activado) y registrar el
-  // renglón de venta (cantidad + precio + costo copiado en este momento) para Rentabilidad.
-  if (productId && quantity > 0) {
+  // renglón de venta (cantidad + precio + costo copiado en este momento) para Rentabilidad y
+  // para el módulo de Ventas. Se registra aunque no haya productId (factura sin producto
+  // asociado, ej. un servicio cargado a mano) para no perder ese monto de los totales por
+  // canal — antes esas ventas quedaban completamente afuera.
+  if (productId) {
     const { data: product } = await supabase.from('products')
       .select('stock').eq('id', productId).eq('organizationId', user.id).maybeSingle();
     if (product && product.stock !== null) {
@@ -135,15 +139,16 @@ export async function POST(req: NextRequest) {
         .update({ stock: Math.max(0, product.stock - quantity), updatedAt: new Date().toISOString() })
         .eq('id', productId).eq('organizationId', user.id);
     }
-    await registrarVentaItem({
-      organizationId: user.id,
-      productId,
-      origin: 'simplecomm',
-      invoiceId: data.invoice_id ?? null,
-      quantity,
-      unitPrice: amount / quantity,
-    });
   }
+  await registrarVentaItem({
+    organizationId: user.id,
+    productId: productId || null,
+    origin: 'simplecomm',
+    invoiceId: data.invoice_id ?? null,
+    quantity: productId && quantity > 0 ? quantity : 1,
+    unitPrice: productId && quantity > 0 ? amount / quantity : amount,
+    manualChannel: manualChannel || null,
+  });
 
   // Send PDF by email if requested
   if (recipientEmail && data.pdf_base64) {

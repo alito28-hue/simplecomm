@@ -6,6 +6,10 @@ import { useSearchParams } from 'next/navigation';
 import ContactPicker, { type ContactOption } from '@/components/ContactPicker';
 import ProductPicker, { type ProductOption } from '@/components/ProductPicker';
 import { getAllowedInvoiceLetters, getDefaultInvoiceLetter, type InvoiceLetter } from '@/lib/fiscal';
+
+// No se importa de src/lib/venta-items.ts (server-only, arrastra el cliente admin de Supabase
+// al bundle del cliente) — se duplica acá, mismo criterio que otras constantes chicas del sitio.
+const CANAL_SUGGESTIONS = ['Instagram', 'WhatsApp', 'Facebook', 'Presencial / Local'];
 import styles from './simplificada.module.css';
 
 const IVA_RATE_PCT: Record<string, number> = {
@@ -83,6 +87,7 @@ export default function FacturacionSimplificadaPage() {
 
   const [selectedProduct, setSelectedProduct] = useState<ProductOption | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [manualChannel, setManualChannel] = useState('');
   const [displayAmount, setDisplayAmount] = useState('');
   const amountRef = useRef<HTMLInputElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
@@ -232,7 +237,7 @@ export default function FacturacionSimplificadaPage() {
     setDocNumber(''); setBuyerName('');
     setPadronData(null); setPadronCandidates([]); setResolvedCuil(null);
     setPadronStatus('idle'); setResult(null); setPaymentLink(null);
-    setSelectedProduct(null); setQuantity(1);
+    setSelectedProduct(null); setQuantity(1); setManualChannel('');
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -269,6 +274,7 @@ export default function FacturacionSimplificadaPage() {
           recipientEmail: sendEmail && recipientEmail ? recipientEmail : undefined,
           productId: selectedProduct?.id,
           quantity:  selectedProduct ? quantity : undefined,
+          manualChannel: manualChannel.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -480,6 +486,16 @@ export default function FacturacionSimplificadaPage() {
 
               <textarea ref={descRef} name="description" placeholder="¿Qué vendiste? (opcional)"
                 className={`input ${styles.descArea}`} rows={3} />
+
+              <div className={styles.field}>
+                <label>Canal de venta (opcional)</label>
+                <input type="text" list="canal-venta-sugerencias" className="input"
+                  value={manualChannel} onChange={e => setManualChannel(e.target.value)}
+                  placeholder="Ej: Instagram, WhatsApp..." />
+                <datalist id="canal-venta-sugerencias">
+                  {CANAL_SUGGESTIONS.map(c => <option key={c} value={c} />)}
+                </datalist>
+              </div>
 
               {/* Nombre editable: siempre para A, o cuando padron no encontró / error */}
               {(letter === 'A' || (padronStatus !== 'idle' && padronStatus !== 'found' && padronStatus !== 'multiple')) && (

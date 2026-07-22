@@ -10,6 +10,7 @@ interface RegistrarVentaItemInput {
   externalOrderId?: string | null;
   quantity: number;
   unitPrice: number;
+  manualChannel?: string | null;
 }
 
 /**
@@ -47,6 +48,7 @@ export async function registrarVentaItem(input: RegistrarVentaItemInput): Promis
       quantity: input.quantity,
       unitPrice: input.unitPrice,
       unitCost,
+      manualChannel: input.manualChannel || null,
     });
     if (error) console.error('[venta-items] Error insertando venta_item:', error.message);
   } catch (err) {
