@@ -8,7 +8,6 @@ import MonthPicker from '@/components/MonthPicker';
 interface CanalVentas {
   canal: string;
   revenue: number;
-  units: number;
   orders: number;
 }
 
@@ -28,6 +27,7 @@ interface DirectoCanal {
 
 interface VentasData {
   totalRevenue: number;
+  totalOrders: number;
   totalUnits: number;
   canales: CanalVentas[];
   directoPorCanal: DirectoCanal[];
@@ -41,6 +41,7 @@ const CHANNEL_LABELS: Record<string, string> = {
   shopify: 'Shopify',
   mercadopago: 'Mercado Pago',
   simplecomm: 'Directo (SimpleComm)',
+  arca_import: 'ARCA (importado)',
 };
 
 const CHANNEL_ICONS: Record<string, string> = {
@@ -49,6 +50,7 @@ const CHANNEL_ICONS: Record<string, string> = {
   shopify: '🛍',
   mercadopago: '💳',
   simplecomm: '⚡',
+  arca_import: '📥',
 };
 
 function money(n: number) {
@@ -108,12 +110,7 @@ export default function VentasPage() {
               <div className={styles.statCard}>
                 <div className={styles.statLabel}>Vendido total</div>
                 <div className={styles.statValue}>{money(data.totalRevenue)}</div>
-              </div>
-            </div>
-            <div className="card">
-              <div className={styles.statCard}>
-                <div className={styles.statLabel}>Unidades vendidas</div>
-                <div className={styles.statValue}>{data.totalUnits}</div>
+                <div className={styles.statDelta}>{data.totalOrders} facturas</div>
               </div>
             </div>
             <div className="card">
@@ -126,10 +123,15 @@ export default function VentasPage() {
               <div className={styles.statCard}>
                 <div className={styles.statLabel}>Ticket promedio</div>
                 <div className={styles.statValue}>
-                  {money(data.canales.reduce((s, c) => s + c.orders, 0) > 0
-                    ? data.totalRevenue / data.canales.reduce((s, c) => s + c.orders, 0)
-                    : 0)}
+                  {money(data.totalOrders > 0 ? data.totalRevenue / data.totalOrders : 0)}
                 </div>
+              </div>
+            </div>
+            <div className="card">
+              <div className={styles.statCard}>
+                <div className={styles.statLabel}>Unidades con producto asociado</div>
+                <div className={styles.statValue}>{data.totalUnits}</div>
+                <div className={styles.statDelta}>Solo ventas con un producto de catálogo vinculado</div>
               </div>
             </div>
           </div>
@@ -138,11 +140,14 @@ export default function VentasPage() {
             <div className={styles.tableHeader}>
               <h2 className={styles.sectionTitle}>Por canal</h2>
             </div>
+            <p className="text-sm text-muted" style={{ padding: '0 1.5rem', marginTop: '-0.75rem', marginBottom: '0.75rem' }}>
+              Toda factura emitida cuenta como venta, tenga o no un producto de catálogo asociado.
+            </p>
             <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Canal</th><th>Vendido</th><th>Unidades</th><th>Pedidos</th><th>% del total</th>
+                    <th>Canal</th><th>Vendido</th><th>Facturas</th><th>% del total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -153,7 +158,6 @@ export default function VentasPage() {
                       <tr key={c.canal}>
                         <td>{CHANNEL_ICONS[c.canal] ?? ''} {CHANNEL_LABELS[c.canal] ?? c.canal}</td>
                         <td><strong>{money(c.revenue)}</strong></td>
-                        <td className="text-sm">{c.units}</td>
                         <td className="text-sm">{c.orders}</td>
                         <td className="text-sm text-muted">
                           {data.totalRevenue > 0 ? `${Math.round((c.revenue / data.totalRevenue) * 100)}%` : '—'}

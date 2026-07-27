@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
 import { buildInvoiceFilename } from '@/lib/invoice-filename';
+import { registrarVentaItem } from '@/lib/venta-items';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM_EMAIL = 'SimpleComm <info@simplecomm.com.ar>';
@@ -67,6 +68,18 @@ export async function issueScheduledOccurrence(occurrenceId: string) {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error ?? 'Error del gateway');
+
+    // Registrar la venta (sin producto asociado — es un snapshot de monto/descripción, no un
+    // ítem de catálogo) para que Ventas y Rentabilidad cuenten también la facturación recurrente,
+    // que hasta ahora emitía directo contra el Gateway sin pasar por ningún registro de venta.
+    await registrarVentaItem({
+      organizationId: occurrence.organizationId,
+      productId: null,
+      origin: 'simplecomm',
+      invoiceId: data.invoice_id ?? null,
+      quantity: 1,
+      unitPrice: snapshot.amount,
+    });
 
     let emailStatus = 'NOT_SENT';
     if (snapshot.recipientEmail && data.pdf_base64) {

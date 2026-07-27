@@ -27,6 +27,12 @@ interface Resumen {
   totalItems: number;
 }
 
+interface GananciaNegocio {
+  ventasNetas: number;
+  comprasNetas: number;
+  ganancia: number;
+}
+
 const MESES_LARGO = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
@@ -56,6 +62,7 @@ function monthRange(monthStr: string) {
 export default function RentabilidadPage() {
   const [items, setItems] = useState<VentaItem[]>([]);
   const [resumen, setResumen] = useState<Resumen | null>(null);
+  const [gananciaNegocio, setGananciaNegocio] = useState<GananciaNegocio | null>(null);
   const [loading, setLoading] = useState(true);
   const [costoDefault, setCostoDefault] = useState('');
   const [savingDefault, setSavingDefault] = useState(false);
@@ -79,6 +86,7 @@ export default function RentabilidadPage() {
       .then(data => {
         setItems(data.items ?? []);
         setResumen(data.resumen ?? null);
+        setGananciaNegocio(data.gananciaNegocio ?? null);
         setMeta(data.meta ?? { page: 1, limit, total: 0, pages: 1 });
         setCostoDefault(data.costoLogisticaDefault === null || data.costoLogisticaDefault === undefined ? '' : String(data.costoLogisticaDefault));
       })
@@ -135,21 +143,56 @@ export default function RentabilidadPage() {
         <div>
           <h1 className={styles.sectionTitle} style={{ fontSize: '1.4rem' }}>Rentabilidad — {monthLabel(month)}</h1>
           <p className="text-sm text-muted">
-            Costo y margen de lo vendido ese mes, producto por producto. El costo se toma del que tenía cargado
-            cada producto al momento de la venta — cambiarlo ahora en Productos no modifica ventas ya hechas.
+            Ganancia total del negocio (ventas menos compras) y, si vendés productos, costo y margen de cada
+            venta en particular.
           </p>
         </div>
         <MonthPicker value={month} onChange={v => { setMonth(v); setPage(1); }} />
       </div>
 
+      {gananciaNegocio && (
+        <div className="card" style={{ padding: '1.25rem 1.5rem' }}>
+          <h2 className={styles.sectionTitle} style={{ marginBottom: '0.75rem' }}>Ganancia total del negocio</h2>
+          <div className={styles.statsGrid}>
+            <div className="card">
+              <div className={styles.statCard}>
+                <div className={styles.statLabel}>Ventas netas</div>
+                <div className={styles.statValue}>{money(gananciaNegocio.ventasNetas)}</div>
+              </div>
+            </div>
+            <div className="card">
+              <div className={styles.statCard}>
+                <div className={styles.statLabel}>Compras netas</div>
+                <div className={styles.statValue}>{money(gananciaNegocio.comprasNetas)}</div>
+              </div>
+            </div>
+            <div className="card">
+              <div className={styles.statCard}>
+                <div className={styles.statLabel}>Ganancia</div>
+                <div className={styles.statValue} style={{ color: gananciaNegocio.ganancia >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                  {money(gananciaNegocio.ganancia)}
+                </div>
+              </div>
+            </div>
+          </div>
+          <p className="text-sm text-muted" style={{ marginTop: '0.75rem' }}>
+            Toda factura emitida (tenga o no un producto de catálogo asociado) menos todas las compras cargadas en{' '}
+            <a href="/dashboard/organizacion/compras" style={{ color: 'var(--blue)' }}>Compras</a>, en su monto neto (sin IVA).
+            Le sirve a cualquier negocio, venda productos o servicios.
+          </p>
+        </div>
+      )}
+
       {resumen && resumen.totalItems === 0 && (
-        <div className="card" style={{ padding: '2.5rem', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-          Todavía no hay ventas de productos registradas en {monthLabel(month)}.
+        <div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+          Sin detalle por producto para {monthLabel(month)} — esto aparece cuando facturás con un producto de catálogo asociado
+          (Facturación Rápida, Manual con producto, o un pedido de un canal conectado).
         </div>
       )}
 
       {resumen && resumen.totalItems > 0 && (
         <>
+          <h2 className={styles.sectionTitle}>Detalle por producto</h2>
           {(resumen.itemsSinCosto > 0 || resumen.itemsSinLogistica > 0) && (
             <div style={{ padding: '0.85rem 1rem', borderRadius: 'var(--radius-md)', background: 'var(--warning-bg)', color: '#92400e', fontSize: '0.85rem' }}>
               ⚠ {resumen.itemsSinCosto > 0 && <>{resumen.itemsSinCosto} venta(s) sin costo de producto cargado. </>}

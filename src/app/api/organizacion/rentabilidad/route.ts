@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { computeIvaPosition } from '@/lib/iva-position';
 
 function firstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).toISOString();
@@ -54,6 +55,14 @@ export async function GET(req: NextRequest) {
   const start = (page - 1) * limit;
   const pageItems = rows.slice(start, start + limit);
 
+  // Ganancia total del negocio (ventas netas de TODA factura emitida — no solo las que
+  // tienen un producto de catálogo asociado — menos compras netas). A diferencia del margen
+  // por producto de arriba, esto le sirve a cualquier negocio, venda productos o servicios,
+  // sea RI o Monotributo. Misma cuenta que usa Posición de Ganancias, sin la parte impositiva
+  // (Impuesto a las Ganancias, alícuota, etc.), que solo le aplica a Responsables Inscriptos.
+  const pos = await computeIvaPosition(supabase, user.id, from.slice(0, 10), to.slice(0, 10));
+  const gananciaNegocio = Math.round((pos.salesNet - pos.purchasesNet) * 100) / 100;
+
   return NextResponse.json({
     items: pageItems,
     meta: { page, limit, total: rows.length, pages: Math.max(1, Math.ceil(rows.length / limit)) },
@@ -67,6 +76,11 @@ export async function GET(req: NextRequest) {
       itemsSinCosto,
       itemsSinLogistica,
       totalItems: rows.length,
+    },
+    gananciaNegocio: {
+      ventasNetas: pos.salesNet,
+      comprasNetas: pos.purchasesNet,
+      ganancia: gananciaNegocio,
     },
     costoLogisticaDefault: org?.costoLogisticaDefault ?? null,
   });

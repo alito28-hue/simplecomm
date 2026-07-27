@@ -7,13 +7,12 @@ import styles from './dashboard.module.css';
 interface CanalVentas {
   canal: string;
   revenue: number;
-  units: number;
   orders: number;
 }
 
 interface VentasResumen {
   totalRevenue: number;
-  totalUnits: number;
+  totalOrders: number;
   canales: CanalVentas[];
 }
 
@@ -23,6 +22,7 @@ const CHANNEL_LABELS: Record<string, string> = {
   shopify: 'Shopify',
   mercadopago: 'Mercado Pago',
   simplecomm: 'Directo (SimpleComm)',
+  arca_import: 'ARCA (importado)',
 };
 
 function money(n: number) {
@@ -53,7 +53,7 @@ export default function VentasPorCanalCard() {
             <div className={styles.statCard}>
               <div className={styles.statLabel}>{CHANNEL_LABELS[c.canal] ?? c.canal}</div>
               <div className={styles.statValue}>{money(c.revenue)}</div>
-              <div className={styles.statDelta}>{c.units} unidades · {c.orders} pedidos</div>
+              <div className={styles.statDelta}>{c.orders} facturas</div>
             </div>
           </div>
         ))}

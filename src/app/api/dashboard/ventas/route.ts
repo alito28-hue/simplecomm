@@ -1,21 +1,47 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 
 function firstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).toISOString();
 }
 
-const CHANNELS = ['mercadolibre', 'tiendanube', 'shopify', 'mercadopago', 'simplecomm'] as const;
+const CHANNELS = ['mercadolibre', 'tiendanube', 'shopify', 'mercadopago', 'simplecomm', 'arca_import'] as const;
+type Channel = typeof CHANNELS[number];
 
-// Mapea el origin de venta_items a la plataforma de la tabla integrations — no hay
-// integración para 'simplecomm' (ventas directas, siempre disponibles, no dependen de
-// conectar nada), así que ese canal se muestra si tiene ventas, no si está "conectado".
-const ORIGIN_TO_PLATFORM: Partial<Record<typeof CHANNELS[number], string>> = {
+// Mapea el origin de venta_items / source_app del Gateway a la plataforma de la tabla
+// integrations — no hay integración para 'simplecomm' (ventas directas, siempre disponibles,
+// no dependen de conectar nada) ni para 'arca_import' (facturas emitidas fuera de SimpleComm
+// e importadas después — no sabemos por qué canal se vendieron).
+const ORIGIN_TO_PLATFORM: Partial<Record<Channel, string>> = {
   mercadolibre: 'MERCADO_LIBRE',
   tiendanube: 'TIENDANUBE',
   shopify: 'SHOPIFY',
   mercadopago: 'MERCADO_PAGO',
 };
+
+// 'simplecomm-scheduled' (Facturas Programadas) y cualquier source_app no reconocido caen en
+// "Directo" — no son de ningún canal externo real.
+function channelFromSourceApp(sourceApp: string | null | undefined): Channel {
+  if (sourceApp === 'mercadolibre' || sourceApp === 'tiendanube' || sourceApp === 'shopify' || sourceApp === 'mercadopago') {
+    return sourceApp;
+  }
+  return 'simplecomm';
+}
+
+function naturalKey(tipo: number | null | undefined, ptoVta: number | null | undefined, numero: number | null | undefined) {
+  return `${tipo}-${ptoVta}-${numero}`;
+}
+
+interface GatewayInvoice {
+  status: string;
+  total_amount: number;
+  invoice_type: number | null;
+  pto_vta: number | null;
+  invoice_number_int: number | null;
+  source_app: string | null;
+  created_at?: string;
+}
 
 export async function GET(req: NextRequest) {
   const supabase = await createClient();
@@ -37,75 +63,103 @@ export async function GET(req: NextRequest) {
     CHANNELS.filter(c => ORIGIN_TO_PLATFORM[c] && connectedPlatforms.has(ORIGIN_TO_PLATFORM[c]!))
   );
 
-  const { data: items, error } = await supabase
+  // --- Totales y desglose por canal: se toman de las facturas reales (Gateway emitidas +
+  // importadas de ARCA que no estén ya en el Gateway), igual que Posición de IVA/Ganancias —
+  // cualquier factura emitida es una venta, tenga o no un producto de catálogo asociado. ---
+  const porCanal = Object.fromEntries(CHANNELS.map(c => [c, { revenue: 0, count: 0 }])) as Record<Channel, { revenue: number; count: number }>;
+  const gatewayKeys = new Set<string>();
+
+  try {
+    const apiKey = await getGatewayKey(user.id);
+    let page = 1;
+    let pages = 1;
+    do {
+      const params = new URLSearchParams({ page: String(page), limit: '100', status: 'issued', date_from: from, date_to: to });
+      const res = await fetch(`${GATEWAY_URL}/v1/invoices?${params}`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!res.ok) break;
+      const json = await res.json();
+      const invoices: GatewayInvoice[] = json.data ?? [];
+      for (const inv of invoices) {
+        const channel = channelFromSourceApp(inv.source_app);
+        porCanal[channel].revenue += Number(inv.total_amount ?? 0);
+        porCanal[channel].count += 1;
+        gatewayKeys.add(naturalKey(inv.invoice_type, inv.pto_vta, inv.invoice_number_int));
+      }
+      pages = json.meta?.pages ?? 1;
+      page += 1;
+    } while (page <= pages && page <= 20);
+  } catch {
+    // Si el Gateway no responde, seguimos con lo que haya de ARCA importado.
+  }
+
+  const { data: arcaSales } = await supabase
+    .from('arca_sales_invoices')
+    .select('tipoComprobante, puntoVenta, numeroComprobante, totalAmount')
+    .eq('organizationId', user.id)
+    .gte('issueDate', from.slice(0, 10))
+    .lte('issueDate', to.slice(0, 10));
+
+  for (const row of arcaSales ?? []) {
+    const key = naturalKey(row.tipoComprobante, row.puntoVenta, row.numeroComprobante);
+    if (gatewayKeys.has(key)) continue; // ya está contada como emitida por el Gateway
+    porCanal.arca_import.revenue += Number(row.totalAmount ?? 0);
+    porCanal.arca_import.count += 1;
+  }
+
+  const canales = CHANNELS
+    .filter(c => connectedOrigins.has(c) || ((c === 'simplecomm' || c === 'arca_import') && porCanal[c].count > 0))
+    .map(c => ({
+      canal: c,
+      revenue: Math.round(porCanal[c].revenue * 100) / 100,
+      orders: porCanal[c].count,
+    }));
+
+  const totalRevenue = canales.reduce((s, c) => s + c.revenue, 0);
+  const totalOrders = canales.reduce((s, c) => s + c.orders, 0);
+
+  // --- Unidades / productos más vendidos / desglose de "Directo" por canal manual: esto sí
+  // depende de venta_items (registro por producto), que no cubre el 100% de las facturas —
+  // es un detalle complementario, no la fuente de los totales de arriba. ---
+  const visibleOrigins = new Set<string>([...connectedOrigins, 'simplecomm']);
+  const { data: items } = await supabase
     .from('venta_items')
-    .select('id, productId, origin, externalOrderId, quantity, unitPrice, manualChannel, products(description)')
+    .select('id, productId, origin, quantity, unitPrice, manualChannel, products(description)')
     .eq('organizationId', user.id)
     .gte('createdAt', from)
     .lte('createdAt', to);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const rows = items ?? [];
-
-  const porCanal = Object.fromEntries(CHANNELS.map(c => [c, { revenue: 0, units: 0, orderKeys: new Set<string>() }]));
   const porProducto = new Map<string, { name: string; units: number; revenue: number }>();
-  const porCanalManual = new Map<string, { revenue: number; units: number; orderKeys: Set<string> }>();
-
-  // Solo cuentan para los totales, la tabla por canal y los productos más vendidos las
-  // ventas de canales realmente conectados (integrations.status = 'CONNECTED') — evita
-  // ruido de ventas históricas/de prueba en integraciones que ya no están activas.
-  // 'simplecomm' (ventas directas) no tiene concepto de "conectado": siempre cuenta.
-  const visibleOrigins = new Set<string>([...connectedOrigins, 'simplecomm']);
-
-  let totalRevenue = 0;
+  const porCanalManual = new Map<string, { revenue: number; units: number; count: number }>();
   let totalUnits = 0;
 
-  for (const r of rows) {
+  for (const r of items ?? []) {
     if (!visibleOrigins.has(r.origin)) continue;
-    const canal = porCanal[r.origin as typeof CHANNELS[number]];
     const revenue = Number(r.unitPrice) * r.quantity;
-    if (canal) {
-      canal.revenue += revenue;
-      canal.units += r.quantity;
-      canal.orderKeys.add(r.externalOrderId ?? r.id);
-    }
-    totalRevenue += revenue;
     totalUnits += r.quantity;
 
     if (r.productId) {
       const product = r.products as unknown as { description: string } | null;
-      const key = r.productId;
-      const existing = porProducto.get(key) ?? { name: product?.description ?? '(sin nombre)', units: 0, revenue: 0 };
+      const existing = porProducto.get(r.productId) ?? { name: product?.description ?? '(sin nombre)', units: 0, revenue: 0 };
       existing.units += r.quantity;
       existing.revenue += revenue;
-      porProducto.set(key, existing);
+      porProducto.set(r.productId, existing);
     }
 
-    // Desglose de "Directo" por la etiqueta manual cargada al facturar (Instagram, WhatsApp,
-    // etc.) — sin etiqueta va a "Sin especificar", así ayuda a ver qué canal manual funciona
-    // mejor sin perder de vista lo que nadie tagueó todavía.
     if (r.origin === 'simplecomm') {
       const label = r.manualChannel?.trim() || 'Sin especificar';
-      const existing = porCanalManual.get(label) ?? { revenue: 0, units: 0, orderKeys: new Set<string>() };
+      const existing = porCanalManual.get(label) ?? { revenue: 0, units: 0, count: 0 };
       existing.revenue += revenue;
       existing.units += r.quantity;
-      existing.orderKeys.add(r.id);
+      existing.count += 1;
       porCanalManual.set(label, existing);
     }
   }
 
-  const canales = CHANNELS
-    .filter(c => connectedOrigins.has(c) || (c === 'simplecomm' && porCanal[c].units > 0))
-    .map(c => ({
-      canal: c,
-      revenue: Math.round(porCanal[c].revenue * 100) / 100,
-      units: porCanal[c].units,
-      orders: porCanal[c].orderKeys.size,
-    }));
-
   const directoPorCanal = Array.from(porCanalManual.entries())
-    .map(([channel, v]) => ({ channel, revenue: Math.round(v.revenue * 100) / 100, units: v.units, orders: v.orderKeys.size }))
+    .map(([channel, v]) => ({ channel, revenue: Math.round(v.revenue * 100) / 100, units: v.units, orders: v.count }))
     .sort((a, b) => b.revenue - a.revenue);
 
   const topProductos = Array.from(porProducto.entries())
@@ -117,6 +171,7 @@ export async function GET(req: NextRequest) {
     from,
     to,
     totalRevenue: Math.round(totalRevenue * 100) / 100,
+    totalOrders,
     totalUnits,
     canales,
     directoPorCanal,

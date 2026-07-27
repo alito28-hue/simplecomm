@@ -47,7 +47,7 @@ const MODULES = [
   { href: '/dashboard/ventas',                          icon: '🛍', title: 'Ventas',               desc: 'Qué vendiste y por qué canal — ML, Tiendanube, Shopify y más' },
   { href: '/dashboard/contactos',                       icon: '👤', title: 'Clientes',             desc: 'Directorio y datos fiscales' },
   { href: '/dashboard/organizacion/productos',          icon: '📦', title: 'Productos y Stock',    desc: 'Catálogo, precios e inventario' },
-  { href: '/dashboard/organizacion/rentabilidad',        icon: '💹', title: 'Rentabilidad',         desc: 'Costo, margen y % de ganancia por venta' },
+  { href: '/dashboard/organizacion/rentabilidad',        icon: '💹', title: 'Rentabilidad',         desc: 'Ganancia del negocio (ventas menos compras) y margen por producto' },
   { href: '/dashboard/organizacion/listas-precios',      icon: '💲', title: 'Listas de Precios',    desc: 'Precios especiales por lista' },
   { href: '/dashboard/organizacion/centros-costo',       icon: '🏷', title: 'Centros de Costo',     desc: 'Agrupá clientes por proyecto' },
   { href: '/dashboard/organizacion/iva',                icon: '📊', title: 'IVA',                  desc: 'Posición de IVA (ventas menos compras)', ivaOnly: true },
