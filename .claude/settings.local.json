@@ -94,7 +94,8 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/)",
       "Bash(curl -sv http://localhost:3000/)",
       "Bash(curl -s http://localhost:3000/)",
-      "Bash(lsof -ti:3000)"
+      "Bash(lsof -ti:3000)",
+      "Bash(kill -9 15940)"
     ],
     "additionalDirectories": [
       "/Users/alito28/Library/CloudStorage/Dropbox/Mac (2)/Desktop/simplecomm/src/app/api/envios/[id]",
