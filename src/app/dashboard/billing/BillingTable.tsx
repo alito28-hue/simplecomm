@@ -139,11 +139,17 @@ export default function BillingTable() {
   async function downloadPdf(invoiceId: string, invoiceNumber: string) {
     const res = await fetch(`/api/facturas/${invoiceId}/pdf`);
     if (!res.ok) return alert('PDF no disponible');
+    // El servidor manda el nombre con el formato estándar de AFIP en Content-Disposition
+    // (CUIT_tipo_ptoVta_nro.pdf) — se pierde al pasar por blob/object URL, así que hay que
+    // leerlo acá y pasarlo explícitamente a a.download.
+    const disposition = res.headers.get('Content-Disposition') ?? '';
+    const match = disposition.match(/filename="?([^";]+)"?/);
+    const filename = match?.[1] ?? `factura-${invoiceNumber ?? invoiceId}.pdf`;
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `factura-${invoiceNumber ?? invoiceId}.pdf`;
+    a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   }

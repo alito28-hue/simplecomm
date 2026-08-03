@@ -59,12 +59,15 @@ export async function PUT(req: NextRequest) {
   // Si ya tiene un tenant en el Gateway, sincronizar los datos fiscales para que
   // las próximas facturas salgan con el domicilio/IIBB/fecha de inicio al día.
   if (result.data?.gatewayTenantId && GATEWAY_ADMIN_SECRET) {
+    const fullAddress = result.data.address
+      ? `${result.data.address}${result.data.city ? `, ${result.data.city}` : ''}`
+      : undefined;
     await fetch(`${GATEWAY_URL}/v1/admin/tenants/${result.data.gatewayTenantId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GATEWAY_ADMIN_SECRET}` },
       body: JSON.stringify({
         name: result.data.name,
-        address: result.data.address ?? undefined,
+        address: fullAddress,
         iibb: result.data.iibb ?? undefined,
         activity_start_date: result.data.startDate ?? undefined,
       }),

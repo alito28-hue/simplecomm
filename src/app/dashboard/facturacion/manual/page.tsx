@@ -71,7 +71,7 @@ export default function FacturacionManualPage() {
   const [recipientEmail, setRecipientEmail] = useState('');
   const [manualChannel, setManualChannel] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ invoiceNumber: string; cae: string; pdfBase64: string; emailSent?: boolean } | null>(null);
+  const [result, setResult] = useState<{ invoiceNumber: string; cae: string; pdfBase64: string; pdfFilename?: string; emailSent?: boolean } | null>(null);
   const [error, setError] = useState('');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipPadronRef = useRef(false);
@@ -251,7 +251,7 @@ export default function FacturacionManualPage() {
         body: JSON.stringify({
           // Factura A: el Gateway espera el monto NETO (sin IVA). B/C: el total con IVA incluido.
           amount:         Math.round((letter === 'A' ? calcNetoTotal() : calcTotal()) * 100) / 100,
-          description:    items.map(it => `${it.description} x${it.quantity}`).join(', '),
+          description:    items.map(it => it.quantity === 1 ? it.description : `${it.description} x${it.quantity}`).join(', '),
           invoiceLetter:  letter,
           ivaRate:        letter === 'C' ? 0 : ivaRatePct,
           docNumber:      effectiveDoc,
@@ -280,7 +280,7 @@ export default function FacturacionManualPage() {
     const arr = new Uint8Array(bytes.length);
     for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
     const url = URL.createObjectURL(new Blob([arr], { type: 'application/pdf' }));
-    const a = document.createElement('a'); a.href = url; a.download = `factura-${result.invoiceNumber}.pdf`; a.click();
+    const a = document.createElement('a'); a.href = url; a.download = result.pdfFilename ?? `factura-${result.invoiceNumber}.pdf`; a.click();
     URL.revokeObjectURL(url);
   }
 

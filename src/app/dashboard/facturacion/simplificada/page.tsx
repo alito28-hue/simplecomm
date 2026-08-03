@@ -72,7 +72,7 @@ export default function FacturacionSimplificadaPage() {
   const [letter, setLetter] = useState<InvoiceLetter>('B');
   const [allowedLetters, setAllowedLetters] = useState<InvoiceLetter[]>(['A', 'B', 'C']);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ invoiceNumber: string; cae: string; caeDueDate: string; pdfBase64: string; emailSent?: boolean } | null>(null);
+  const [result, setResult] = useState<{ invoiceNumber: string; cae: string; caeDueDate: string; pdfBase64: string; pdfFilename?: string; emailSent?: boolean } | null>(null);
   const [error, setError] = useState('');
 
   const [docNumber, setDocNumber] = useState('');
@@ -341,7 +341,7 @@ export default function FacturacionSimplificadaPage() {
     const arr = new Uint8Array(bytes.length);
     for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
     const url = URL.createObjectURL(new Blob([arr], { type: 'application/pdf' }));
-    const a = document.createElement('a'); a.href = url; a.download = `factura-${result.invoiceNumber}.pdf`; a.click();
+    const a = document.createElement('a'); a.href = url; a.download = result.pdfFilename ?? `factura-${result.invoiceNumber}.pdf`; a.click();
     URL.revokeObjectURL(url);
   }
 

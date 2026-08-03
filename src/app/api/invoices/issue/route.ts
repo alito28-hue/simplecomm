@@ -216,6 +216,9 @@ export async function POST(req: NextRequest) {
     cae:           data.cae,
     caeDueDate:    data.cae_due_date,
     pdfBase64:     data.pdf_base64,
+    pdfFilename:   org?.cuit && data.invoice_number
+      ? buildInvoiceFilename(org.cuit, invoiceLetter, data.invoice_number)
+      : undefined,
     status:        data.status,
     emailSent:     !!(recipientEmail && data.pdf_base64),
   });
