@@ -92,6 +92,7 @@ model Invoice {
   buyerDocType   Int       // 96 = DNI, 80 = CUIT, 99 = Consumidor Final
   buyerDocNumber String
   buyerName      String
+  buyerAddress   String?   // Domicilio del receptor, para el PDF (opcional — no todos lo tienen)
   totalAmount    Decimal   @db.Decimal(12, 2)
   netAmount      Decimal   @db.Decimal(12, 2)
   ivaAmount      Decimal   @db.Decimal(12, 2)

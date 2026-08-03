@@ -14,6 +14,7 @@ interface PdfData {
     docType: string;
     docNumber: string;
     email?: string;
+    address?: string;
   };
   amounts: InvoiceAmounts;
   description?: string;
@@ -269,7 +270,12 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
 
     // ── Receptor ────────────────────────────────────────────────────────────
     const receptorY = nextY;
-    const receptorH = 64;
+    const receptorLeftW = pageWidth / 2 - 20;
+    doc.font('Helvetica').fontSize(8);
+    const receptorAddressH = data.buyer.address
+      ? doc.heightOfString(`Domicilio: ${data.buyer.address}`, { width: receptorLeftW })
+      : 0;
+    const receptorH = data.buyer.address ? Math.max(64, 50 + receptorAddressH) : 64;
     doc.rect(leftCol, receptorY, pageWidth, receptorH).stroke(BLACK);
 
     const receptorRightX = leftCol + pageWidth / 2 + 10;
@@ -282,6 +288,11 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
       const docLabel = data.buyer.docType === 'CUIT' ? formatCuit(data.buyer.docNumber) : data.buyer.docNumber;
       doc.fillColor(GRAY).font('Helvetica').fontSize(8)
         .text(`${data.buyer.docType}: ${docLabel}`, leftCol + 8, receptorY + 38);
+    }
+
+    if (data.buyer.address) {
+      doc.fillColor(GRAY).font('Helvetica').fontSize(8)
+        .text(`Domicilio: ${data.buyer.address}`, leftCol + 8, receptorY + 50, { width: receptorLeftW });
     }
 
     doc.fillColor(GRAY).font('Helvetica').fontSize(8)

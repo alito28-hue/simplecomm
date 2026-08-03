@@ -15,6 +15,7 @@ export interface IssueRequest {
     docType: string;        // "DNI", "CUIT", "CONSUMIDOR_FINAL", etc.
     docNumber: string;
     email?: string;
+    address?: string;
   };
   invoice: {
     totalAmount: number;    // Para B/C: total con IVA. Para A: monto NETO
@@ -121,6 +122,7 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
           buyerDocType: docTypeId,
           buyerDocNumber: docNumber,
           buyerName: req.buyer.fullName,
+          buyerAddress: req.buyer.address,
           totalAmount: amounts.impTotal,
           netAmount: amounts.impNeto,
           ivaAmount: amounts.impIVA,

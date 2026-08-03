@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { randomUUID } from 'crypto';
-import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
+import { getGatewayKey, getSharedGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
 import { getAllowedInvoiceLetters } from '@/lib/fiscal';
 import { translateGatewayError } from '@/lib/afip-errors';
@@ -15,6 +15,44 @@ function fromEmail(sellerName: string): string {
   // El remitente visible es el negocio emisor; el dominio verificado sigue siendo simplecomm.com.ar
   const safeName = sellerName.replace(/[<>"]/g, '');
   return `${safeName} <info@simplecomm.com.ar>`;
+}
+
+/**
+ * Domicilio del receptor para el PDF: primero el que ya tengamos guardado en Contactos (más
+ * rápido, no depende de un servicio externo); si no hay, y es un CUIT/CUIL válido, se completa
+ * con el Padrón de ARCA (mismo que ya usa Contactos/Facturación para autocompletar el nombre).
+ * Best-effort: cualquier falla acá no debe frenar la emisión de la factura.
+ */
+async function resolveBuyerAddress(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  organizationId: string,
+  docType: string,
+  docNumber: string,
+): Promise<string | undefined> {
+  try {
+    if (docNumber && docNumber !== '0') {
+      const { data: client } = await supabase.from('clients')
+        .select('address, city')
+        .eq('organizationId', organizationId).eq('docNumber', docNumber).maybeSingle();
+      if (client?.address) return `${client.address}${client.city ? `, ${client.city}` : ''}`;
+    }
+
+    if ((docType === 'CUIT' || docType === 'CUIL') && /^\d{11}$/.test(docNumber)) {
+      const res = await fetch(`${GATEWAY_URL}/v1/padron/${docNumber}`, {
+        headers: { Authorization: `Bearer ${getSharedGatewayKey()}` },
+        signal: AbortSignal.timeout(8_000),
+      });
+      if (res.ok) {
+        const info = await res.json();
+        const direccion = info?.domicilio?.direccion as string | undefined;
+        const provincia = info?.domicilio?.provincia as string | undefined;
+        if (direccion) return `${direccion}${provincia ? `, ${provincia}` : ''}`;
+      }
+    }
+  } catch {
+    // Best-effort — sin domicilio no pasa nada, la factura se emite igual.
+  }
+  return undefined;
 }
 
 export async function POST(req: NextRequest) {
@@ -86,6 +124,7 @@ export async function POST(req: NextRequest) {
   }
 
   const idempotencyKey = `${user.id}:${randomUUID()}`;
+  const buyerAddress = await resolveBuyerAddress(supabase, user.id, finalDocType, finalDocNumber);
 
   const body = {
     idempotency_key: idempotencyKey,
@@ -105,6 +144,7 @@ export async function POST(req: NextRequest) {
       full_name:  buyerName ?? 'Consumidor Final',
       doc_type:   finalDocType,
       doc_number: finalDocNumber,
+      address:    buyerAddress,
     },
     source_app: 'simplecomm',
   };

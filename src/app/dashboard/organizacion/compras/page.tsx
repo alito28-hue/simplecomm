@@ -152,7 +152,8 @@ export default function ComprasPage() {
       const res = await fetch('/api/organizacion/iva/importar-recibidos', { method: 'POST', body: fd });
       const d = await res.json();
       if (!res.ok) throw new Error(d.error || 'No se pudo importar el archivo');
-      setImportModal({ status: 'success', message: `${d.rowCount} comprobantes (${d.newCount} nuevos, ${d.updatedCount} actualizados).` });
+      const skippedMsg = d.skippedCount > 0 ? ` ${d.skippedCount} sin monto válido, no se importaron.` : '';
+      setImportModal({ status: 'success', message: `${d.rowCount} comprobantes (${d.newCount} nuevos, ${d.updatedCount} actualizados).${skippedMsg}` });
       load();
     } catch (e) {
       setImportModal({ status: 'error', message: e instanceof Error ? e.message : 'Error al importar el archivo' });

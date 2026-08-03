@@ -24,6 +24,7 @@ const issueSchema = z.object({
     doc_type: z.string().default('CONSUMIDOR_FINAL'),
     doc_number: z.string().default('0'),
     email: z.string().email().optional(),
+    address: z.string().optional(),
   }),
   external_ref: z.string().optional(),
   source_app: z.string().optional(),
@@ -63,6 +64,7 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
           docType: body.buyer.doc_type,
           docNumber: body.buyer.doc_number,
           email: body.buyer.email,
+          address: body.buyer.address,
         },
         invoice: {
           totalAmount: body.invoice.total_amount,
