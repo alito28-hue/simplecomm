@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { parseArcaRecibidosCSV } from '@/lib/parsers/arca';
+import { parseArcaRecibidosCSV, ArcaCsvTypeMismatchError } from '@/lib/parsers/arca';
 
 const MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
@@ -27,7 +27,15 @@ export async function POST(req: NextRequest) {
   const bytes = await file.arrayBuffer();
   // El export de "Mis Comprobantes" de ARCA viene en UTF-8 (verificado con un archivo real).
   const text = new TextDecoder('utf-8').decode(bytes);
-  const parsed = parseArcaRecibidosCSV(text);
+  let parsed;
+  try {
+    parsed = parseArcaRecibidosCSV(text);
+  } catch (err) {
+    if (err instanceof ArcaCsvTypeMismatchError) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+    throw err;
+  }
   if (!parsed.length) {
     return NextResponse.json(
       { error: 'No se encontraron comprobantes válidos. Verificá que sea el CSV de "Mis Comprobantes" recibidos exportado desde ARCA.' },

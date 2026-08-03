@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { parseArcaEmitidosCSV } from '@/lib/parsers/arca';
+import { parseArcaEmitidosCSV, ArcaCsvTypeMismatchError } from '@/lib/parsers/arca';
 
 const MAX_SIZE_BYTES = 5 * 1024 * 1024;
 
@@ -21,7 +21,15 @@ export async function POST(req: NextRequest) {
   // — lo que parecía Windows-1252 en las pruebas anteriores era en realidad UTF-8 mal
   // decodificado en la vista previa, no el archivo real).
   const text = new TextDecoder('utf-8').decode(bytes);
-  const rows = parseArcaEmitidosCSV(text);
+  let rows;
+  try {
+    rows = parseArcaEmitidosCSV(text);
+  } catch (err) {
+    if (err instanceof ArcaCsvTypeMismatchError) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+    throw err;
+  }
   if (!rows.length) {
     return NextResponse.json(
       { error: 'No se encontraron comprobantes válidos. Verificá que sea el CSV de "Mis Comprobantes" emitidos exportado desde ARCA.' },

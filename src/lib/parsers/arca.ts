@@ -61,6 +61,13 @@ export interface ArcaPurchaseRow {
   totalAmount: number;
 }
 
+// Se tira cuando el CSV subido no tiene la forma esperada (ej. subieron el de recibidos al
+// importador de emitidos, o viceversa) — ambos comparten casi todos los encabezados
+// ("Nro. Doc. Receptor" existe en LOS DOS: en recibidos es siempre el propio CUIT del que
+// consulta), así que validar por la columna que sí es exclusiva de cada uno
+// (Denominación Receptor / Denominación Emisor) es la única forma confiable de no confundirlos.
+export class ArcaCsvTypeMismatchError extends Error {}
+
 function toRows(text: string) {
   const clean = text.replace(/^﻿/, '');
   const lines = clean.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -72,6 +79,16 @@ export function parseArcaEmitidosCSV(text: string): ArcaSaleRow[] {
   const { lines, idx } = toRows(text);
   if (!lines.length) return [];
 
+  const iRecName = idx('denominacion receptor');
+  if (iRecName === -1) {
+    if (idx('denominacion emisor') !== -1) {
+      throw new ArcaCsvTypeMismatchError(
+        'Este archivo es de comprobantes RECIBIDOS (compras), no de emitidos. Subilo en Compras → Importar CSV de ARCA (recibidos).'
+      );
+    }
+    throw new ArcaCsvTypeMismatchError('No es un CSV válido de "Mis Comprobantes" emitidos de ARCA.');
+  }
+
   const iFecha  = idx('fecha de emision');
   const iTipo   = idx('tipo de comprobante');
   const iPtoVta = idx('punto de venta');
@@ -79,7 +96,6 @@ export function parseArcaEmitidosCSV(text: string): ArcaSaleRow[] {
   const iHasta  = idx('numero hasta');
   const iCae    = idx('cod') !== -1 ? idx('cod') : idx('autorizacion');
   const iRecCuit = idx('nro doc receptor');
-  const iRecName = idx('denominacion receptor');
   const iNeto   = idx('imp neto gravado total');
   const iIva    = idx('total iva');
   const iTotal  = idx('imp total');
@@ -115,13 +131,22 @@ export function parseArcaRecibidosCSV(text: string): ArcaPurchaseRow[] {
   const { lines, idx } = toRows(text);
   if (!lines.length) return [];
 
+  const iEmiName = idx('denominacion emisor');
+  if (iEmiName === -1) {
+    if (idx('denominacion receptor') !== -1) {
+      throw new ArcaCsvTypeMismatchError(
+        'Este archivo es de comprobantes EMITIDOS (ventas), no de recibidos. Subilo en Comprobantes → Importar CSV de ARCA (emitidos).'
+      );
+    }
+    throw new ArcaCsvTypeMismatchError('No es un CSV válido de "Mis Comprobantes" recibidos de ARCA.');
+  }
+
   const iFecha  = idx('fecha de emision');
   const iTipo   = idx('tipo de comprobante');
   const iPtoVta = idx('punto de venta');
   const iDesde  = idx('numero desde');
   const iHasta  = idx('numero hasta');
   const iEmiCuit = idx('nro doc emisor');
-  const iEmiName = idx('denominacion emisor');
   const iNeto   = idx('imp neto gravado total');
   const iIva    = idx('total iva');
   const iTotal  = idx('imp total');
