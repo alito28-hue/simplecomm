@@ -12,6 +12,10 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const from = searchParams.get('from'); // YYYY-MM-DD
   const to = searchParams.get('to');     // YYYY-MM-DD
+  // page/limit son opcionales — si no se mandan, se devuelve todo (comportamiento histórico,
+  // lo sigue usando la página de Compras). El modal de detalle de IVA sí los manda.
+  const page  = searchParams.has('page')  ? Math.max(1, Number(searchParams.get('page')))            : null;
+  const limit = searchParams.has('limit') ? Math.min(200, Math.max(1, Number(searchParams.get('limit')))) : null;
 
   let query = supabase.from('purchase_invoices').select('*').eq('organizationId', user.id);
   if (from) query = query.gte('issueDate', from);
@@ -21,15 +25,6 @@ export async function GET(req: NextRequest) {
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const withUrls = await Promise.all((data ?? []).map(async (p) => {
-    let signedUrl: string | null = null;
-    if (p.fileUrl) {
-      const { data: signed } = await supabase.storage.from('attachments').createSignedUrl(p.fileUrl, 60 * 10);
-      signedUrl = signed?.signedUrl ?? null;
-    }
-    return { ...p, signedUrl };
-  }));
-
   const totals = (data ?? []).reduce((acc, p) => ({
     net: acc.net + Number(p.netAmount ?? 0),
     iva: acc.iva + Number(p.ivaAmount ?? 0),
@@ -37,6 +32,18 @@ export async function GET(req: NextRequest) {
     retenciones: acc.retenciones + Number(p.retencionesAmount ?? 0),
     percepciones: acc.percepciones + Number(p.percepcionesAmount ?? 0),
   }), { net: 0, iva: 0, total: 0, retenciones: 0, percepciones: 0 });
+
+  const total = (data ?? []).length;
+  const pageRows = page && limit ? (data ?? []).slice((page - 1) * limit, (page - 1) * limit + limit) : (data ?? []);
+
+  const withUrls = await Promise.all(pageRows.map(async (p) => {
+    let signedUrl: string | null = null;
+    if (p.fileUrl) {
+      const { data: signed } = await supabase.storage.from('attachments').createSignedUrl(p.fileUrl, 60 * 10);
+      signedUrl = signed?.signedUrl ?? null;
+    }
+    return { ...p, signedUrl };
+  }));
 
   const { data: lastImport } = await supabase
     .from('arca_import_log')
@@ -47,7 +54,12 @@ export async function GET(req: NextRequest) {
     .limit(1)
     .maybeSingle();
 
-  return NextResponse.json({ data: withUrls, totals, lastImportAt: lastImport?.importedAt ?? null });
+  return NextResponse.json({
+    data: withUrls,
+    totals,
+    lastImportAt: lastImport?.importedAt ?? null,
+    ...(page && limit ? { meta: { page, limit, total, pages: Math.max(1, Math.ceil(total / limit)) } } : {}),
+  });
 }
 
 export async function POST(req: NextRequest) {

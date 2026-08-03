@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import styles from '../clientes/clientes.module.css';
 import dashStyles from '../../dashboard.module.css';
+import ivaStyles from './iva.module.css';
 
 interface IvaPosition {
   applicable: boolean;
@@ -57,52 +58,70 @@ interface CompraRow {
   totalAmount: string | number;
 }
 
-interface Detalle { tipo: 'ventas' | 'compras'; year: number; month: number; monthLabel: string }
+interface Detalle { tipo: 'ventas' | 'compras'; year: number; month: number; monthLabel: string; ivaTotal: number }
+
+const DETALLE_LIMIT = 20;
+const EMPTY_META = { page: 1, limit: DETALLE_LIMIT, total: 0, pages: 1 };
 
 function IvaDetalleModal({ detalle, onClose }: { detalle: Detalle; onClose: () => void }) {
   const [loading, setLoading] = useState(true);
   const [ventas, setVentas] = useState<VentaRow[]>([]);
   const [compras, setCompras] = useState<CompraRow[]>([]);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState(EMPTY_META);
 
   useEffect(() => {
     const monthStr = `${detalle.year}-${String(detalle.month).padStart(2, '0')}`;
     setLoading(true);
     if (detalle.tipo === 'ventas') {
-      fetch(`/api/facturas?month=${monthStr}&status=issued&limit=500`)
+      fetch(`/api/facturas?month=${monthStr}&status=issued&page=${page}&limit=${DETALLE_LIMIT}`)
         .then(r => r.json())
-        .then(d => setVentas(d.data ?? []))
-        .catch(() => setVentas([]))
+        .then(d => { setVentas(d.data ?? []); setMeta(d.meta ?? EMPTY_META); })
+        .catch(() => { setVentas([]); setMeta(EMPTY_META); })
         .finally(() => setLoading(false));
     } else {
       const lastDay = new Date(detalle.year, detalle.month, 0).getDate();
       const from = `${monthStr}-01`;
       const to = `${monthStr}-${String(lastDay).padStart(2, '0')}`;
-      fetch(`/api/organizacion/compras?from=${from}&to=${to}`)
+      fetch(`/api/organizacion/compras?from=${from}&to=${to}&page=${page}&limit=${DETALLE_LIMIT}`)
         .then(r => r.json())
-        .then(d => setCompras(d.data ?? []))
-        .catch(() => setCompras([]))
+        .then(d => { setCompras(d.data ?? []); setMeta(d.meta ?? EMPTY_META); })
+        .catch(() => { setCompras([]); setMeta(EMPTY_META); })
         .finally(() => setLoading(false));
     }
-  }, [detalle]);
+  }, [detalle, page]);
+
+  // Al abrir un mes/tipo distinto, siempre se vuelve a la página 1.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setPage(1); }, [detalle.tipo, detalle.year, detalle.month]);
+
+  const isVentas = detalle.tipo === 'ventas';
+  const rows = isVentas ? ventas : compras;
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
-      onClick={onClose}>
-      <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', maxWidth: 800, width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
-        onClick={e => e.stopPropagation()}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h2 style={{ fontWeight: 700, fontSize: '1rem' }}>
-            {detalle.tipo === 'ventas' ? 'IVA Ventas' : 'IVA Compras'} — {detalle.monthLabel} {detalle.year}
-          </h2>
-          <button className="btn btn-ghost btn-sm" onClick={onClose}>Cerrar ✕</button>
+    <div className={ivaStyles.overlay} onClick={onClose}>
+      <div className={ivaStyles.modal} onClick={e => e.stopPropagation()}>
+        <div className={ivaStyles.header}>
+          <div>
+            <div className={ivaStyles.title}>{isVentas ? 'IVA Ventas' : 'IVA Compras'}</div>
+            <div className={ivaStyles.subtitle}>{detalle.monthLabel} {detalle.year} — comprobantes que componen este total</div>
+          </div>
+          <button className={ivaStyles.closeBtn} onClick={onClose} aria-label="Cerrar">✕</button>
         </div>
 
-        {loading ? (
-          <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '2rem' }}>Cargando...</p>
-        ) : detalle.tipo === 'ventas' ? (
-          ventas.length === 0 ? (
-            <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '2rem' }}>Sin comprobantes de venta este mes.</p>
-          ) : (
+        <div className={ivaStyles.summary}>
+          <span>{meta.total} comprobante{meta.total === 1 ? '' : 's'}</span>
+          <span>IVA total del mes: <span className={ivaStyles.summaryTotal}>{money(detalle.ivaTotal)}</span></span>
+        </div>
+
+        <div className={ivaStyles.body}>
+          {loading ? (
+            <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '2.5rem' }}>Cargando...</p>
+          ) : rows.length === 0 ? (
+            <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '2.5rem' }}>
+              Sin comprobantes de {isVentas ? 'venta' : 'compra'} este mes.
+            </p>
+          ) : isVentas ? (
             <div className="table-wrap">
               <table className="table">
                 <thead><tr><th>Fecha</th><th>N° Comprobante</th><th>Receptor</th><th>Origen</th><th>Monto</th></tr></thead>
@@ -119,26 +138,41 @@ function IvaDetalleModal({ detalle, onClose }: { detalle: Detalle; onClose: () =
                 </tbody>
               </table>
             </div>
-          )
-        ) : compras.length === 0 ? (
-          <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '2rem' }}>Sin comprobantes de compra este mes.</p>
-        ) : (
-          <div className="table-wrap">
-            <table className="table">
-              <thead><tr><th>Fecha</th><th>Emisor</th><th>Comprobante</th><th>Neto</th><th>IVA</th><th>Total</th></tr></thead>
-              <tbody>
-                {compras.map(c => (
-                  <tr key={c.id}>
-                    <td className="text-sm text-muted">{c.issueDate ? c.issueDate.slice(8, 10) + '/' + c.issueDate.slice(5, 7) : '—'}</td>
-                    <td>{c.issuerName || '(sin nombre)'}</td>
-                    <td className="text-sm">{c.invoiceLetter} {c.invoiceNumber}</td>
-                    <td className="text-sm">{money(Number(c.netAmount))}</td>
-                    <td className="text-sm">{money(Number(c.ivaAmount))}</td>
-                    <td><strong>{money(Number(c.totalAmount))}</strong></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          ) : (
+            <div className="table-wrap">
+              <table className="table">
+                <thead><tr><th>Fecha</th><th>Emisor</th><th>Comprobante</th><th>Neto</th><th>IVA</th><th>Total</th></tr></thead>
+                <tbody>
+                  {compras.map(c => (
+                    <tr key={c.id}>
+                      <td className="text-sm text-muted">{c.issueDate ? c.issueDate.slice(8, 10) + '/' + c.issueDate.slice(5, 7) : '—'}</td>
+                      <td>{c.issuerName || '(sin nombre)'}</td>
+                      <td className="text-sm">{c.invoiceLetter} {c.invoiceNumber}</td>
+                      <td className="text-sm">{money(Number(c.netAmount))}</td>
+                      <td className="text-sm">{money(Number(c.ivaAmount))}</td>
+                      <td><strong>{money(Number(c.totalAmount))}</strong></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {meta.pages > 1 && (
+          <div className={dashStyles.tablePagination}>
+            <span className="text-muted text-sm">
+              Mostrando {Math.min(page * DETALLE_LIMIT, meta.total)} de {meta.total}
+            </span>
+            <div className={dashStyles.paginationBtns}>
+              <button className={dashStyles.pageBtn} onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                ‹ Anterior
+              </button>
+              <span className={dashStyles.pageIndicator}>Página {page} de {meta.pages}</span>
+              <button className={dashStyles.pageBtn} onClick={() => setPage(p => p + 1)} disabled={page >= meta.pages}>
+                Siguiente ›
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -305,7 +339,7 @@ export default function IvaPage() {
                   <td>{m.monthLabel} {m.year}</td>
                   <td className="text-sm">
                     <button
-                      onClick={() => setDetalle({ tipo: 'compras', year: m.year, month: m.month, monthLabel: m.monthLabel })}
+                      onClick={() => setDetalle({ tipo: 'compras', year: m.year, month: m.month, monthLabel: m.monthLabel, ivaTotal: m.purchasesIva })}
                       style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--blue)', textDecoration: 'underline', font: 'inherit' }}
                     >
                       {money(m.purchasesIva)}
@@ -313,7 +347,7 @@ export default function IvaPage() {
                   </td>
                   <td className="text-sm">
                     <button
-                      onClick={() => setDetalle({ tipo: 'ventas', year: m.year, month: m.month, monthLabel: m.monthLabel })}
+                      onClick={() => setDetalle({ tipo: 'ventas', year: m.year, month: m.month, monthLabel: m.monthLabel, ivaTotal: m.salesIva })}
                       style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--blue)', textDecoration: 'underline', font: 'inherit' }}
                     >
                       {money(m.salesIva)}
