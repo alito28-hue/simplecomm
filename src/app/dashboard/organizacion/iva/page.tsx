@@ -106,7 +106,7 @@ function IvaDetalleModal({ detalle, onClose }: { detalle: Detalle; onClose: () =
             <div className={ivaStyles.title}>{isVentas ? 'IVA Ventas' : 'IVA Compras'}</div>
             <div className={ivaStyles.subtitle}>{detalle.monthLabel} {detalle.year} — comprobantes que componen este total</div>
           </div>
-          <button className={ivaStyles.closeBtn} onClick={onClose} aria-label="Cerrar">✕</button>
+          <button type="button" className={ivaStyles.closeBtn} onClick={onClose} aria-label="Cerrar">✕</button>
         </div>
 
         <div className={ivaStyles.summary}>
@@ -115,14 +115,17 @@ function IvaDetalleModal({ detalle, onClose }: { detalle: Detalle; onClose: () =
         </div>
 
         <div className={ivaStyles.body}>
-          {loading ? (
+          {loading && rows.length === 0 ? (
             <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '2.5rem' }}>Cargando...</p>
           ) : rows.length === 0 ? (
             <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '2.5rem' }}>
               Sin comprobantes de {isVentas ? 'venta' : 'compra'} este mes.
             </p>
           ) : isVentas ? (
-            <div className="table-wrap">
+            // Al cambiar de página se mantienen las filas anteriores atenuadas mientras
+            // llega la respuesta, en vez de taparlas con un "Cargando..." — eso es lo que
+            // se sentía como que "recargaba la página" en cada clic de paginado.
+            <div className="table-wrap" style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.15s' }}>
               <table className="table">
                 <thead><tr><th>Fecha</th><th>N° Comprobante</th><th>Receptor</th><th>Origen</th><th>Monto</th></tr></thead>
                 <tbody>
@@ -139,7 +142,7 @@ function IvaDetalleModal({ detalle, onClose }: { detalle: Detalle; onClose: () =
               </table>
             </div>
           ) : (
-            <div className="table-wrap">
+            <div className="table-wrap" style={{ opacity: loading ? 0.5 : 1, transition: 'opacity 0.15s' }}>
               <table className="table">
                 <thead><tr><th>Fecha</th><th>Emisor</th><th>Comprobante</th><th>Neto</th><th>IVA</th><th>Total</th></tr></thead>
                 <tbody>
@@ -165,11 +168,11 @@ function IvaDetalleModal({ detalle, onClose }: { detalle: Detalle; onClose: () =
               Mostrando {Math.min(page * DETALLE_LIMIT, meta.total)} de {meta.total}
             </span>
             <div className={dashStyles.paginationBtns}>
-              <button className={dashStyles.pageBtn} onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+              <button type="button" className={dashStyles.pageBtn} onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
                 ‹ Anterior
               </button>
               <span className={dashStyles.pageIndicator}>Página {page} de {meta.pages}</span>
-              <button className={dashStyles.pageBtn} onClick={() => setPage(p => p + 1)} disabled={page >= meta.pages}>
+              <button type="button" className={dashStyles.pageBtn} onClick={() => setPage(p => p + 1)} disabled={page >= meta.pages}>
                 Siguiente ›
               </button>
             </div>
