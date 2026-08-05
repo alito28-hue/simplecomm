@@ -181,6 +181,42 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   });
 
   /**
+   * POST /v1/admin/tenants/:id/rotate-key
+   * Genera una API key nueva para un tenant existente y desactiva las anteriores —
+   * para rotar una key comprometida sin tener que recrear el tenant. Devuelve la key
+   * en texto plano UNA SOLA VEZ, igual que en la creación.
+   */
+  app.post('/v1/admin/tenants/:id/rotate-key', async (request, reply) => {
+    if (!requireAdminAuth(request.headers.authorization)) {
+      return reply.status(401).send({ error: 'Admin secret requerido' });
+    }
+
+    const { id } = request.params as { id: string };
+    const tenant = await db.tenant.findUnique({ where: { id } });
+    if (!tenant) return reply.status(404).send({ error: 'Tenant no encontrado' });
+
+    const rawKey  = `sc_live_${randomBytes(32).toString('hex')}`;
+    const prefix  = rawKey.slice(0, 8);
+    const keyHash = await bcrypt.hash(rawKey, 10);
+
+    // Se crea la nueva ANTES de desactivar las viejas — evita una ventana sin ninguna
+    // key activa si algo falla a mitad de camino.
+    await db.apiKey.create({
+      data: { tenantId: tenant.id, name: `${tenant.code}-rotated-${Date.now()}`, keyHash, prefix, active: true },
+    });
+    await db.apiKey.updateMany({
+      where: { tenantId: tenant.id, keyHash: { not: keyHash } },
+      data: { active: false },
+    });
+
+    return reply.send({
+      tenant_id:      tenant.id,
+      api_key:        rawKey,   // ⚠️ Solo visible esta vez
+      api_key_prefix: prefix,
+    });
+  });
+
+  /**
    * DELETE /v1/admin/tenants/:id
    * Desactiva un tenant.
    */
