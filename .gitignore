@@ -36,6 +36,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Claude Code local settings — puede acumular comandos con secretos en texto plano
+# (curl con tokens, connection strings) en la lista de permisos "allow". Nunca commitear.
+.claude/settings.local.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
