@@ -35,6 +35,10 @@ const updateTenantSchema = z.object({
   pto_vta:             z.number().int().positive().optional(),
 });
 
+const createKeySchema = z.object({
+  name: z.string().min(2).max(80), // ej: "mesames-checkout"
+});
+
 export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   /**
@@ -210,6 +214,43 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     });
 
     return reply.send({
+      tenant_id:      tenant.id,
+      api_key:        rawKey,   // ⚠️ Solo visible esta vez
+      api_key_prefix: prefix,
+    });
+  });
+
+  /**
+   * POST /v1/admin/tenants/:id/keys
+   * Crea una API key ADICIONAL para un tenant existente, sin tocar las que ya
+   * tenía activas — a diferencia de rotate-key, que las desactiva. Pensado para
+   * integraciones nuevas (ej. un sitio externo) que necesitan su propia key
+   * independiente, revocable sin afectar a las demás. Devuelve la key en texto
+   * plano UNA SOLA VEZ.
+   */
+  app.post('/v1/admin/tenants/:id/keys', async (request, reply) => {
+    if (!requireAdminAuth(request.headers.authorization)) {
+      return reply.status(401).send({ error: 'Admin secret requerido' });
+    }
+
+    const { id } = request.params as { id: string };
+    const tenant = await db.tenant.findUnique({ where: { id } });
+    if (!tenant) return reply.status(404).send({ error: 'Tenant no encontrado' });
+
+    const parse = createKeySchema.safeParse(request.body);
+    if (!parse.success) {
+      return reply.status(400).send({ error: 'Payload inválido', details: parse.error.flatten().fieldErrors });
+    }
+
+    const rawKey  = `sc_live_${randomBytes(32).toString('hex')}`;
+    const prefix  = rawKey.slice(0, 8);
+    const keyHash = await bcrypt.hash(rawKey, 10);
+
+    await db.apiKey.create({
+      data: { tenantId: tenant.id, name: parse.data.name, keyHash, prefix, active: true },
+    });
+
+    return reply.status(201).send({
       tenant_id:      tenant.id,
       api_key:        rawKey,   // ⚠️ Solo visible esta vez
       api_key_prefix: prefix,
