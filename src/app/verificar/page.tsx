@@ -1,4 +1,3 @@
-import Logo from '@/components/Logo';
 import styles from './verificar.module.css';
 
 // Mismo esquema de payload que ya usa el QR real de AFIP (ver buildAfipQrUrl en
@@ -21,10 +20,10 @@ interface QrPayload {
 }
 
 const TIPO_CMP_LABEL: Record<number, string> = {
-  1: 'Factura A', 2: 'Nota de Débito A', 3: 'Nota de Crédito A',
-  6: 'Factura B', 7: 'Nota de Débito B', 8: 'Nota de Crédito B',
-  11: 'Factura C', 12: 'Nota de Débito C', 13: 'Nota de Crédito C',
-  51: 'Factura M', 52: 'Nota de Débito M', 53: 'Nota de Crédito M',
+  1: '1 - Factura A', 2: '2 - Nota de Débito A', 3: '3 - Nota de Crédito A',
+  6: '6 - Factura B', 7: '7 - Nota de Débito B', 8: '8 - Nota de Crédito B',
+  11: '11 - Factura C', 12: '12 - Nota de Débito C', 13: '13 - Nota de Crédito C',
+  51: '51 - Factura M', 52: '52 - Nota de Débito M', 53: '53 - Nota de Crédito M',
 };
 
 const TIPO_DOC_LABEL: Record<number, string> = {
@@ -32,8 +31,7 @@ const TIPO_DOC_LABEL: Record<number, string> = {
 };
 
 function formatCuit(n: number): string {
-  const s = String(n).padStart(11, '0');
-  return `${s.slice(0, 2)}-${s.slice(2, 10)}-${s.slice(10)}`;
+  return String(n).padStart(11, '0');
 }
 
 function formatFecha(iso?: string): string {
@@ -44,7 +42,7 @@ function formatFecha(iso?: string): string {
 
 function formatMoney(n?: number): string {
   if (n == null) return '—';
-  return `$${n.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
+  return n.toLocaleString('es-AR', { minimumFractionDigits: 2 });
 }
 
 function decodePayload(p: string | undefined): QrPayload | null {
@@ -67,61 +65,85 @@ export default async function VerificarPage({
 
   return (
     <div className={styles.page}>
-      <div className={styles.logo}><Logo size="md" /></div>
+      <div className={styles.header}>
+        <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '1.25rem', letterSpacing: '1px' }}>
+          ARCA
+        </span>
+      </div>
 
-      <div className={styles.card}>
+      <div className={styles.container}>
+        <h1 className={styles.title}>Constatación de Comprobantes con CAE</h1>
+        <p className={styles.subtitle}>
+          Esta consulta permite a los receptores de comprobantes electrónicos habilitados
+          constatar que el comprobante escaneado se encuentre registrado y autorizado.
+        </p>
+        <hr className={styles.divider} />
+
         {data ? (
           <>
-            <div className={styles.status}>
-              <div className={styles.statusIcon}>✓</div>
-              <div className={styles.statusTitle}>Comprobante verificado</div>
-              <div className={styles.statusSubtitle}>Los datos del comprobante coinciden con lo emitido</div>
-            </div>
-
             <div className={styles.fields}>
               <div className={styles.field}>
-                <span className={styles.fieldLabel}>Tipo de comprobante</span>
-                <span className={styles.fieldValue}>{data.tipoCmp != null ? (TIPO_CMP_LABEL[data.tipoCmp] ?? `Cód. ${data.tipoCmp}`) : '—'}</span>
+                <span className={styles.fieldLabel}>Número de CUIT:</span>
+                <span className={styles.fieldBox}>{data.cuit != null ? formatCuit(data.cuit) : '—'}</span>
               </div>
+
               <div className={styles.field}>
-                <span className={styles.fieldLabel}>Punto de venta / Número</span>
-                <span className={styles.fieldValue}>
-                  {data.ptoVta != null && data.nroCmp != null
-                    ? `${String(data.ptoVta).padStart(4, '0')}-${String(data.nroCmp).padStart(8, '0')}`
-                    : '—'}
+                <span className={styles.fieldLabel}>Número de CAE:</span>
+                <span className={styles.fieldBox}>{data.codAut ?? '—'}</span>
+              </div>
+
+              <div className={styles.field}>
+                <span className={styles.fieldLabel}>Fecha de Emisión del Comprobante:</span>
+                <span className={styles.fieldBox}>{formatFecha(data.fecha)}</span>
+              </div>
+
+              <div className={styles.field}>
+                <span className={styles.fieldLabel}>Tipo de Comprobante:</span>
+                <span className={styles.fieldBox}>
+                  {data.tipoCmp != null ? (TIPO_CMP_LABEL[data.tipoCmp] ?? `Cód. ${data.tipoCmp}`) : '—'}
                 </span>
               </div>
+
               <div className={styles.field}>
-                <span className={styles.fieldLabel}>Fecha de emisión</span>
-                <span className={styles.fieldValue}>{formatFecha(data.fecha)}</span>
+                <span className={styles.fieldLabel}>Punto de Venta - Número de Comprobante:</span>
+                <div className={styles.fieldRow}>
+                  <span className={styles.fieldBox}>{data.ptoVta != null ? String(data.ptoVta).padStart(4, '0') : '—'}</span>
+                  <span className={styles.dash}>-</span>
+                  <span className={styles.fieldBox}>{data.nroCmp != null ? String(data.nroCmp).padStart(8, '0') : '—'}</span>
+                </div>
               </div>
+
               <div className={styles.field}>
-                <span className={styles.fieldLabel}>CUIT emisor</span>
-                <span className={styles.fieldValue}>{data.cuit != null ? formatCuit(data.cuit) : '—'}</span>
+                <span className={styles.fieldLabel}>Importe Total de la operación:</span>
+                <span className={styles.fieldBox}>{formatMoney(data.importe)}</span>
               </div>
+
               <div className={styles.field}>
-                <span className={styles.fieldLabel}>Receptor</span>
-                <span className={styles.fieldValue}>
-                  {data.tipoDocRec != null ? (TIPO_DOC_LABEL[data.tipoDocRec] ?? data.tipoDocRec) : '—'}
-                  {data.nroDocRec ? ` ${data.nroDocRec}` : ''}
-                </span>
-              </div>
-              <div className={styles.field}>
-                <span className={styles.fieldLabel}>CAE</span>
-                <span className={styles.fieldValue}>{data.codAut ?? '—'}</span>
+                <span className={styles.fieldLabel}>Documento del receptor del comprobante:</span>
+                <div className={styles.fieldRow}>
+                  <span className={styles.fieldBox}>
+                    {data.tipoDocRec != null ? (TIPO_DOC_LABEL[data.tipoDocRec] ?? data.tipoDocRec) : '—'}
+                  </span>
+                  <span className={styles.fieldBox}>{data.nroDocRec ?? '—'}</span>
+                </div>
               </div>
             </div>
 
-            <div className={styles.importe}>
-              <span className={styles.importeLabel}>Importe total</span>
-              <span className={styles.importeValue}>{formatMoney(data.importe)}</span>
+            <div className={`${styles.result} ${styles.resultOk}`}>
+              <span className={styles.resultIcon}>✓</span>
+              <span className={styles.resultText}>
+                <strong>Comprobante verificado</strong>
+                El comprobante consultado se encuentra registrado y autorizado.
+              </span>
             </div>
           </>
         ) : (
-          <div className={styles.status}>
-            <div className={`${styles.statusIcon} ${styles.errorIconInner}`}>✕</div>
-            <div className={`${styles.statusTitle} ${styles.errorTitle}`}>Comprobante no encontrado</div>
-            <div className={styles.statusSubtitle}>El código escaneado no es válido o está incompleto.</div>
+          <div className={`${styles.result} ${styles.resultError}`}>
+            <span className={styles.resultIcon}>✕</span>
+            <span className={styles.resultText}>
+              <strong>Comprobante no encontrado</strong>
+              El código escaneado no es válido o está incompleto.
+            </span>
           </div>
         )}
 

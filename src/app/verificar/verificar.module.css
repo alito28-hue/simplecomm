@@ -1,130 +1,145 @@
 .page {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: var(--bg);
-  padding: 3rem 1.25rem;
+  background: #f4f5f7;
 }
 
-.logo {
-  margin-bottom: 2rem;
-}
-
-.card {
-  width: 100%;
-  max-width: 480px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  overflow: hidden;
-}
-
-.status {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 0.5rem;
-  padding: 2rem 1.5rem 1.5rem;
-  background: var(--success-bg);
-  border-bottom: 1px solid var(--border);
-}
-
-.statusIcon {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--success);
-  color: #fff;
+.header {
+  background: #14213d;
+  padding: 1.1rem 2rem;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 1.75rem;
-  font-weight: 700;
-  margin-bottom: 0.25rem;
 }
 
-.statusTitle {
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2.5rem 2rem 4rem;
+}
+
+.title {
   font-family: var(--font-heading);
-  font-size: 1.25rem;
+  font-size: 1.9rem;
   font-weight: 800;
-  color: #065f46;
+  color: #14213d;
+  margin: 0 0 0.75rem;
 }
 
-.statusSubtitle {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
+.subtitle {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #4a5568;
+  max-width: 720px;
+  margin: 0 0 1.75rem;
+}
+
+.divider {
+  border: none;
+  border-top: 1px dashed #cbd2d9;
+  margin: 0 0 2rem;
 }
 
 .fields {
-  padding: 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 1.5rem;
 }
 
 .field {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 1rem;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  align-items: center;
+  gap: 1.5rem;
 }
 
-.field:last-child { border-bottom: none; }
+@media (max-width: 640px) {
+  .field {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+}
 
 .fieldLabel {
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-.fieldValue {
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  color: var(--text-primary);
-  text-align: right;
+  color: #1a2233;
 }
 
-.importe {
-  padding: 1.25rem 1.5rem;
-  background: var(--surface-low);
+.fieldBox {
+  background: #eceef1;
+  border: 1px solid #d7dbe0;
+  border-radius: 3px;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.95rem;
+  color: #333;
+  max-width: 420px;
+}
+
+.fieldRow {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  border-top: 1px solid var(--border);
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 420px;
 }
 
-.importeLabel {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  font-weight: 600;
+.fieldRow .fieldBox {
+  max-width: none;
+  flex: 1;
 }
 
-.importeValue {
-  font-family: var(--font-heading);
-  font-size: 1.5rem;
+.dash {
+  color: #667085;
+  font-weight: 700;
+}
+
+.result {
+  margin-top: 2.5rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: 6px;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+
+.resultOk {
+  background: #eaf7ee;
+  border: 1px solid #bfe6c9;
+}
+
+.resultError {
+  background: #fdecec;
+  border: 1px solid #f3bcbc;
+}
+
+.resultIcon {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
   font-weight: 800;
-  color: var(--navy);
+  color: #fff;
 }
+
+.resultOk .resultIcon { background: #1f9d55; }
+.resultError .resultIcon { background: #d64545; }
+
+.resultText {
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #1a2233;
+}
+
+.resultText strong { display: block; margin-bottom: 0.15rem; }
 
 .footer {
-  padding: 1rem 1.5rem;
-  text-align: center;
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  border-top: 1px solid var(--border);
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #dde1e6;
+  font-size: 0.8rem;
+  color: #8a94a3;
 }
 
-.footer a { color: var(--blue); font-weight: 600; }
-
-.errorIcon {
-  background: var(--error-bg);
-}
-.errorIconInner {
-  background: var(--error);
-}
-.errorTitle { color: var(--error); }
+.footer a { color: #14213d; font-weight: 600; }
