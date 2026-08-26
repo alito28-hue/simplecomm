@@ -25,6 +25,9 @@ interface PdfData {
   paymentDueDate?: string;     // YYYYMMDD
   currency?: string;           // "PES" (default) o "DOL"
   exchangeRate?: number;       // Cotización; 1 para PES
+  qrBaseUrl?: string;          // Override del endpoint del QR — usado por /v1/demo para
+                                // que comprobantes de ejemplo no apunten a la verificación
+                                // real de AFIP con un CAE inexistente.
 }
 
 const CURRENCY_LABEL: Record<string, string> = { PES: 'Pesos Argentinos', DOL: 'Dólar Estadounidense' };
@@ -149,7 +152,8 @@ function buildAfipQrUrl(data: PdfData): string {
   };
 
   const base64 = Buffer.from(JSON.stringify(payload)).toString('base64');
-  return `https://www.afip.gob.ar/fe/qr/?p=${base64}`;
+  const base = data.qrBaseUrl ?? 'https://www.afip.gob.ar/fe/qr/';
+  return `${base}?p=${base64}`;
 }
 
 // ── Ítems de detalle ──────────────────────────────────────────────────────────

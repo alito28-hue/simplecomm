@@ -2,9 +2,9 @@ import styles from './verificar.module.css';
 
 // Mismo esquema de payload que ya usa el QR real de AFIP (ver buildAfipQrUrl en
 // gateway/src/invoice/pdf.ts) — esta página NO reemplaza esa verificación oficial, es una
-// vista de "comprobante verificado" con la marca de SimpleComm, pensada para comprobantes de
+// vista de "comprobante verificado" con la marca de ARCA, pensada para comprobantes de
 // demo (con CAE de ejemplo) usados en videos tutoriales, donde no corresponde exponer datos
-// reales de clientes ni el QR de las facturas reales, que siempre sigue apuntando a AFIP/ARCA.
+// reales de clientes ni el QR de las facturas reales, que siempre sigue apuntando a ARCA.
 interface QrPayload {
   ver?: number | string;
   fecha?: string;
@@ -65,9 +65,22 @@ export default async function VerificarPage({
 
   return (
     <div className={styles.page}>
-      <div className={styles.header}>
-        <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '1.25rem', letterSpacing: '1px' }}>
+      <div 
+        className={styles.header} 
+        style={{ 
+          backgroundColor: '#232c4f', 
+          padding: '1.25rem 2rem', 
+          display: 'flex', 
+          flexDirection: 'column', 
+          justifyContent: 'center',
+          borderBottom: '3px solid #1a2238'
+        }}
+      >
+        <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '1.5rem', letterSpacing: '1px', fontFamily: 'sans-serif' }}>
           ARCA
+        </span>
+        <span style={{ color: '#cbd5e1', fontSize: '0.75rem', letterSpacing: '0.5px', marginTop: '2px', fontFamily: 'sans-serif' }}>
+          Agencia de Recaudación y Control Aduanero
         </span>
       </div>
 
@@ -148,7 +161,7 @@ export default async function VerificarPage({
         )}
 
         <div className={styles.footer}>
-          Verificación de comprobante vía <a href="https://simplecomm.com.ar">SimpleComm</a>
+          Verificación de comprobante vía <a href="https://arca.gob.ar" target="_blank" rel="noopener noreferrer">ARCA</a>
         </div>
       </div>
     </div>
