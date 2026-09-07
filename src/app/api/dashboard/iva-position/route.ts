@@ -16,7 +16,32 @@ export async function GET() {
   const from = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
   const to = now.toISOString().slice(0, 10);
 
-  const result = await computeIvaPosition(supabase, user.id, from, to);
+  const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const prevYear = prevMonthDate.getFullYear();
+  const prevMonth = prevMonthDate.getMonth();
+  const prevFrom = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-01`;
+  const prevLastDay = new Date(prevYear, prevMonth + 1, 0).getDate();
+  const prevTo = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(prevLastDay).padStart(2, '0')}`;
 
-  return NextResponse.json({ applicable: true, ...result });
+  const [result, previous] = await Promise.all([
+    computeIvaPosition(supabase, user.id, from, to),
+    computeIvaPosition(supabase, user.id, prevFrom, prevTo),
+  ]);
+
+  function pctDelta(current: number, prev: number) {
+    return prev !== 0 ? Math.round(((current - prev) / Math.abs(prev)) * 1000) / 10 : null;
+  }
+
+  const deltaPercent = pctDelta(result.position, previous.position);
+  const salesIvaDeltaPercent = pctDelta(result.salesIva, previous.salesIva);
+  const purchasesIvaDeltaPercent = pctDelta(result.purchasesIva, previous.purchasesIva);
+
+  return NextResponse.json({
+    applicable: true,
+    ...result,
+    previousPosition: previous.position,
+    deltaPercent,
+    salesIvaDeltaPercent,
+    purchasesIvaDeltaPercent,
+  });
 }

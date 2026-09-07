@@ -36,6 +36,16 @@ export interface InvoiceRequest {
   fchVtoPago?: string;    // YYYYMMDD — obligatorio si concept es 2 o 3
   monId?: string;         // AFIP MonId: "PES" (default) o "DOL"
   monCotiz?: number;      // Cotización del día; 1 para PES
+  cbtesAsoc?: CbteAsociado[]; // Comprobantes asociados — obligatorio en Notas de Crédito/Débito,
+                              // referencian el comprobante original que se está ajustando.
+}
+
+export interface CbteAsociado {
+  tipo: number;      // CbteTipo del comprobante original (ej. 6 = Factura B)
+  ptoVta: number;
+  nro: number;
+  cuit?: string;      // Solo si el original lo emitió un CUIT distinto al emisor actual
+  cbteFch?: string;   // YYYYMMDD, opcional
 }
 
 export interface IvaItem {
@@ -202,6 +212,24 @@ export async function feCAESolicitar(
   // AFIP rechaza (error 10071) si el elemento <ar:Iva> está presente para comprobantes que no
   // discriminan IVA (ej. Factura C de Monotributistas) — no alcanza con que esté vacío, tiene
   // que no existir el tag.
+  // Orden de campos dentro de FECAEDetRequest fijado por el XSD de AFIP: CbtesAsoc va después
+  // de MonId/MonCotiz y antes de Iva — moverlo de lugar hace que WSFE rechace la solicitud.
+  const cbtesAsocBlock = req.cbtesAsoc?.length
+    ? `<ar:CbtesAsoc>${req.cbtesAsoc
+        .map(
+          (c) => `
+          <ar:CbteAsoc>
+            <ar:Tipo>${c.tipo}</ar:Tipo>
+            <ar:PtoVta>${c.ptoVta}</ar:PtoVta>
+            <ar:Nro>${c.nro}</ar:Nro>
+            ${c.cuit ? `<ar:Cuit>${c.cuit}</ar:Cuit>` : ''}
+            ${c.cbteFch ? `<ar:CbteFch>${c.cbteFch}</ar:CbteFch>` : ''}
+          </ar:CbteAsoc>`
+        )
+        .join('')}
+          </ar:CbtesAsoc>`
+    : '';
+
   const ivaBlock = req.ivaItems.length
     ? `<ar:Iva>${req.ivaItems
         .map(
@@ -243,6 +271,7 @@ export async function feCAESolicitar(
           ${req.fchVtoPago ? `<ar:FchVtoPago>${req.fchVtoPago}</ar:FchVtoPago>` : ''}
           <ar:MonId>${req.monId ?? 'PES'}</ar:MonId>
           <ar:MonCotiz>${(req.monCotiz ?? 1).toFixed(4)}</ar:MonCotiz>
+          ${cbtesAsocBlock}
           ${ivaBlock}
         </ar:FECAEDetRequest>
       </ar:FeDetReq>

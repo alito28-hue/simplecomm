@@ -35,6 +35,8 @@ export interface ComprobanteUnificado {
   error: string | null;
   /** false para lo importado de ARCA: no hay invoice_id de Gateway para PDF/NC/cobro/adjuntos. */
   editable: boolean;
+  /** CbteTipo AFIP: 1/6/11=Factura A/B/C, 3/8/13=Nota de Crédito A/B/C, 2/7/12=Nota de Débito A/B/C. */
+  invoice_type: number | null;
 }
 
 function naturalKey(tipo: number | null | undefined, ptoVta: number | null | undefined, numero: number | null | undefined) {
@@ -86,6 +88,7 @@ export async function getComprobantesUnificados(
           created_at: r.created_at,
           error: r.error,
           editable: true,
+          invoice_type: r.invoice_type,
         });
         if (r.status === 'issued') {
           gatewayKeys.add(naturalKey(r.invoice_type, r.pto_vta, r.invoice_number_int));
@@ -119,6 +122,7 @@ export async function getComprobantesUnificados(
       created_at: r.issueDate ? `${r.issueDate}T12:00:00.000Z` : new Date().toISOString(),
       error: null,
       editable: false,
+      invoice_type: r.tipoComprobante ?? null,
     }));
 
   return [...gatewayRows, ...arcaMapped].sort((a, b) => b.created_at.localeCompare(a.created_at));

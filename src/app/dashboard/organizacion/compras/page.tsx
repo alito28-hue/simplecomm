@@ -5,6 +5,8 @@ import styles from '../clientes/clientes.module.css';
 import ImportCsvModal, { type ImportCsvStatus } from '@/components/ImportCsvModal';
 import ComprobantesTabs from '@/components/ComprobantesTabs';
 import MonthPicker from '@/components/MonthPicker';
+import dashStyles from '../../dashboard.module.css';
+import { IconCamera, IconDownload, IconPencil, IconX } from '@/components/AppIcons';
 
 interface PadronData {
   cuil: string;
@@ -40,6 +42,7 @@ interface Purchase {
   issueDate: string | null;
   netAmount: string | number;
   ivaAmount: string | number;
+  otherTaxesAmount: string | number;
   totalAmount: string | number;
   retencionesAmount: string | number;
   percepcionesAmount: string | number;
@@ -51,7 +54,7 @@ interface Purchase {
 const EMPTY_FORM = {
   issuerCuit: '', issuerName: '', invoiceLetter: '', comprobanteKind: 'FACTURA',
   puntoVenta: '', invoiceNumber: '',
-  issueDate: '', netAmount: '', ivaAmount: '', totalAmount: '',
+  issueDate: '', netAmount: '', ivaAmount: '', otherTaxesAmount: '', totalAmount: '',
   retencionesAmount: '', percepcionesAmount: '',
 };
 
@@ -75,14 +78,29 @@ function monthRange(monthStr: string) {
   return { from, to };
 }
 
+const PAGE_SIZE = 8;
+
 export default function ComprasPage() {
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [items, setItems] = useState<Purchase[]>([]);
-  const [totals, setTotals] = useState({ net: 0, iva: 0, total: 0, retenciones: 0, percepciones: 0 });
+  const [totals, setTotals] = useState({ net: 0, iva: 0, otherTaxes: 0, total: 0, retenciones: 0, percepciones: 0 });
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState({ page: 1, limit: PAGE_SIZE, total: 0, pages: 1 });
+  const [searchInput, setSearchInput] = useState('');
+  const [q, setQ] = useState('');
+
+  useEffect(() => {
+    const handle = setTimeout(() => { setQ(searchInput.trim()); setPage(1); }, 400);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
 
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  // El Total se recalcula solo a partir de Neto + IVA + Otros tributos — si el usuario lo
+  // toca a mano (para un caso donde el redondeo del comprobante no cierra exacto), dejamos
+  // de pisarlo hasta que se cargue un comprobante nuevo.
+  const [totalManuallySet, setTotalManuallySet] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [extractedRaw, setExtractedRaw] = useState<unknown>(null);
   const [extracting, setExtracting] = useState(false);
@@ -102,16 +120,30 @@ export default function ComprasPage() {
   function load() {
     setLoading(true);
     const { from, to } = monthRange(month);
-    fetch(`/api/organizacion/compras?from=${from}&to=${to}`)
+    const qParam = q ? `&q=${encodeURIComponent(q)}` : `&from=${from}&to=${to}`;
+    fetch(`/api/organizacion/compras?page=${page}&limit=${PAGE_SIZE}${qParam}`)
       .then(r => r.json())
       .then(d => {
         setItems(d.data ?? []);
-        setTotals(d.totals ?? { net: 0, iva: 0, total: 0, retenciones: 0, percepciones: 0 });
+        setTotals(d.totals ?? { net: 0, iva: 0, otherTaxes: 0, total: 0, retenciones: 0, percepciones: 0 });
         setLastImportAt(d.lastImportAt ?? null);
+        setMeta(d.meta ?? { page: 1, limit: PAGE_SIZE, total: (d.data ?? []).length, pages: 1 });
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }
+
+  // Auto-suma el Total a partir de Neto + IVA + Otros tributos, para no pedirle al usuario
+  // que escriba el mismo número dos veces. Se detiene si el usuario edita el Total a mano.
+  useEffect(() => {
+    if (totalManuallySet) return;
+    const net = parseFloat(form.netAmount) || 0;
+    const iva = parseFloat(form.ivaAmount) || 0;
+    const other = parseFloat(form.otherTaxesAmount) || 0;
+    const sum = Math.round((net + iva + other) * 100) / 100;
+    setForm(f => ({ ...f, totalAmount: sum > 0 ? String(sum) : '' }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.netAmount, form.ivaAmount, form.otherTaxesAmount, totalManuallySet]);
 
   // Al cargar un CUIT/CUIL válido, consultamos el Padrón de ARCA y completamos
   // el nombre del emisor automáticamente — igual que en Contactos.
@@ -162,10 +194,14 @@ export default function ComprasPage() {
     }
   }
 
-  useEffect(load, [month]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(load, [month, page, q]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setPage(1); }, [month]);
 
   function resetForm() {
     setForm(EMPTY_FORM);
+    setTotalManuallySet(false);
     setPendingFile(null);
     setExtractedRaw(null);
     setExtractConfidence(null);
@@ -181,6 +217,7 @@ export default function ComprasPage() {
     setExtractError('');
     setExtracting(true);
     setShowForm(true);
+    setTotalManuallySet(false);
     try {
       const fd = new FormData();
       fd.append('file', file);
@@ -197,6 +234,7 @@ export default function ComprasPage() {
         issueDate: data.issue_date ?? '',
         netAmount: data.net_amount != null ? String(data.net_amount) : '',
         ivaAmount: data.iva_amount != null ? String(data.iva_amount) : '',
+        otherTaxesAmount: data.other_taxes_amount ? String(data.other_taxes_amount) : '',
         totalAmount: data.total_amount != null ? String(data.total_amount) : '',
         retencionesAmount: '', percepcionesAmount: '',
       });
@@ -230,6 +268,7 @@ export default function ComprasPage() {
       fd.append('issueDate', form.issueDate);
       fd.append('netAmount', form.netAmount || '0');
       fd.append('ivaAmount', form.ivaAmount || '0');
+      fd.append('otherTaxesAmount', form.otherTaxesAmount || '0');
       fd.append('totalAmount', form.totalAmount);
       fd.append('retencionesAmount', form.retencionesAmount || '0');
       fd.append('percepcionesAmount', form.percepcionesAmount || '0');
@@ -263,7 +302,18 @@ export default function ComprasPage() {
           <p className={styles.pageSubtitle}>Recibidos — facturas de proveedores para calcular tu posición de IVA. Cargalas a mano o subí una foto/PDF y dejá que la IA complete los datos.</p>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
-          <MonthPicker value={month} onChange={setMonth} />
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <input
+              type="text"
+              className="input"
+              placeholder="Buscar por emisor o CUIT..."
+              style={{ maxWidth: 220 }}
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+            />
+            {!q && <MonthPicker value={month} onChange={setMonth} />}
+          </div>
+          {q && <span className="text-sm text-muted">Buscando en todos los meses</span>}
           {lastImportAt && (
             <span className="text-sm text-muted">
               Última importación ARCA: {new Date(lastImportAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -276,16 +326,16 @@ export default function ComprasPage() {
 
       <div className="card" style={{ padding: '1.25rem' }}>
         {!showForm ? (
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div className={dashStyles.actionBtnRow}>
             <input ref={fileRef} type="file" accept="image/*,application/pdf" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
             <input ref={csvRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }}
               onChange={e => { const f = e.target.files?.[0]; if (f) importCsv(f); }} />
-            <button className="btn btn-primary btn-sm" onClick={() => fileRef.current?.click()}>📷 Subir foto o PDF</button>
+            <button className="btn btn-primary btn-sm" onClick={() => fileRef.current?.click()}><IconCamera size={15} /> Subir foto o PDF</button>
             <button className="btn btn-outline btn-sm" onClick={() => csvRef.current?.click()} disabled={importModal?.status === 'importing'}>
-              📥 Importar CSV de ARCA (recibidos)
+              <IconDownload size={15} /> Importar CSV de ARCA (recibidos)
             </button>
-            <button className="btn btn-outline btn-sm" onClick={() => setShowForm(true)}>✏️ Cargar manualmente</button>
+            <button className="btn btn-outline btn-sm" onClick={() => setShowForm(true)}><IconPencil size={15} /> Cargar manualmente</button>
           </div>
         ) : (
           <div>
@@ -337,16 +387,36 @@ export default function ComprasPage() {
               <label className="text-sm">IVA
                 <input type="number" step="0.01" className="input" value={form.ivaAmount} onChange={e => setForm(f => ({ ...f, ivaAmount: e.target.value }))} />
               </label>
-              <label className="text-sm">Total
-                <input type="number" step="0.01" className="input" value={form.totalAmount} onChange={e => setForm(f => ({ ...f, totalAmount: e.target.value }))} />
+              <label className="text-sm">Otros tributos
+                <input type="number" step="0.01" className="input" placeholder="0" value={form.otherTaxesAmount}
+                  onChange={e => setForm(f => ({ ...f, otherTaxesAmount: e.target.value }))} />
+                <span className="text-sm text-muted">Impuestos internos, tasas — combustible suele traer.</span>
               </label>
-              <div />
-              <label className="text-sm">Retenciones
-                <input type="number" step="0.01" className="input" placeholder="0" value={form.retencionesAmount} onChange={e => setForm(f => ({ ...f, retencionesAmount: e.target.value }))} />
+            </div>
+
+            <p className="text-sm text-muted" style={{ marginTop: '0.6rem' }}>
+              Los montos se escriben con punto para los centavos (ej: 1043.50), no con coma.
+            </p>
+
+            <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
+              <label className="text-sm">
+                Total
+                <input type="number" step="0.01" className="input" value={form.totalAmount}
+                  onChange={e => { setTotalManuallySet(true); setForm(f => ({ ...f, totalAmount: e.target.value })); }} />
+                <span className="text-sm text-muted">Se calcula solo (Neto + IVA + Otros tributos) — editalo si no cierra exacto con el comprobante.</span>
               </label>
-              <label className="text-sm">Percepciones
-                <input type="number" step="0.01" className="input" placeholder="0" value={form.percepcionesAmount} onChange={e => setForm(f => ({ ...f, percepcionesAmount: e.target.value }))} />
-              </label>
+            </div>
+
+            <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
+              <p className="text-sm" style={{ fontWeight: 700, marginBottom: '0.5rem' }}>Retenciones y percepciones (opcional)</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
+                <label className="text-sm">Retenciones
+                  <input type="number" step="0.01" className="input" placeholder="0" value={form.retencionesAmount} onChange={e => setForm(f => ({ ...f, retencionesAmount: e.target.value }))} />
+                </label>
+                <label className="text-sm">Percepciones
+                  <input type="number" step="0.01" className="input" placeholder="0" value={form.percepcionesAmount} onChange={e => setForm(f => ({ ...f, percepcionesAmount: e.target.value }))} />
+                </label>
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
               <button className="btn btn-primary btn-sm" onClick={save} disabled={saving || extracting}>{saving ? 'Guardando...' : 'Guardar'}</button>
@@ -357,24 +427,33 @@ export default function ComprasPage() {
       </div>
 
       <div className="card">
-        <div style={{ padding: '1rem 1.25rem 0', fontWeight: 700, fontSize: '0.95rem', textTransform: 'capitalize' }}>
-          {monthLabel(month)}
+        <div style={{ padding: '1rem 1.25rem 0', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <span style={{ fontWeight: 700, fontSize: '0.95rem', textTransform: 'capitalize' }}>
+            {q ? `Resultados para "${q}"` : monthLabel(month)}
+          </span>
+          {!loading && (
+            <span className="badge badge-blue">{meta.total} comprobante{meta.total === 1 ? '' : 's'}</span>
+          )}
         </div>
         <div className="table-wrap">
           <table className="table">
             <thead>
               <tr>
                 <th>Fecha</th><th>Emisor</th><th>CUIT</th><th>Comprobante</th>
-                <th>Neto</th><th>IVA</th><th>Ret./Perc.</th><th>Total</th><th></th>
+                <th>Neto</th><th>IVA</th><th>Otros Trib.</th><th>Ret./Perc.</th><th>Total</th><th></th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Cargando...</td></tr>
+                <tr><td colSpan={10} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Cargando...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={9} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                  Sin compras cargadas para el mes elegido arriba.
-                  {lastImportAt && <> Ya importaste comprobantes de ARCA antes — probá cambiar el mes de arriba para verlos.</>}
+                <tr><td colSpan={10} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                  {q ? `Sin resultados para "${q}".` : (
+                    <>
+                      Sin compras cargadas para el mes elegido arriba.
+                      {lastImportAt && <> Ya importaste comprobantes de ARCA antes — probá cambiar el mes de arriba para verlos.</>}
+                    </>
+                  )}
                 </td></tr>
               ) : items.map(p => {
                 const retPerc = Number(p.retencionesAmount ?? 0) + Number(p.percepcionesAmount ?? 0);
@@ -386,9 +465,10 @@ export default function ComprasPage() {
                   <td className="text-sm">{p.invoiceLetter} {p.invoiceNumber}</td>
                   <td className="text-sm">{money(Number(p.netAmount))}</td>
                   <td className="text-sm">{money(Number(p.ivaAmount))}</td>
+                  <td className="text-sm">{Number(p.otherTaxesAmount ?? 0) > 0 ? money(Number(p.otherTaxesAmount)) : '—'}</td>
                   <td className="text-sm">{retPerc > 0 ? money(retPerc) : '—'}</td>
                   <td><strong>{money(Number(p.totalAmount))}</strong></td>
-                  <td><button className="btn btn-ghost btn-sm" style={{ color: 'var(--error)' }} onClick={() => remove(p.id)}>✕</button></td>
+                  <td><button className="btn btn-ghost btn-sm" style={{ color: 'var(--error)' }} onClick={() => remove(p.id)} aria-label="Eliminar"><IconX size={14} /></button></td>
                 </tr>
                 );
               })}
@@ -396,9 +476,10 @@ export default function ComprasPage() {
             {items.length > 0 && (
               <tfoot>
                 <tr>
-                  <td colSpan={4} style={{ textAlign: 'right', fontWeight: 700 }}>Totales del mes</td>
+                  <td colSpan={4} style={{ textAlign: 'right', fontWeight: 700 }}>{q ? 'Totales de la búsqueda' : 'Totales del mes'}</td>
                   <td><strong>{money(totals.net)}</strong></td>
                   <td><strong>{money(totals.iva)}</strong></td>
+                  <td><strong>{money(totals.otherTaxes)}</strong></td>
                   <td><strong>{money(totals.retenciones + totals.percepciones)}</strong></td>
                   <td><strong>{money(totals.total)}</strong></td>
                   <td></td>
@@ -407,6 +488,26 @@ export default function ComprasPage() {
             )}
           </table>
         </div>
+        {!loading && meta.pages > 1 && (
+          <div className={dashStyles.tablePagination}>
+            <span className="text-muted text-sm">Mostrando {items.length} de {meta.total} comprobantes</span>
+            <div className={dashStyles.paginationBtns}>
+              <button type="button" className={dashStyles.pageBtn} onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>‹</button>
+              {Array.from({ length: meta.pages }).map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  className={dashStyles.pageBtn}
+                  style={page === i + 1 ? { background: 'var(--blue)', borderColor: 'var(--blue)', color: '#fff' } : undefined}
+                  onClick={() => setPage(i + 1)}
+                >
+                  {i + 1}
+                </button>
+              ))}
+              <button type="button" className={dashStyles.pageBtn} onClick={() => setPage(p => Math.min(meta.pages, p + 1))} disabled={page === meta.pages}>›</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {importModal && (

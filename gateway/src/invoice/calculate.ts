@@ -9,7 +9,7 @@
  *
  * Factura C (Monotributista → Cualquiera): Sin IVA. impTotal = impNeto.
  *
- * Tipos WSFE: A=1, B=6, C=11, NC-A=3, NC-B=8, NC-C=12
+ * Tipos WSFE: A=1, B=6, C=11, NC-A=3, NC-B=8, NC-C=13
  */
 
 export type IvaRateId = 2 | 3 | 4 | 5 | 6;
@@ -35,8 +35,15 @@ export const CBTE_TYPE: Record<InvoiceLetterType, number> = {
 export const NC_TYPE: Record<InvoiceLetterType, number> = {
   A: 3,
   B: 8,
-  C: 12,
+  C: 13,
 };
+
+/** Inversa de CBTE_TYPE — de un CbteTipo AFIP de factura a su letra. */
+export function letterFromCbteType(cbteType: number): InvoiceLetterType {
+  const found = (Object.entries(CBTE_TYPE) as [InvoiceLetterType, number][]).find(([, v]) => v === cbteType);
+  if (!found) throw new Error(`CbteTipo ${cbteType} no corresponde a una Factura A/B/C conocida`);
+  return found[0];
+}
 
 const IVA_RATES: Record<IvaRateId, number> = {
   2: 0,       // No Gravado

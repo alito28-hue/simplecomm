@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import styles from '../../dashboard.module.css';
 import MonthPicker from '@/components/MonthPicker';
+import { IconCart, IconReceipt } from '@/components/LandingIcons';
+import { IconBanknote } from '@/components/AppIcons';
 
 interface VentaItem {
   id: string;
@@ -28,6 +30,15 @@ interface Resumen {
 }
 
 interface GananciaNegocio {
+  ventasNetas: number;
+  comprasNetas: number;
+  ganancia: number;
+}
+
+interface HistorialMes {
+  year: number;
+  month: number;
+  monthLabel: string;
   ventasNetas: number;
   comprasNetas: number;
   ganancia: number;
@@ -72,7 +83,18 @@ export default function RentabilidadPage() {
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState({ page: 1, limit: 20, total: 0, pages: 1 });
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [historial, setHistorial] = useState<HistorialMes[]>([]);
+  const [historialLoading, setHistorialLoading] = useState(true);
   const limit = 20;
+
+  useEffect(() => {
+    setHistorialLoading(true);
+    fetch('/api/organizacion/rentabilidad/historial')
+      .then(r => r.json())
+      .then(d => setHistorial(d.months ?? []))
+      .catch(() => {})
+      .finally(() => setHistorialLoading(false));
+  }, []);
 
   function isEditing(item: VentaItem) {
     return editingRows.has(item.id) || item.unitCost === null || item.shippingCost === null;
@@ -153,23 +175,32 @@ export default function RentabilidadPage() {
       {gananciaNegocio && (
         <div className="card" style={{ padding: '1.25rem 1.5rem' }}>
           <h2 className={styles.sectionTitle} style={{ marginBottom: '0.75rem' }}>Ganancia total del negocio</h2>
-          <div className={styles.statsGrid}>
-            <div className="card">
-              <div className={styles.statCard}>
-                <div className={styles.statLabel}>Ventas netas</div>
-                <div className={styles.statValue}>{money(gananciaNegocio.ventasNetas)}</div>
+          <div className={styles.statCardHRow}>
+            <div className={`card ${styles.statCardH}`}>
+              <div className={styles.statCardHIcon} style={{ background: 'var(--blue-light)', color: 'var(--blue-hover)' }}>
+                <IconCart size={19} />
+              </div>
+              <div>
+                <div className={styles.statCardV2Label}>Ventas netas</div>
+                <div className={styles.statCardV2Value}>{money(gananciaNegocio.ventasNetas)}</div>
               </div>
             </div>
-            <div className="card">
-              <div className={styles.statCard}>
-                <div className={styles.statLabel}>Compras netas</div>
-                <div className={styles.statValue}>{money(gananciaNegocio.comprasNetas)}</div>
+            <div className={`card ${styles.statCardH}`}>
+              <div className={styles.statCardHIcon} style={{ background: 'var(--surface-low)', color: 'var(--text-secondary)' }}>
+                <IconReceipt size={19} />
+              </div>
+              <div>
+                <div className={styles.statCardV2Label}>Compras netas</div>
+                <div className={styles.statCardV2Value}>{money(gananciaNegocio.comprasNetas)}</div>
               </div>
             </div>
-            <div className="card">
-              <div className={styles.statCard}>
-                <div className={styles.statLabel}>Ganancia</div>
-                <div className={styles.statValue} style={{ color: gananciaNegocio.ganancia >= 0 ? 'var(--success)' : 'var(--error)' }}>
+            <div className={`card ${styles.statCardH}`} style={gananciaNegocio.ganancia >= 0 ? { borderColor: 'var(--success)' } : { borderColor: 'var(--error)' }}>
+              <div className={styles.statCardHIcon} style={{ background: gananciaNegocio.ganancia >= 0 ? 'var(--success-bg)' : 'var(--error-bg)', color: gananciaNegocio.ganancia >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                <IconBanknote size={19} />
+              </div>
+              <div>
+                <div className={styles.statCardV2Label}>Ganancia</div>
+                <div className={styles.statCardV2Value} style={{ color: gananciaNegocio.ganancia >= 0 ? 'var(--success)' : 'var(--error)' }}>
                   {money(gananciaNegocio.ganancia)}
                 </div>
               </div>
@@ -182,6 +213,48 @@ export default function RentabilidadPage() {
           </p>
         </div>
       )}
+
+      <div className="card">
+        <div className={styles.tableHeader}>
+          <h2 className={styles.sectionTitle}>Ganancia por mes</h2>
+        </div>
+        <div className="table-wrap">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Mes</th>
+                <th>Ventas netas</th>
+                <th>Compras netas</th>
+                <th>Ganancia</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historialLoading ? (
+                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Cargando...</td></tr>
+              ) : historial.length === 0 ? (
+                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Sin datos.</td></tr>
+              ) : historial.map(m => {
+                const monthStr = `${m.year}-${String(m.month).padStart(2, '0')}`;
+                const isActive = monthStr === month;
+                return (
+                  <tr
+                    key={monthStr}
+                    onClick={() => { setMonth(monthStr); setPage(1); }}
+                    style={{ cursor: 'pointer', background: isActive ? 'var(--blue-light)' : undefined }}
+                  >
+                    <td style={{ fontWeight: isActive ? 700 : 400 }}>{m.monthLabel} {m.year}</td>
+                    <td className="text-sm">{money(m.ventasNetas)}</td>
+                    <td className="text-sm">{money(m.comprasNetas)}</td>
+                    <td className="text-sm" style={{ fontWeight: 700, color: m.ganancia >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                      {money(m.ganancia)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {resumen && resumen.totalItems === 0 && (
         <div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>

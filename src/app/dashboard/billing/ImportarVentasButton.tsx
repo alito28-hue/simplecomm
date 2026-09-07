@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import ImportCsvModal, { type ImportCsvStatus } from '@/components/ImportCsvModal';
+import { IconDownload } from '@/components/AppIcons';
 
 /**
  * Único punto de importación de "Mis Comprobantes emitidos" de ARCA en toda la app — antes
@@ -36,7 +37,7 @@ export default function ImportarVentasButton() {
       <input ref={csvRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }}
         onChange={e => { const f = e.target.files?.[0]; if (f) importVentas(f); }} />
       <button className="btn btn-outline btn-sm" onClick={() => csvRef.current?.click()} disabled={modal?.status === 'importing'}>
-        📥 Importar de ARCA
+        <IconDownload size={15} /> Importar de ARCA
       </button>
       {modal && <ImportCsvModal status={modal.status} message={modal.message} onClose={() => setModal(null)} />}
     </>

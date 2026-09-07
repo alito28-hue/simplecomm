@@ -9,6 +9,9 @@ interface PdfData {
   invoiceNumber: string;       // "0004-00000001"
   invoiceDate: string;         // YYYYMMDD
   invoiceLetter?: string;      // 'A' | 'B' | 'C'
+  docLabel?: string;           // 'FACTURA' (default) | 'NOTA DE CRÉDITO'
+  cbteTypeCode?: number;       // CbteTipo AFIP real (6=Factura B, 8=NC B, etc.) — si no viene,
+                                // se asume Factura y se deriva de invoiceLetter (CBTE_TYPE).
   buyer: {
     fullName: string;
     docType: string;
@@ -140,7 +143,7 @@ function buildAfipQrUrl(data: PdfData): string {
     fecha,
     cuit: Number(data.tenant.cuit),
     ptoVta: Number(ptoVtaStr),
-    tipoCmp: CBTE_TYPE[letter],
+    tipoCmp: data.cbteTypeCode ?? CBTE_TYPE[letter],
     nroCmp: Number(nroStr),
     importe: data.amounts.impTotal,
     moneda: data.currency ?? 'PES',
@@ -176,28 +179,36 @@ function buildLineItems(amounts: InvoiceAmounts, letter: InvoiceLetterType): Lin
   return items.length > 0 ? items : [{ alicuotaLabel: '—', baseImp: amounts.impNeto }];
 }
 
-export async function generateInvoicePdf(data: PdfData): Promise<string> {
-  const letter = (data.invoiceLetter ?? 'B') as InvoiceLetterType;
-  const currencySymbol = data.currency === 'DOL' ? 'US$' : '$';
-  const qrBuffer = await QRCode.toBuffer(buildAfipQrUrl(data), { width: 200, margin: 1 });
+// Copias ORIGINAL / DUPLICADO / TRIPLICADO — convención heredada de la factura en papel
+// (cliente / vendedor / archivo), que el Facturador Web de ARCA sigue mostrando aunque
+// no sea obligatoria para comprobantes electrónicos (la validez la da el CAE, no el PDF).
+// Se replica acá solo por preferencia visual: es exactamente el mismo comprobante 3 veces.
+const COPY_LABELS = ['ORIGINAL', 'DUPLICADO', 'TRIPLICADO'] as const;
 
-  return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ size: 'A4', margin: 40 });
-    const chunks: Buffer[] = [];
+function drawInvoicePage(
+  doc: PDFKit.PDFDocument,
+  data: PdfData,
+  letter: InvoiceLetterType,
+  currencySymbol: string,
+  qrBuffer: Buffer,
+  copyLabel: string,
+): void {
+  const BLACK = '#000000';
+  const GRAY = '#555555';
+  const LIGHT_GRAY = '#f0f0f0';
+  const MARGIN = 40;
+  const pageWidth = doc.page.width - MARGIN * 2;
+  const leftCol = MARGIN;
+  const rightEdge = doc.page.width - MARGIN;
 
-    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
-    doc.on('error', reject);
+  // ── Etiqueta de copia (ORIGINAL / DUPLICADO / TRIPLICADO) ────────────────
+  const copyBoxY = 15;
+  const copyBoxH = 20;
+  doc.rect(leftCol, copyBoxY, pageWidth, copyBoxH).stroke(BLACK);
+  doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(10)
+    .text(copyLabel, leftCol, copyBoxY + 5, { width: pageWidth, align: 'center' });
 
-    const BLACK = '#000000';
-    const GRAY = '#555555';
-    const LIGHT_GRAY = '#f0f0f0';
-    const MARGIN = 40;
-    const pageWidth = doc.page.width - MARGIN * 2;
-    const leftCol = MARGIN;
-    const rightEdge = doc.page.width - MARGIN;
-
-    // ── Encabezado: emisor | letra | comprobante ──────────────────────────
+  // ── Encabezado: emisor | letra | comprobante ──────────────────────────
     const emisorLines = [
       `CUIT: ${formatCuit(data.tenant.cuit)}`,
       emisorIvaCondition(letter),
@@ -220,7 +231,7 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
     const lineHeights = emisorLines.map((line) => doc.heightOfString(line, { width: emisorTextWidth }));
     const emisorTextHeight = lineHeights.reduce((sum, h) => sum + h + 2, 0);
 
-    const headerY = 40;
+    const headerY = 45;
     const headerH = Math.max(100, 34 + emisorTextHeight);
 
     doc.rect(leftCol, headerY, col1W, headerH).stroke(BLACK);
@@ -237,15 +248,16 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
     });
 
     const letterCodes: Record<InvoiceLetterType, string> = { A: 'COD. 001', B: 'COD. 006', C: 'COD. 011' };
+    const codBox = data.cbteTypeCode != null ? `COD. ${String(data.cbteTypeCode).padStart(3, '0')}` : letterCodes[letter];
     const letterX = leftCol + col1W;
     doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(44)
       .text(letter, letterX, headerY + 18, { width: col2W, align: 'center' });
     doc.font('Helvetica').fontSize(7).fillColor(GRAY)
-      .text(letterCodes[letter], letterX, headerY + 78, { width: col2W, align: 'center' });
+      .text(codBox, letterX, headerY + 78, { width: col2W, align: 'center' });
 
     const [ptoVta, nro] = data.invoiceNumber.split('-');
     doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(12)
-      .text('FACTURA', col3X + 10, headerY + 10);
+      .text(data.docLabel ?? 'FACTURA', col3X + 10, headerY + 10);
     doc.font('Helvetica').fontSize(9).fillColor(GRAY)
       .text(`Punto de Venta: ${ptoVta}`, col3X + 10, headerY + 32)
       .text(`Comp. Nro: ${nro}`, col3X + 10, headerY + 48)
@@ -421,6 +433,25 @@ export async function generateInvoicePdf(data: PdfData): Promise<string> {
         leftCol, caeY + qrSize + 8, { width: pageWidth, align: 'center' });
     doc.text('Comprobante generado por SimpleComm.com',
       leftCol, caeY + qrSize + 20, { width: pageWidth, align: 'center' });
+}
+
+export async function generateInvoicePdf(data: PdfData): Promise<string> {
+  const letter = (data.invoiceLetter ?? 'B') as InvoiceLetterType;
+  const currencySymbol = data.currency === 'DOL' ? 'US$' : '$';
+  const qrBuffer = await QRCode.toBuffer(buildAfipQrUrl(data), { width: 200, margin: 1 });
+
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 40 });
+    const chunks: Buffer[] = [];
+
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks).toString('base64')));
+    doc.on('error', reject);
+
+    COPY_LABELS.forEach((copyLabel, i) => {
+      if (i > 0) doc.addPage();
+      drawInvoicePage(doc, data, letter, currencySymbol, qrBuffer, copyLabel);
+    });
 
     doc.end();
   });

@@ -12,14 +12,24 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const from = searchParams.get('from'); // YYYY-MM-DD
   const to = searchParams.get('to');     // YYYY-MM-DD
+  const q = searchParams.get('q')?.trim(); // búsqueda por emisor o CUIT — ignora el rango de fechas
   // page/limit son opcionales — si no se mandan, se devuelve todo (comportamiento histórico,
   // lo sigue usando la página de Compras). El modal de detalle de IVA sí los manda.
   const page  = searchParams.has('page')  ? Math.max(1, Number(searchParams.get('page')))            : null;
   const limit = searchParams.has('limit') ? Math.min(200, Math.max(1, Number(searchParams.get('limit')))) : null;
 
   let query = supabase.from('purchase_invoices').select('*').eq('organizationId', user.id);
-  if (from) query = query.gte('issueDate', from);
-  if (to) query = query.lte('issueDate', to);
+  if (q) {
+    // Buscar un proveedor puede ser en cualquier mes — a propósito NO se acota por from/to
+    // cuando hay búsqueda, para no obligar a adivinar en qué mes está el comprobante.
+    const digits = q.replace(/\D/g, '');
+    query = query.or(
+      `issuerName.ilike.%${q}%${digits ? `,issuerCuit.ilike.%${digits}%` : ''}`
+    );
+  } else {
+    if (from) query = query.gte('issueDate', from);
+    if (to) query = query.lte('issueDate', to);
+  }
   query = query.order('issueDate', { ascending: false, nullsFirst: false }).order('createdAt', { ascending: false });
 
   const { data, error } = await query;
@@ -28,10 +38,11 @@ export async function GET(req: NextRequest) {
   const totals = (data ?? []).reduce((acc, p) => ({
     net: acc.net + Number(p.netAmount ?? 0),
     iva: acc.iva + Number(p.ivaAmount ?? 0),
+    otherTaxes: acc.otherTaxes + Number(p.otherTaxesAmount ?? 0),
     total: acc.total + Number(p.totalAmount ?? 0),
     retenciones: acc.retenciones + Number(p.retencionesAmount ?? 0),
     percepciones: acc.percepciones + Number(p.percepcionesAmount ?? 0),
-  }), { net: 0, iva: 0, total: 0, retenciones: 0, percepciones: 0 });
+  }), { net: 0, iva: 0, otherTaxes: 0, total: 0, retenciones: 0, percepciones: 0 });
 
   const total = (data ?? []).length;
   const pageRows = page && limit ? (data ?? []).slice((page - 1) * limit, (page - 1) * limit + limit) : (data ?? []);
@@ -80,6 +91,7 @@ export async function POST(req: NextRequest) {
   const issueDate = (form.get('issueDate') as string | null) || null;
   const netAmount = parseFloat((form.get('netAmount') as string | null) ?? '0');
   const ivaAmount = parseFloat((form.get('ivaAmount') as string | null) ?? '0');
+  const otherTaxesAmount = parseFloat((form.get('otherTaxesAmount') as string | null) ?? '0') || 0;
   const totalAmount = parseFloat((form.get('totalAmount') as string | null) ?? '0');
   const retencionesAmount = parseFloat((form.get('retencionesAmount') as string | null) ?? '0') || 0;
   const percepcionesAmount = parseFloat((form.get('percepcionesAmount') as string | null) ?? '0') || 0;
@@ -130,6 +142,7 @@ export async function POST(req: NextRequest) {
     issueDate,
     netAmount,
     ivaAmount,
+    otherTaxesAmount,
     totalAmount,
     retencionesAmount,
     percepcionesAmount,

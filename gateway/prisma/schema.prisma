@@ -105,12 +105,15 @@ model Invoice {
   errorMessage   String?
   afipResponse   Json?
   sourceApp      String?
+  relatedInvoiceId String? // Si este comprobante es una Nota de Crédito/Débito, referencia la factura original
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  tenant   Tenant           @relation(fields: [tenantId], references: [id])
-  artifact InvoiceArtifact?
-  logs     ProviderLog[]
+  tenant         Tenant           @relation(fields: [tenantId], references: [id])
+  artifact       InvoiceArtifact?
+  logs           ProviderLog[]
+  relatedInvoice Invoice?         @relation("CreditNoteOf", fields: [relatedInvoiceId], references: [id])
+  creditNotes    Invoice[]        @relation("CreditNoteOf")
 
   @@map("invoices")
 }

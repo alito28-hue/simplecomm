@@ -3,76 +3,43 @@ import { createClient } from '@/lib/supabase/server';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { translateGatewayError } from '@/lib/afip-errors';
 import { randomUUID } from 'crypto';
+import { Resend } from 'resend';
 
-const NOTA_CREDITO_MAP: Record<number, number> = {
-  1: 3,   // Factura A → NC-A
-  6: 8,   // Factura B → NC-B
-  11: 13, // Factura C → NC-C
-};
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-function tipoLetraToCode(invoiceLetter: string | null | undefined): number {
-  switch (invoiceLetter?.toUpperCase()) {
-    case 'A': return 1;
-    case 'B': return 6;
-    case 'C': return 11;
-    default:  return 6;
-  }
+function fromEmail(sellerName: string): string {
+  const safeName = sellerName.replace(/[<>"]/g, '');
+  return `${safeName} <info@simplecomm.com.ar>`;
 }
 
+/**
+ * Emite una Nota de Crédito TOTAL sobre una factura ya emitida. Toda la lógica de qué letra
+ * corresponde (A/B/C), punto de venta, receptor y montos vive en el Gateway — se deriva de
+ * la factura original guardada ahí, nunca de datos que reenviemos nosotros. Antes esta ruta
+ * intentaba recalcular el tipo de comprobante acá mismo con datos que el Gateway ni siquiera
+ * devolvía, lo que terminaba pidiendo a AFIP una Factura B común en vez de una Nota de Crédito
+ * (bug real: un monotributista no puede emitir Factura B, AFIP lo rechazaba con "no RI en IVA").
+ */
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { originalInvoiceId } = await req.json();
+  const { originalInvoiceId, recipientEmail } = await req.json();
   if (!originalInvoiceId) {
     return NextResponse.json({ error: 'originalInvoiceId requerido' }, { status: 400 });
   }
 
   const apiKey = await getGatewayKey(user.id);
-
-  const origRes = await fetch(`${GATEWAY_URL}/v1/invoices/${originalInvoiceId}`, {
-    headers: { 'Authorization': `Bearer ${apiKey}` },
-    signal: AbortSignal.timeout(15_000),
-  });
-
-  if (!origRes.ok) {
-    return NextResponse.json({ error: 'Factura original no encontrada' }, { status: 404 });
-  }
-
-  const orig = await origRes.json();
-
-  const tipoOriginal = orig.invoice_type_code ?? tipoLetraToCode(orig.invoice_letter);
-  const tipoNC = NOTA_CREDITO_MAP[tipoOriginal] ?? 8;
-
   const idempotencyKey = `nc:${user.id}:${originalInvoiceId}:${randomUUID()}`;
 
-  const body = {
-    idempotency_key: idempotencyKey,
-    invoice: {
-      total_amount:       orig.total_amount,
-      invoice_type_code:  tipoNC,
-      invoice_letter:     orig.invoice_letter ?? 'B',
-      iva_rate:           orig.iva_rate ?? 21,
-      concept:            orig.concept ?? 1,
-      description:        `Nota de crédito — ${orig.invoice_number ?? originalInvoiceId}`,
-    },
-    buyer: {
-      full_name:  orig.buyer_name ?? 'Consumidor Final',
-      doc_type:   orig.buyer_doc_type ?? 'DNI',
-      doc_number: orig.buyer_doc_number ?? '0',
-    },
-    source_app:      'simplecomm',
-    original_invoice: originalInvoiceId,
-  };
-
-  const ncRes = await fetch(`${GATEWAY_URL}/v1/invoices/issue`, {
+  const ncRes = await fetch(`${GATEWAY_URL}/v1/invoices/${originalInvoiceId}/credit-note`, {
     method: 'POST',
     headers: {
       'Content-Type':  'application/json',
       'Authorization': `Bearer ${apiKey}`,
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ idempotency_key: idempotencyKey, source_app: 'simplecomm' }),
     signal: AbortSignal.timeout(60_000),
   });
 
@@ -82,9 +49,58 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: translateGatewayError(ncData.error) }, { status: 502 });
   }
 
+  let emailSent = false;
+  if (recipientEmail && ncData.pdf_base64) {
+    const { data: org } = await supabase.from('organizations').select('name').eq('id', user.id).maybeSingle();
+    const sellerName = org?.name ?? 'SimpleComm';
+    const invoiceNumber = ncData.invoice_number ?? 'comprobante';
+    const displayName = ncData.buyer_name && ncData.buyer_name !== 'Consumidor Final' ? ncData.buyer_name : recipientEmail;
+
+    try {
+      await resend.emails.send({
+        from: fromEmail(sellerName),
+        to: recipientEmail,
+        subject: `Nota de crédito ${invoiceNumber} — ${sellerName}`,
+        html: `
+          <div style="font-family:sans-serif;max-width:540px;margin:0 auto;color:#1a1a2e">
+            <div style="background:#1a1a2e;padding:24px 32px;border-radius:8px 8px 0 0">
+              <h1 style="color:#fff;margin:0;font-size:1.4rem">${sellerName}</h1>
+            </div>
+            <div style="background:#f9f9fb;padding:32px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
+              <p style="margin:0 0 8px">Hola ${displayName},</p>
+              <p style="margin:0 0 20px;color:#555">Te llegó una nota de crédito de <strong>${sellerName}</strong>. La encontrás adjunta a este correo en PDF.</p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:16px 20px;margin-bottom:20px">
+                <tr>
+                  <td style="color:#888;font-size:.875rem;padding-bottom:8px">N° Comprobante</td>
+                  <td style="text-align:right;padding-bottom:8px"><strong style="font-family:monospace">${invoiceNumber}</strong></td>
+                </tr>
+                <tr>
+                  <td style="color:#888;font-size:.875rem">CAE</td>
+                  <td style="text-align:right"><strong style="font-family:monospace">${ncData.cae ?? '—'}</strong></td>
+                </tr>
+              </table>
+              <p style="font-size:.8rem;color:#999;margin:0">
+                Comprobante generado por <a href="https://simplecomm.com.ar" style="color:#2563eb">simplecomm.com.ar</a>.<br>
+                Para consultas, comunicate con tu proveedor — este es un email de envío automático.
+              </p>
+            </div>
+          </div>
+        `,
+        attachments: [{
+          filename: `nota-credito-${invoiceNumber}.pdf`,
+          content: Buffer.from(ncData.pdf_base64, 'base64'),
+        }],
+      });
+      emailSent = true;
+    } catch (err) {
+      console.error('[Resend] Failed to send credit note email:', err);
+    }
+  }
+
   return NextResponse.json({
     invoiceNumber: ncData.invoice_number,
     cae:           ncData.cae,
     status:        ncData.status,
+    emailSent,
   });
 }

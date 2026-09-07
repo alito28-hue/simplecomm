@@ -5,6 +5,8 @@ import Link from 'next/link';
 import styles from '../clientes/clientes.module.css';
 import dashStyles from '../../dashboard.module.css';
 import ivaStyles from './iva.module.css';
+import { IconReceipt, IconChart } from '@/components/LandingIcons';
+import { IconWallet, IconScale, IconCalendar, IconInfo, IconDownload } from '@/components/AppIcons';
 
 interface IvaPosition {
   applicable: boolean;
@@ -14,6 +16,8 @@ interface IvaPosition {
   purchasesCount?: number;
   lastPurchasesImportAt?: string | null;
   position?: number;
+  salesIvaDeltaPercent?: number | null;
+  purchasesIvaDeltaPercent?: number | null;
 }
 
 interface HistorialMes {
@@ -30,12 +34,21 @@ const MESES = [
   'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
 ];
 
+const HISTORIAL_PAGE_SIZE = 6;
+
 function money(n: number) {
   return `$${n.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
 }
 
 function formatDateTime(s: string) {
   return new Date(s).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function DeltaBadge({ value }: { value?: number | null }) {
+  if (value == null) return <span className={`${dashStyles.deltaBadge} ${dashStyles.deltaNeutral}`}>—</span>;
+  const cls = value > 0 ? dashStyles.deltaPositive : value < 0 ? dashStyles.deltaNegative : dashStyles.deltaNeutral;
+  const arrow = value > 0 ? '↑' : value < 0 ? '↓' : '—';
+  return <span className={`${dashStyles.deltaBadge} ${cls}`}>{arrow} {Math.abs(value)}%</span>;
 }
 
 interface VentaRow {
@@ -191,6 +204,7 @@ export default function IvaPage() {
   const [vencimientoGrupo, setVencimientoGrupo] = useState<string | null>(null);
   const [historialLoading, setHistorialLoading] = useState(true);
   const [detalle, setDetalle] = useState<Detalle | null>(null);
+  const [historialPage, setHistorialPage] = useState(1);
 
   function load() {
     fetch('/api/dashboard/iva-position')
@@ -245,6 +259,15 @@ export default function IvaPage() {
   const mesActual = `${MESES[now.getMonth()]} ${now.getFullYear()}`;
   const mesVacioConHistorial = (data.purchasesCount ?? 0) === 0 && !!data.lastPurchasesImportAt;
 
+  const anioActual = now.getFullYear();
+  const mesesDelAnio = historial.filter(m => m.year === anioActual);
+  const anualVentas = mesesDelAnio.reduce((s, m) => s + m.salesIva, 0);
+  const anualCompras = mesesDelAnio.reduce((s, m) => s + m.purchasesIva, 0);
+  const anualPosicion = anualVentas - anualCompras;
+
+  const historialPages = Math.max(1, Math.ceil(historial.length / HISTORIAL_PAGE_SIZE));
+  const historialPageRows = historial.slice((historialPage - 1) * HISTORIAL_PAGE_SIZE, historialPage * HISTORIAL_PAGE_SIZE);
+
   return (
     <div className={styles.page}>
       <div className={styles.pageHeader}>
@@ -254,10 +277,10 @@ export default function IvaPage() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <Link href="/dashboard/billing" className="btn btn-outline btn-sm">
-            📥 Importar ventas de ARCA →
+            Importar ventas de ARCA →
           </Link>
           <Link href="/dashboard/organizacion/compras" className="btn btn-primary btn-sm">
-            🧾 Ir a Compras →
+            Ir a Compras →
           </Link>
         </div>
       </div>
@@ -268,102 +291,188 @@ export default function IvaPage() {
         muestra la posición calculada a partir de esos comprobantes.
       </p>
 
-      <div className="card" style={{ padding: '1.25rem 1.5rem' }}>
-        <h2 className={dashStyles.sectionTitle} style={{ marginBottom: '0.75rem' }}>Este mes — {mesActual}</h2>
-        {mesVacioConHistorial && (
-          <div style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)', background: 'var(--surface-low)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-            ℹ Todavía no hay compras cargadas de {mesActual} — los números de abajo están en $0 porque este mes recién empieza.
-            Tu importación de ARCA sí se guardó: mirá <strong>Posición por mes</strong> más abajo para ver junio y meses anteriores.
-          </div>
-        )}
-        <div className={dashStyles.statsGrid}>
-          <div className="card">
-            <div className={dashStyles.statCard}>
-              <div className={dashStyles.statLabel}>IVA Ventas</div>
-              <div className={dashStyles.statValue}>{money(data.salesIva ?? 0)}</div>
-              {data.salesUpdatedAt && (
-                <div className="text-sm text-muted" style={{ marginTop: '0.25rem' }}>Actualizado: {formatDateTime(data.salesUpdatedAt)}</div>
-              )}
-            </div>
-          </div>
-          <div className="card">
-            <div className={dashStyles.statCard}>
-              <div className={dashStyles.statLabel}>IVA Compras ({data.purchasesCount ?? 0})</div>
-              <div className={dashStyles.statValue}>{money(data.purchasesIva ?? 0)}</div>
-              {data.lastPurchasesImportAt && (
-                <div className="text-sm text-muted" style={{ marginTop: '0.25rem' }}>Última importación ARCA: {formatDateTime(data.lastPurchasesImportAt)}</div>
-              )}
-            </div>
-          </div>
-          <div className="card">
-            <div className={dashStyles.statCard}>
-              <div className={dashStyles.statLabel}>{owes ? 'Posición — a pagar' : 'Posición — a favor'}</div>
-              <div className={dashStyles.statValue} style={{ color: owes ? 'var(--error)' : 'var(--success)' }}>
-                {money(Math.abs(position))}
-              </div>
-            </div>
-          </div>
+      {mesVacioConHistorial && (
+        <div className={dashStyles.infoBannerV2}>
+          <IconInfo size={18} />
+          <span>
+            Todavía no hay compras cargadas de {mesActual} — los números de abajo están en $0 porque este mes recién empieza.
+            Tu importación de ARCA sí se guardó: mirá <strong>Posición por mes</strong> más abajo para ver meses anteriores.
+          </span>
         </div>
-        <p className="text-sm text-muted" style={{ marginTop: '0.75rem' }}>
-          Estimación informativa. No reemplaza la liquidación oficial ante ARCA.
-        </p>
-      </div>
+      )}
 
-      <div className="card">
-        <div className={dashStyles.tableHeader}>
-          <h2 className={dashStyles.sectionTitle}>Posición por mes</h2>
-          {vencimientoGrupo && (
-            <span className="text-sm text-muted">
-              Tu vencimiento: {vencimientoGrupo} (según terminación de CUIT) — {' '}
-              <a href="https://www.afip.gob.ar/genericos/guiaDeTramites/calendarioFiscal.asp" target="_blank" rel="noreferrer" style={{ color: 'var(--blue)' }}>
-                ver fecha exacta ↗
-              </a>
-            </span>
+      <div className={dashStyles.statCardsRow}>
+        <div className={`card ${dashStyles.statCardV2}`}>
+          <div className={dashStyles.statCardV2Head}>
+            <div className={dashStyles.statCardV2Icon} style={{ background: 'var(--success-bg)', color: 'var(--success)' }}>
+              <IconWallet size={19} />
+            </div>
+            <DeltaBadge value={data.salesIvaDeltaPercent} />
+          </div>
+          <div className={dashStyles.statCardV2Label}>IVA Ventas</div>
+          <div className={dashStyles.statCardV2Value}>{money(data.salesIva ?? 0)}</div>
+          {data.salesUpdatedAt && (
+            <div className={dashStyles.statCardV2Caption}>Actualizado: {formatDateTime(data.salesUpdatedAt)}</div>
           )}
         </div>
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Mes</th>
-                <th>IVA Compras</th>
-                <th>IVA Ventas</th>
-                <th>Posición</th>
-                <th>Vencimiento</th>
-              </tr>
-            </thead>
-            <tbody>
-              {historialLoading ? (
-                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Cargando...</td></tr>
-              ) : historial.length === 0 ? (
-                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Sin datos.</td></tr>
-              ) : historial.map(m => (
-                <tr key={`${m.year}-${m.month}`}>
-                  <td>{m.monthLabel} {m.year}</td>
-                  <td className="text-sm">
-                    <button
-                      onClick={() => setDetalle({ tipo: 'compras', year: m.year, month: m.month, monthLabel: m.monthLabel, ivaTotal: m.purchasesIva })}
-                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--blue)', textDecoration: 'underline', font: 'inherit' }}
-                    >
-                      {money(m.purchasesIva)}
-                    </button>
-                  </td>
-                  <td className="text-sm">
-                    <button
-                      onClick={() => setDetalle({ tipo: 'ventas', year: m.year, month: m.month, monthLabel: m.monthLabel, ivaTotal: m.salesIva })}
-                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--blue)', textDecoration: 'underline', font: 'inherit' }}
-                    >
-                      {money(m.salesIva)}
-                    </button>
-                  </td>
-                  <td className="text-sm" style={{ fontWeight: 700, color: m.position > 0 ? 'var(--error)' : 'var(--success)' }}>
-                    {money(Math.abs(m.position))} {m.position > 0 ? '(a pagar)' : '(a favor)'}
-                  </td>
-                  <td className="text-sm text-muted">{vencimientoGrupo ?? '—'}</td>
+
+        <div className={`card ${dashStyles.statCardV2}`}>
+          <div className={dashStyles.statCardV2Head}>
+            <div className={dashStyles.statCardV2Icon} style={{ background: 'var(--blue-light)', color: 'var(--blue-hover)' }}>
+              <IconReceipt size={19} />
+            </div>
+            <DeltaBadge value={data.purchasesIvaDeltaPercent} />
+          </div>
+          <div className={dashStyles.statCardV2Label}>IVA Compras ({data.purchasesCount ?? 0})</div>
+          <div className={dashStyles.statCardV2Value}>{money(data.purchasesIva ?? 0)}</div>
+          {data.lastPurchasesImportAt && (
+            <div className={dashStyles.statCardV2Caption}>Última importación ARCA: {formatDateTime(data.lastPurchasesImportAt)}</div>
+          )}
+        </div>
+
+        <div className={`card ${dashStyles.statCardV2}`}>
+          <div className={dashStyles.statCardV2Head}>
+            <div className={dashStyles.statCardV2Icon} style={{ background: '#fce7f3', color: '#be185d' }}>
+              <IconScale size={19} />
+            </div>
+            <span className={`${dashStyles.deltaBadge} ${owes ? dashStyles.deltaNegative : dashStyles.deltaPositive}`}>
+              {owes ? 'A pagar' : 'A favor'}
+            </span>
+          </div>
+          <div className={dashStyles.statCardV2Label}>Posición</div>
+          <div className={dashStyles.statCardV2Value} style={{ color: owes ? 'var(--error)' : 'var(--success)' }}>
+            {money(Math.abs(position))}
+          </div>
+        </div>
+
+        <div className={`card ${dashStyles.statCardV2}`}>
+          <div className={dashStyles.statCardV2Head}>
+            <div className={dashStyles.statCardV2Icon} style={{ background: 'var(--blue-light)', color: 'var(--blue-hover)' }}>
+              <IconCalendar size={19} />
+            </div>
+          </div>
+          <div className={dashStyles.statCardV2Label}>Vencimiento</div>
+          <div className={dashStyles.statCardV2Value}>{vencimientoGrupo ?? '—'}</div>
+          <div className={dashStyles.statCardV2Caption}>Según terminación de CUIT</div>
+        </div>
+      </div>
+
+      <div className={dashStyles.infoBannerV2}>
+        <IconInfo size={18} />
+        <span>Estimación informativa. No reemplaza la liquidación oficial ante ARCA.</span>
+      </div>
+
+      <div className={dashStyles.withSidePanel}>
+        <div className="card" id="posicion-por-mes">
+          <div className={dashStyles.tableHeader}>
+            <h2 className={dashStyles.sectionTitle}>Posición por mes</h2>
+            {vencimientoGrupo && (
+              <span className="text-sm text-muted">
+                Tu vencimiento: {vencimientoGrupo} (según terminación de CUIT) — {' '}
+                <a href="https://www.afip.gob.ar/genericos/guiaDeTramites/calendarioFiscal.asp" target="_blank" rel="noreferrer" style={{ color: 'var(--blue)' }}>
+                  ver fecha exacta ↗
+                </a>
+              </span>
+            )}
+          </div>
+          <div className="table-wrap">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Mes</th>
+                  <th>IVA Compras</th>
+                  <th>IVA Ventas</th>
+                  <th>Posición</th>
+                  <th>Vencimiento</th>
+                  <th>Descarga</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {historialLoading ? (
+                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Cargando...</td></tr>
+                ) : historial.length === 0 ? (
+                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Sin datos.</td></tr>
+                ) : historialPageRows.map(m => (
+                  <tr key={`${m.year}-${m.month}`}>
+                    <td>{m.monthLabel} {m.year}</td>
+                    <td className="text-sm">
+                      <button
+                        onClick={() => setDetalle({ tipo: 'compras', year: m.year, month: m.month, monthLabel: m.monthLabel, ivaTotal: m.purchasesIva })}
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--blue)', textDecoration: 'underline', font: 'inherit' }}
+                      >
+                        {money(m.purchasesIva)}
+                      </button>
+                    </td>
+                    <td className="text-sm">
+                      <button
+                        onClick={() => setDetalle({ tipo: 'ventas', year: m.year, month: m.month, monthLabel: m.monthLabel, ivaTotal: m.salesIva })}
+                        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--blue)', textDecoration: 'underline', font: 'inherit' }}
+                      >
+                        {money(m.salesIva)}
+                      </button>
+                    </td>
+                    <td className="text-sm" style={{ fontWeight: 700, color: m.position > 0 ? 'var(--error)' : 'var(--success)' }}>
+                      {money(Math.abs(m.position))} {m.position > 0 ? '(a pagar)' : '(a favor)'}
+                    </td>
+                    <td className="text-sm text-muted">{vencimientoGrupo ?? '—'}</td>
+                    <td className="text-sm">
+                      <a
+                        href={`/api/organizacion/iva/export?month=${m.year}-${String(m.month).padStart(2, '0')}`}
+                        className="btn btn-outline btn-sm"
+                      >
+                        <IconDownload size={13} /> CSV
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!historialLoading && historial.length > 0 && (
+            <div className={dashStyles.tablePagination}>
+              <span className="text-muted text-sm">Mostrando {historialPageRows.length} de {historial.length} meses</span>
+              {historialPages > 1 && (
+                <div className={dashStyles.paginationBtns}>
+                  <button type="button" className={dashStyles.pageBtn} onClick={() => setHistorialPage(p => Math.max(1, p - 1))} disabled={historialPage === 1}>‹</button>
+                  <span className={dashStyles.pageIndicator}>{historialPage}</span>
+                  <button type="button" className={dashStyles.pageBtn} onClick={() => setHistorialPage(p => Math.min(historialPages, p + 1))} disabled={historialPage === historialPages}>›</button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className={dashStyles.sidePanel}>
+          <div className={`card ${dashStyles.sideCard}`}>
+            <div className={dashStyles.sideCardHead}>
+              <div className={dashStyles.sideCardIcon}><IconInfo size={16} /></div>
+              <div className={dashStyles.sideCardTitle}>Información importante</div>
+            </div>
+            <p className={dashStyles.sideCardBody}>
+              El cálculo de la posición de IVA puede verse afectado por ajustes en los comprobantes de ARCA. Te recomendamos revisar periódicamente la carga de comprobantes.
+            </p>
+            <Link href="/dashboard/tutoriales" className="btn btn-outline btn-sm" style={{ marginTop: '0.9rem', width: '100%', justifyContent: 'center' }}>
+              Ver más en documentación →
+            </Link>
+          </div>
+
+          <div className={`card ${dashStyles.sideCard}`}>
+            <div className={dashStyles.sideCardHead}>
+              <div className={dashStyles.sideCardIcon}><IconChart size={16} /></div>
+              <div className={dashStyles.sideCardTitle}>Resumen {anioActual}</div>
+            </div>
+            <div className={dashStyles.sideCardRow}><span className="text-muted">IVA Ventas</span><strong>{money(anualVentas)}</strong></div>
+            <div className={dashStyles.sideCardRow}><span className="text-muted">IVA Compras</span><strong>{money(anualCompras)}</strong></div>
+            <div className={dashStyles.sideCardRow}>
+              <span className="text-muted">Posición anual</span>
+              <strong style={{ color: anualPosicion > 0 ? 'var(--error)' : 'var(--success)' }}>
+                {money(Math.abs(anualPosicion))} {anualPosicion > 0 ? '(a pagar)' : '(a favor)'}
+              </strong>
+            </div>
+            <a href="#posicion-por-mes" className="btn btn-outline btn-sm" style={{ marginTop: '0.9rem', width: '100%', justifyContent: 'center' }}>
+              Ver detalle por mes →
+            </a>
+          </div>
         </div>
       </div>
 
