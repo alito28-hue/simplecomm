@@ -55,9 +55,13 @@ const EXTRACTION_SCHEMA = {
       type: 'number',
       description: 'Monto de IVA, discriminado en el comprobante o calculado como total - neto si no está discriminado.',
     },
+    other_taxes_amount: {
+      type: 'number',
+      description: 'Otros tributos por fuera del neto y el IVA — típico en combustible ("Impuesto interno a nivel item", su IVA asociado, tasas municipales, etc.). Sumá ahí TODO lo que en el tique aparezca entre el neto gravado y el total que no sea el IVA general de la venta (ej. "Importe Total Otros Tributos" si el tique lo totaliza así). 0 si el comprobante no tiene nada de esto.',
+    },
     total_amount: {
       type: 'number',
-      description: 'Monto total del comprobante, incluyendo IVA. Este es casi siempre legible con certeza.',
+      description: 'Monto total del comprobante, incluyendo IVA y otros tributos. Este es casi siempre legible con certeza.',
     },
     confidence: {
       type: 'string',
@@ -71,7 +75,7 @@ const EXTRACTION_SCHEMA = {
   },
   required: [
     'issuer_name', 'issuer_cuit', 'invoice_letter', 'comprobante_kind', 'punto_venta', 'invoice_number', 'issue_date',
-    'net_amount', 'iva_amount', 'total_amount', 'confidence', 'notes',
+    'net_amount', 'iva_amount', 'other_taxes_amount', 'total_amount', 'confidence', 'notes',
   ],
   additionalProperties: false,
 };
@@ -81,7 +85,8 @@ const SYSTEM_PROMPT = `Sos un asistente experto en comprobantes fiscales argenti
 Reglas importantes:
 - El monto total (total_amount) es el dato más confiable — casi siempre está impreso claramente. Extraelo con precisión, sin inventar decimales.
 - Todo comprobante lleva IVA, se discrimine o no por separado. Si no está discriminado (tiques de kiosco, combustible, consumidor final), calculalo asumiendo 21% salvo evidencia de otra tasa, y decilo en "notes".
-- Verificá que neto + IVA = total antes de responder. Si no cierra, ajustá el neto o el IVA (nunca el total, que es el dato impreso) y explicá el ajuste en "notes".
+- Algunos rubros (sobre todo combustible) suman otros tributos por fuera del neto y el IVA general de la venta — ej. "Impuesto interno a nivel item" con su propio IVA, tasas municipales. Todo eso va en "other_taxes_amount", NUNCA metido dentro de "net_amount" ni "iva_amount".
+- Verificá que neto + IVA + otros tributos = total antes de responder. Si no cierra, ajustá esos tres campos (nunca el total, que es el dato impreso) y explicá el ajuste en "notes".
 - El CUIT del emisor, el punto de venta y el número de comprobante son OBLIGATORIOS para poder guardar el registro (se usan para no duplicar comprobantes ya cargados a mano o importados de ARCA) — prestales especial atención y sacá el máximo esfuerzo en leerlos, aunque el resto de la imagen esté borroso.
 - El número impreso suele tener el formato "punto de venta - número" (ej. "0004-00012345"): separalos en punto_venta ("0004") e invoice_number ("00012345"), cada uno sin ceros a la izquierda.
 - Si algún dato no es legible (CUIT borroso, número cortado), dejalo vacío ("") y bajá "confidence" a "low" o "medium" según corresponda, explicando qué faltó — el usuario va a tener que completarlo a mano antes de guardar.
@@ -168,25 +173,29 @@ export async function POST(req: NextRequest) {
       issue_date: string;
       net_amount: number;
       iva_amount: number;
+      other_taxes_amount: number;
       total_amount: number;
       confidence: string;
       notes: string;
     };
 
     // Verificación de consistencia matemática server-side: nunca confiar ciegamente
-    // en la suma del modelo. El total impreso es el dato más confiable; si neto + iva
-    // no cierra contra el total, recalculamos el iva a partir del total y el neto.
+    // en la suma del modelo. El total impreso es el dato más confiable; si neto + iva +
+    // otros tributos no cierra contra el total, recalculamos el iva a partir del total,
+    // el neto y los otros tributos (dejando estos últimos como los reportó el modelo,
+    // porque no hay forma de derivarlos genéricamente si no están discriminados).
     const notesExtra: string[] = [];
     const roundedTotal = Math.round(extracted.total_amount * 100) / 100;
-    const sum = Math.round((extracted.net_amount + extracted.iva_amount) * 100) / 100;
+    const otherTaxesAmount = Math.round((extracted.other_taxes_amount || 0) * 100) / 100;
+    const sum = Math.round((extracted.net_amount + extracted.iva_amount + otherTaxesAmount) * 100) / 100;
     let ivaAmount = extracted.iva_amount;
     let netAmount = extracted.net_amount;
     if (roundedTotal > 0 && Math.abs(sum - roundedTotal) > 0.5) {
       if (netAmount > 0) {
-        ivaAmount = Math.round((roundedTotal - netAmount) * 100) / 100;
+        ivaAmount = Math.round((roundedTotal - netAmount - otherTaxesAmount) * 100) / 100;
       } else {
-        netAmount = Math.round((roundedTotal / 1.21) * 100) / 100;
-        ivaAmount = Math.round((roundedTotal - netAmount) * 100) / 100;
+        netAmount = Math.round(((roundedTotal - otherTaxesAmount) / 1.21) * 100) / 100;
+        ivaAmount = Math.round((roundedTotal - otherTaxesAmount - netAmount) * 100) / 100;
       }
       notesExtra.push('Se recalculó el IVA/neto para que la suma cierre con el total impreso.');
     }
@@ -204,6 +213,7 @@ export async function POST(req: NextRequest) {
       issue_date: extracted.issue_date || null,
       net_amount: netAmount,
       iva_amount: ivaAmount,
+      other_taxes_amount: otherTaxesAmount,
       total_amount: roundedTotal,
       confidence: extracted.confidence,
       notes: [extracted.notes, ...notesExtra].filter(Boolean).join(' '),

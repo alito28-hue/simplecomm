@@ -15,7 +15,7 @@ export default function EmpresaPage() {
     phone: '', emailAlerts: '', emailAccountant: '', iibb: '', cbu: '',
     startDate: '',
     validateVouchers: true,
-    cierreFiscalMes: '', alicuotaGanancias: '',
+    cierreFiscalMes: '', alicuotaGanancias: '', categoriaPyme: 'GENERAL', alicuotaIibb: '2.5',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -144,13 +144,27 @@ export default function EmpresaPage() {
                   <input className="input" type="number" step="0.01" min="0" max="100" value={form.alicuotaGanancias}
                     onChange={e => update('alicuotaGanancias', e.target.value)} placeholder="Ej: 35" />
                 </div>
+                <div className={styles.field}>
+                  <label>Categoría Pyme</label>
+                  <select className="select" value={form.categoriaPyme} onChange={e => update('categoriaPyme', e.target.value)}>
+                    <option value="GENERAL">General (33% de Ley 25413 computable)</option>
+                    <option value="MICRO_PEQUENA">Micro/Pequeña (100% computable)</option>
+                    <option value="MEDIANA_TRAMO1_MANUFACTURERA">Mediana Tramo 1 manufacturera (60% computable)</option>
+                  </select>
+                </div>
+                <div className={styles.field}>
+                  <label>Alícuota IIBB percepción bancaria (%)</label>
+                  <input className="input" type="number" step="0.01" min="0" max="100" value={form.alicuotaIibb}
+                    onChange={e => update('alicuotaIibb', e.target.value)} placeholder="Ej: 2.5" />
+                </div>
               </>
             )}
           </div>
           {form.fiscalTreatment === 'RESPONSABLE_INSCRIPTO' && (
             <p className="text-sm text-muted" style={{ marginTop: '-0.5rem' }}>
-              Estos dos datos los necesita la sección <strong>Posición de Ganancias</strong> para estimar
-              tu ganancia y el impuesto sobre el ejercicio fiscal correcto (no todas las empresas cierran en diciembre).
+              Estos datos los necesitan <strong>Posición de Ganancias</strong> e <strong>IIBB</strong>: el ejercicio
+              fiscal y la alícuota para estimar el impuesto, y la categoría Pyme para saber qué % del Impuesto a
+              los Créditos y Débitos (Ley 25413) es pago a cuenta de Ganancias.
             </p>
           )}
           <div className={styles.grid3}>

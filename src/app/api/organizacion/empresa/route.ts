@@ -29,6 +29,8 @@ export async function PUT(req: NextRequest) {
   else if (body.cierreFiscalMes != null) body.cierreFiscalMes = Number(body.cierreFiscalMes);
   if (body.alicuotaGanancias === '') body.alicuotaGanancias = null;
   else if (body.alicuotaGanancias != null) body.alicuotaGanancias = Number(body.alicuotaGanancias);
+  if (body.alicuotaIibb === '') body.alicuotaIibb = null;
+  else if (body.alicuotaIibb != null) body.alicuotaIibb = Number(body.alicuotaIibb);
   const now = new Date().toISOString();
 
   // Verificar si ya existe
