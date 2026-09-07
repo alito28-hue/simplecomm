@@ -8,6 +8,12 @@ import IvaPositionCard from './IvaPositionCard';
 import MonotributoStatusCard from './MonotributoStatusCard';
 import NegocioResumenCard from './NegocioResumenCard';
 import VentasPorCanalCard from './VentasPorCanalCard';
+import AttentionPanel from './AttentionPanel';
+import VentasPeriodoChart from './VentasPeriodoChart';
+import RentabilidadResumenCard from './RentabilidadResumenCard';
+import VencimientosResumenCard from './VencimientosResumenCard';
+import { IconCart, IconReceipt, IconUser, IconBox, IconChart, IconPercent, IconMegaphone, IconBank } from '@/components/LandingIcons';
+import { IconBolt, IconTag, IconFolder, IconBanknote, IconCalendar, IconUsers, IconLink, IconGear } from '@/components/AppIcons';
 
 interface LastInvoice {
   invoice_id?: string;
@@ -42,22 +48,23 @@ function formatDate(iso: string) {
 }
 
 const MODULES = [
-  { href: '/dashboard/facturacion/simplificada',       icon: '⚡', title: 'Facturación Rápida',  desc: 'Emitir una factura al instante' },
-  { href: '/dashboard/billing',                        icon: '🧾', title: 'Comprobantes',         desc: 'Emitidos y recibidos — facturas, cobros e importación de ARCA' },
-  { href: '/dashboard/ventas',                          icon: '🛍', title: 'Ventas',               desc: 'Qué vendiste y por qué canal — ML, Tiendanube, Shopify y más' },
-  { href: '/dashboard/contactos',                       icon: '👤', title: 'Clientes',             desc: 'Directorio y datos fiscales' },
-  { href: '/dashboard/organizacion/productos',          icon: '📦', title: 'Productos y Stock',    desc: 'Catálogo, precios e inventario' },
-  { href: '/dashboard/organizacion/rentabilidad',        icon: '💹', title: 'Rentabilidad',         desc: 'Ganancia del negocio (ventas menos compras) y margen por producto' },
-  { href: '/dashboard/organizacion/listas-precios',      icon: '💲', title: 'Listas de Precios',    desc: 'Precios especiales por lista' },
-  { href: '/dashboard/organizacion/centros-costo',       icon: '🏷', title: 'Centros de Costo',     desc: 'Agrupá clientes por proyecto' },
-  { href: '/dashboard/organizacion/iva',                icon: '📊', title: 'IVA',                  desc: 'Posición de IVA (ventas menos compras)', ivaOnly: true },
-  { href: '/dashboard/organizacion/ganancias',           icon: '💵', title: 'Posición de Ganancias', desc: 'Ganancia estimada e Impuesto a las Ganancias por ejercicio', ivaOnly: true },
-  { href: '/dashboard/organizacion/calendario-impositivo', icon: '📅', title: 'Vencimientos',       desc: 'Calendario impositivo y recordatorios' },
-  { href: '/dashboard/organizacion/usuarios',            icon: '👥', title: 'Usuarios y Permisos',  desc: 'Equipo y accesos por rol' },
-  { href: '/dashboard/integraciones',                    icon: '🔗', title: 'Integraciones',        desc: 'Mercado Pago, Tiendanube y más' },
-  { href: '/dashboard/facturacion/programadas',          icon: '🗓', title: 'Facturas Programadas', desc: 'Servicios recurrentes' },
-  { href: '/dashboard/ads',                              icon: '📈', title: 'Publicidad',           desc: 'Inversión y ROAS' },
-  { href: '/dashboard/organizacion',                     icon: '⚙',  title: 'Configuración',        desc: 'Empresa, ARCA y puntos de venta' },
+  { href: '/dashboard/facturacion/simplificada',       Icon: IconBolt,     title: 'Facturación Rápida',  desc: 'Emitir una factura al instante' },
+  { href: '/dashboard/billing',                        Icon: IconReceipt,  title: 'Comprobantes',         desc: 'Emitidos y recibidos — facturas, cobros e importación de ARCA' },
+  { href: '/dashboard/ventas',                          Icon: IconCart,     title: 'Ventas',               desc: 'Qué vendiste y por qué canal — ML, Tiendanube, Shopify y más' },
+  { href: '/dashboard/contactos',                       Icon: IconUser,     title: 'Clientes',             desc: 'Directorio y datos fiscales' },
+  { href: '/dashboard/organizacion/productos',          Icon: IconBox,      title: 'Productos y Stock',    desc: 'Catálogo, precios e inventario' },
+  { href: '/dashboard/organizacion/rentabilidad',        Icon: IconChart,    title: 'Rentabilidad',         desc: 'Ganancia del negocio (ventas menos compras) y margen por producto' },
+  { href: '/dashboard/organizacion/listas-precios',      Icon: IconTag,      title: 'Listas de Precios',    desc: 'Precios especiales por lista' },
+  { href: '/dashboard/organizacion/centros-costo',       Icon: IconFolder,   title: 'Centros de Costo',     desc: 'Agrupá clientes por proyecto' },
+  { href: '/dashboard/organizacion/iva',                Icon: IconPercent,  title: 'IVA',                  desc: 'Posición de IVA (ventas menos compras)', ivaOnly: true },
+  { href: '/dashboard/organizacion/ganancias',           Icon: IconBanknote, title: 'Posición de Ganancias', desc: 'Ganancia estimada e Impuesto a las Ganancias por ejercicio', ivaOnly: true },
+  { href: '/dashboard/organizacion/iibb',                Icon: IconBank,     title: 'Posición de IIBB',     desc: 'Percepciones de Ingresos Brutos adelantadas por el banco', ivaOnly: true },
+  { href: '/dashboard/organizacion/calendario-impositivo', Icon: IconCalendar, title: 'Vencimientos',       desc: 'Calendario impositivo y recordatorios' },
+  { href: '/dashboard/organizacion/usuarios',            Icon: IconUsers,    title: 'Usuarios y Permisos',  desc: 'Equipo y accesos por rol' },
+  { href: '/dashboard/integraciones',                    Icon: IconLink,     title: 'Integraciones',        desc: 'Mercado Pago, Tiendanube y más' },
+  { href: '/dashboard/facturacion/programadas',          Icon: IconCalendar, title: 'Facturas Programadas', desc: 'Servicios recurrentes' },
+  { href: '/dashboard/ads',                              Icon: IconMegaphone, title: 'Publicidad',           desc: 'Inversión y ROAS' },
+  { href: '/dashboard/organizacion',                     Icon: IconGear,     title: 'Configuración',        desc: 'Empresa, ARCA y puntos de venta' },
 ];
 
 export default function DashboardData() {
@@ -66,6 +73,8 @@ export default function DashboardData() {
   const [publicidad, setPublicidad] = useState<PublicidadResumen | null>(null);
   const [isResponsableInscripto, setIsResponsableInscripto] = useState(false);
   const [isMonotributista, setIsMonotributista] = useState(false);
+  const [pendienteMes, setPendienteMes] = useState(0);
+  const [cantidadPendientes, setCantidadPendientes] = useState(0);
 
   useEffect(() => {
     fetch('/api/dashboard/kpis')
@@ -96,46 +105,32 @@ export default function DashboardData() {
     </div>
   );
 
-  const delta = kpis?.monthVsLastAmount ?? 0;
-  const isPositive = delta >= 0;
-
   return (
     <>
       <OnboardingChecklist />
 
-      <div className={styles.statsGrid}>
-        <div className="card">
-          <div className={styles.statCard}>
-            <div className={styles.statLabel}>Facturas este mes</div>
-            <div className={styles.statValue}>{kpis?.monthInvoices ?? 0}</div>
-          </div>
-        </div>
-        <div className="card">
-          <div className={styles.statCard}>
-            <div className={styles.statLabel}>Monto este mes</div>
-            <div className={styles.statValue}>{formatMoney(kpis?.monthAmount ?? 0)}</div>
-          </div>
-        </div>
-        <div className="card">
-          <div className={styles.statCard}>
-            <div className={styles.statLabel}>Variación vs mes anterior</div>
-            <div className={styles.statValue}>{isPositive ? '↑' : '↓'} {Math.abs(delta)}%</div>
-            <div className={`${styles.statDelta} ${isPositive ? styles.positive : styles.negative}`}>
-              {isPositive ? 'Por encima del mes anterior' : 'Por debajo del mes anterior'}
-            </div>
-          </div>
-        </div>
-        <div className="card">
-          <div className={styles.statCard}>
-            <div className={styles.statLabel}>Total emitidas (histórico)</div>
-            <div className={styles.statValue}>{kpis?.pendingCount ?? 0}</div>
-          </div>
-        </div>
+      <NegocioResumenCard
+        monthVsLastAmount={kpis?.monthVsLastAmount}
+        onLoad={d => { setPendienteMes(d.pendienteMes); setCantidadPendientes(d.cantidadFacturas - d.cantidadCobradas); }}
+      />
+
+      <div className={styles.mainGrid}>
+        <VentasPeriodoChart />
+        <VentasPorCanalCard />
+        <AttentionPanel
+          isResponsableInscripto={isResponsableInscripto}
+          isMonotributista={isMonotributista}
+          pendienteMes={pendienteMes}
+          cantidadPendientes={cantidadPendientes}
+        />
       </div>
 
-      <NegocioResumenCard />
-      <VentasPorCanalCard />
-      <IvaPositionCard />
+      <div className={styles.financeGrid}>
+        <IvaPositionCard />
+        <RentabilidadResumenCard />
+        <VencimientosResumenCard isResponsableInscripto={isResponsableInscripto} />
+      </div>
+
       {isMonotributista && <MonotributoStatusCard />}
 
       <div className={`card ${styles.tableCard}`}>
@@ -251,7 +246,7 @@ export default function DashboardData() {
       <div className={styles.modulesGrid}>
         {visibleModules.map(m => (
           <Link key={m.href} href={m.href} className={`card ${styles.moduleCard}`}>
-            <div className={styles.moduleIcon}>{m.icon}</div>
+            <div className={styles.moduleIcon}><m.Icon size={20} /></div>
             <div className={styles.moduleTitle}>{m.title}</div>
             <div className={styles.moduleDesc}>{m.desc}</div>
           </Link>

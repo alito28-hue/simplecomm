@@ -114,6 +114,16 @@
   gap: 0.15rem;
 }
 
+.navTitle {
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.35);
+  margin: 0.9rem 0.75rem 0.3rem;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.nav > div:first-child .navTitle { margin-top: 0.3rem; }
+
 .navItem {
   display: flex;
   align-items: center;
@@ -150,9 +160,10 @@
 }
 
 .icon {
-  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 20px;
-  text-align: center;
   flex-shrink: 0;
 }
 

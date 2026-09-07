@@ -168,9 +168,107 @@
   transition: box-shadow 0.15s, transform 0.15s;
 }
 .moduleCard:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
-.moduleIcon { font-size: 1.3rem; }
+.moduleIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  background: var(--blue-light);
+  color: var(--blue-hover);
+}
 .moduleTitle { font-size: 0.875rem; font-weight: 700; font-family: var(--font-heading); color: var(--text-primary); }
 .moduleDesc { font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; }
+
+/* Grilla principal: gráfico de período + ventas por canal + atención */
+.mainGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(220px, 0.85fr) minmax(260px, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+@media (max-width: 1200px) { .mainGrid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 700px)  { .mainGrid { grid-template-columns: 1fr; } }
+
+/* Grilla de finanzas: IVA / Rentabilidad / Vencimientos, 3 columnas iguales */
+.financeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+@media (max-width: 1100px) { .financeGrid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 700px)  { .financeGrid { grid-template-columns: 1fr; } }
+
+/* Fila de KPIs superior — icono circular de color + valor */
+.kpiCard { padding: 1.1rem 1.25rem; display: flex; align-items: flex-start; gap: 0.85rem; }
+.kpiIcon {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+}
+.kpiBody { flex: 1; min-width: 0; }
+
+/* Mini gráfico de barras (Posición de IVA) */
+.miniBars { display: flex; align-items: flex-end; gap: 8px; height: 70px; }
+.miniBar { width: 16px; border-radius: 3px 3px 0 0; }
+
+/* Donut (Ventas por canal) */
+.donutWrap { display: flex; align-items: center; gap: 1.1rem; flex-wrap: wrap; }
+.donutLegend { flex: 1; min-width: 140px; display: flex; flex-direction: column; gap: 0.55rem; }
+.donutLegendRow { display: flex; align-items: center; gap: 0.5rem; font-size: 0.78rem; }
+.donutDot { width: 9px; height: 9px; min-width: 9px; border-radius: 50%; }
+.donutLegendLabel { flex: 1; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.donutLegendValue { font-weight: 700; color: var(--text-primary); white-space: nowrap; }
+.donutLegendPct { color: var(--text-muted); font-size: 0.7rem; width: 30px; text-align: right; }
+.donutTotalRow {
+  display: flex;
+  justify-content: space-between;
+  padding-top: 0.65rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Necesita tu atención */
+.attentionCard { padding: 0.5rem 0 0.75rem; }
+.attentionRow {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.attentionRow:hover { background: var(--surface-low); }
+.attentionRow:last-child { border-bottom: none; }
+.attentionIcon {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+}
+.attention_red .attentionIcon { background: var(--error-bg); color: var(--error); }
+.attention_orange .attentionIcon { background: var(--warning-bg); color: var(--warning); }
+.attention_green .attentionIcon { background: var(--success-bg); color: var(--success); }
+.attentionText { flex: 1; min-width: 0; }
+.attentionTitle { font-size: 0.9rem; font-weight: 700; color: var(--text-primary); }
+.attentionSubtitle { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.1rem; }
+.attentionArrow { color: var(--text-muted); font-size: 1.1rem; }
 
 /* Onboarding checklist */
 .onboardingCard { padding: 1.25rem 1.5rem; border: 1px solid var(--warning); background: color-mix(in srgb, var(--warning) 6%, var(--surface)); }
@@ -186,6 +284,201 @@
 .stepLabel { flex: 1; font-size: 0.875rem; }
 .stepLink { font-size: 0.78rem; color: var(--blue); font-weight: 600; white-space: nowrap; }
 .stepLink:hover { text-decoration: underline; }
+
+/* ── StatCard v2: ícono circular + valor + badge de variación + caption ──── */
+.statCardsRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1rem;
+}
+
+.statCardV2 {
+  padding: 1.1rem 1.25rem;
+}
+
+.statCardV2Head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.9rem;
+}
+
+.statCardV2Icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+}
+
+.deltaBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.deltaPositive { background: var(--success-bg); color: #065f46; }
+.deltaNegative { background: var(--error-bg); color: #9f1239; }
+.deltaNeutral  { background: var(--surface-low); color: var(--text-muted); }
+
+.statCardV2Label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.statCardV2Value {
+  font-size: 1.35rem;
+  font-weight: 800;
+  font-family: var(--font-heading);
+  color: var(--text-primary);
+}
+
+.statCardV2Caption {
+  margin-top: 0.5rem;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+/* ── Info banner ────────────────────────────────────────────────────────── */
+.infoBannerV2 {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.9rem 1.1rem;
+  border-radius: var(--radius-md);
+  background: var(--blue-light);
+  color: var(--blue-hover);
+  font-size: 0.85rem;
+}
+
+.infoBannerV2 svg { flex-shrink: 0; margin-top: 0.1rem; }
+
+/* ── Layout con panel lateral ──────────────────────────────────────────── */
+.withSidePanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 1.25rem;
+  align-items: start;
+}
+@media (max-width: 960px) { .withSidePanel { grid-template-columns: 1fr; } }
+
+.sidePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.sideCard {
+  padding: 1.25rem;
+}
+
+.sideCardHead {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.sideCardIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--blue-light);
+  color: var(--blue-hover);
+  flex-shrink: 0;
+}
+
+.sideCardTitle {
+  font-size: 0.92rem;
+  font-weight: 700;
+  font-family: var(--font-heading);
+  color: var(--text-primary);
+}
+
+.sideCardBody {
+  font-size: 0.83rem;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.sideCardRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+.sideCardRow:last-of-type { border-bottom: none; }
+.sideCardRow strong { font-family: var(--font-heading); color: var(--text-primary); }
+
+/* ── Toolbar de acciones (subir / importar / cargar) ──────────────────── */
+.actionBtnRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.actionBtnRow .btn svg { margin-right: 0.3rem; vertical-align: -3px; }
+
+/* ── StatCard horizontal: ícono cuadrado a la izquierda + label/valor ───── */
+.statCardHRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.statCardH {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1.1rem 1.25rem;
+}
+
+.statCardHIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: var(--radius-md);
+}
+
+/* ── Tabs (Emitidos / Recibidos) ───────────────────────────────────────── */
+.tabRow {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabLink {
+  padding: 0.65rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tabLinkActive {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+}
 
 @media (max-width: 768px) {
   .pageHeader { flex-direction: column; }
