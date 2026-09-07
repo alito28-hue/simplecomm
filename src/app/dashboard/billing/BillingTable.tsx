@@ -19,7 +19,22 @@ interface RetencionExtractMeta {
 
 interface NcModal { invoiceId: string; invoiceNumber: string | null; amount: number; buyerDoc: string | null; }
 interface PagoModal { invoiceId: string; invoiceNumber: string | null; totalAmount: number; }
-interface PaymentStatus { invoiceId: string; status: 'PENDING' | 'PAID'; paidAt: string | null; source: string | null; }
+interface PaymentStatus { invoiceId: string; status: 'PENDING' | 'PAID'; paidAt: string | null; source: string | null; paidAmount: number | null; }
+
+interface DetalleModal { invoiceId: string; invoiceNumber: string | null; totalAmount: number; }
+interface RetencionRow { id: string; monto: number; tipoImpuesto: string; origen: string; fecha: string }
+interface MovimientoRow { id: string; tipo: string; monto: number; jurisdiccionIIBB: string | null }
+
+const TIPO_IMPUESTO_LABEL: Record<string, string> = {
+  GANANCIAS: 'Ganancias (RG 830)', IVA: 'IVA', IIBB: 'Ingresos Brutos', SIN_CLASIFICAR: 'Sin clasificar',
+};
+const MOVIMIENTO_LABEL: Record<string, string> = {
+  PERCEPCION_IIBB_BANCO: 'Percepción IIBB (banco)',
+  LEY25413_CREDITO: 'Ley 25413 (crédito)',
+  LEY25413_DEBITO: 'Ley 25413 (débito)',
+  COMISION_FINANCIERA: 'Comisión financiera',
+  OTRO_SIN_CLASIFICAR: 'Otro',
+};
 
 
 interface Invoice {
@@ -101,6 +116,11 @@ export default function BillingTable() {
   const [payments, setPayments] = useState<Record<string, PaymentStatus>>({});
   const [attachmentsInvoiceId, setAttachmentsInvoiceId] = useState<string | null>(null);
   const [pagoModal, setPagoModal] = useState<PagoModal | null>(null);
+  const [detalleModal, setDetalleModal] = useState<DetalleModal | null>(null);
+  const [detalleLoading, setDetalleLoading] = useState(false);
+  const [detalleRetenciones, setDetalleRetenciones] = useState<RetencionRow[]>([]);
+  const [detalleMovimientos, setDetalleMovimientos] = useState<MovimientoRow[]>([]);
+  const [desmarcando, setDesmarcando] = useState(false);
   const [pagoMontoCobrado, setPagoMontoCobrado] = useState('');
   const [pagoRetencion, setPagoRetencion] = useState('');
   const [pagoTipoImpuesto, setPagoTipoImpuesto] = useState<'SIN_CLASIFICAR' | 'GANANCIAS' | 'IVA' | 'IIBB'>('SIN_CLASIFICAR');
@@ -177,19 +197,46 @@ export default function BillingTable() {
     };
   }, [page, statusFilter, month, q, refreshKey]);
 
-  async function togglePaid(inv: Invoice) {
-    const current = payments[inv.invoice_id]?.status ?? 'PENDING';
-    if (current === 'PAID') {
-      // Desmarcar es directo — el detalle de monto/retención solo tiene sentido al marcar.
-      const res = await fetch(`/api/pagos/${inv.invoice_id}`, {
+  function abrirDetalleCobro(inv: Invoice) {
+    setDetalleModal({ invoiceId: inv.invoice_id, invoiceNumber: inv.invoice_number, totalAmount: inv.total_amount });
+    setDetalleLoading(true);
+    setDetalleRetenciones([]);
+    setDetalleMovimientos([]);
+    Promise.all([
+      fetch(`/api/organizacion/retenciones?invoiceId=${inv.invoice_id}`).then(r => r.json()).catch(() => ({ data: [] })),
+      fetch(`/api/organizacion/movimientos-cobro?invoiceId=${inv.invoice_id}`).then(r => r.json()).catch(() => ({ data: [] })),
+    ]).then(([ret, mov]) => {
+      setDetalleRetenciones(ret.data ?? []);
+      setDetalleMovimientos(mov.data ?? []);
+    }).finally(() => setDetalleLoading(false));
+  }
+
+  async function desmarcarCobro() {
+    if (!detalleModal) return;
+    setDesmarcando(true);
+    try {
+      const res = await fetch(`/api/pagos/${detalleModal.invoiceId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'PENDING', invoiceNumber: inv.invoice_number }),
+        body: JSON.stringify({ status: 'PENDING', invoiceNumber: detalleModal.invoiceNumber }),
       });
       if (res.ok) {
         const updated = await res.json();
-        setPayments(p => ({ ...p, [inv.invoice_id]: updated }));
+        setPayments(p => ({ ...p, [detalleModal.invoiceId]: updated }));
+        setDetalleModal(null);
       }
+    } finally {
+      setDesmarcando(false);
+    }
+  }
+
+  function togglePaid(inv: Invoice) {
+    const current = payments[inv.invoice_id]?.status ?? 'PENDING';
+    if (current === 'PAID') {
+      // Ya está cobrada: mostramos el detalle de lo cargado (retención, IIBB, Ley 25413,
+      // comisión financiera) en vez de desmarcarla directo con un solo click — eso borraba
+      // la asociación sin que hubiera forma de revisar antes qué se había cargado.
+      abrirDetalleCobro(inv);
       return;
     }
     setPagoModal({ invoiceId: inv.invoice_id, invoiceNumber: inv.invoice_number, totalAmount: inv.total_amount });
@@ -728,6 +775,60 @@ export default function BillingTable() {
               <button className="btn btn-primary btn-sm" onClick={confirmarCobro} disabled={pagoSaving}>
                 {pagoSaving ? 'Guardando...' : 'Confirmar cobro'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {detalleModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          onClick={() => !desmarcando && setDetalleModal(null)}>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
+            onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.25rem' }}>Detalle del cobro</h2>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+              {detalleModal.invoiceNumber ?? 'Comprobante'} — {formatMoney(detalleModal.totalAmount)}
+            </p>
+
+            {detalleLoading ? (
+              <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '1.5rem' }}>Cargando...</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
+                  <span className="text-sm text-muted">Monto de la transferencia acreditada</span>
+                  <strong className="text-sm">{formatMoney(payments[detalleModal.invoiceId]?.paidAmount ?? detalleModal.totalAmount)}</strong>
+                </div>
+
+                {detalleRetenciones.length === 0 && detalleMovimientos.length === 0 ? (
+                  <p className="text-sm text-muted" style={{ padding: '0.5rem 0' }}>
+                    No se cargó retención ni costos de cobro para este comprobante.
+                  </p>
+                ) : (
+                  <>
+                    {detalleRetenciones.map(r => (
+                      <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid var(--border)' }}>
+                        <span className="text-sm text-muted">Retención/percepción — {TIPO_IMPUESTO_LABEL[r.tipoImpuesto] ?? r.tipoImpuesto}</span>
+                        <strong className="text-sm">{formatMoney(r.monto)}</strong>
+                      </div>
+                    ))}
+                    {detalleMovimientos.map(m => (
+                      <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid var(--border)' }}>
+                        <span className="text-sm text-muted">
+                          {MOVIMIENTO_LABEL[m.tipo] ?? m.tipo}{m.jurisdiccionIIBB ? ` (${m.jurisdiccionIIBB})` : ''}
+                        </span>
+                        <strong className="text-sm">{formatMoney(m.monto)}</strong>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+              <button className="btn btn-ghost btn-sm" style={{ color: 'var(--error)' }} onClick={desmarcarCobro} disabled={desmarcando || detalleLoading}>
+                {desmarcando ? 'Desmarcando...' : 'Desmarcar como cobrada'}
+              </button>
+              <button className="btn btn-primary btn-sm" onClick={() => setDetalleModal(null)} disabled={desmarcando}>Cerrar</button>
             </div>
           </div>
         </div>
