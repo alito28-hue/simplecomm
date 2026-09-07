@@ -70,6 +70,114 @@ function monthRange(monthStr: string) {
   return { from, to };
 }
 
+interface VentaRow {
+  invoice_id: string;
+  invoice_number: string | null;
+  created_at: string;
+  buyer_name: string;
+  total_amount: number;
+  origin?: string;
+}
+
+interface CompraRow {
+  id: string;
+  issueDate: string | null;
+  issuerName: string;
+  invoiceLetter: string;
+  invoiceNumber: string;
+  netAmount: string | number;
+  totalAmount: string | number;
+}
+
+function RentabilidadDetalleModal({ tipo, month, monthLabel: label, onClose }: {
+  tipo: 'ventas' | 'compras'; month: string; monthLabel: string; onClose: () => void;
+}) {
+  const [loadingDetalle, setLoadingDetalle] = useState(true);
+  const [ventas, setVentas] = useState<VentaRow[]>([]);
+  const [compras, setCompras] = useState<CompraRow[]>([]);
+
+  useEffect(() => {
+    setLoadingDetalle(true);
+    if (tipo === 'ventas') {
+      fetch(`/api/facturas?month=${month}&status=issued&limit=100`)
+        .then(r => r.json())
+        .then(d => setVentas(d.data ?? []))
+        .catch(() => setVentas([]))
+        .finally(() => setLoadingDetalle(false));
+    } else {
+      const { from, to } = monthRange(month);
+      fetch(`/api/organizacion/compras?from=${from.slice(0, 10)}&to=${to.slice(0, 10)}`)
+        .then(r => r.json())
+        .then(d => setCompras(d.data ?? []))
+        .catch(() => setCompras([]))
+        .finally(() => setLoadingDetalle(false));
+    }
+  }, [tipo, month]);
+
+  const isVentas = tipo === 'ventas';
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+      onClick={onClose}>
+      <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', maxWidth: 720, width: '100%', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
+        onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+          <div>
+            <h2 style={{ fontSize: '1.05rem', fontWeight: 700 }}>{isVentas ? 'Ventas' : 'Compras'} — {label}</h2>
+            <p className="text-sm text-muted">Comprobantes que componen este total.</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Cerrar"
+            style={{ background: 'var(--surface-low)', border: 'none', borderRadius: 'var(--radius-full)', width: 32, height: 32, cursor: 'pointer' }}>✕</button>
+        </div>
+
+        {loadingDetalle ? (
+          <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '2.5rem' }}>Cargando...</p>
+        ) : isVentas ? (
+          ventas.length === 0 ? (
+            <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '2.5rem' }}>Sin ventas este mes.</p>
+          ) : (
+            <div className="table-wrap">
+              <table className="table">
+                <thead><tr><th>Fecha</th><th>N° Comprobante</th><th>Receptor</th><th>Origen</th><th>Monto</th></tr></thead>
+                <tbody>
+                  {ventas.map(v => (
+                    <tr key={v.invoice_id}>
+                      <td className="text-sm text-muted">{new Date(v.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}</td>
+                      <td><span className="mono text-sm">{v.invoice_number ?? '—'}</span></td>
+                      <td>{v.buyer_name}</td>
+                      <td><span className="badge badge-gray text-xs">{v.origin ?? 'manual'}</span></td>
+                      <td><strong>{money(v.total_amount)}</strong></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )
+        ) : compras.length === 0 ? (
+          <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '2.5rem' }}>Sin compras este mes.</p>
+        ) : (
+          <div className="table-wrap">
+            <table className="table">
+              <thead><tr><th>Fecha</th><th>Emisor</th><th>Comprobante</th><th>Neto</th><th>Total</th></tr></thead>
+              <tbody>
+                {compras.map(c => (
+                  <tr key={c.id}>
+                    <td className="text-sm text-muted">{c.issueDate ? c.issueDate.slice(8, 10) + '/' + c.issueDate.slice(5, 7) : '—'}</td>
+                    <td>{c.issuerName || '(sin nombre)'}</td>
+                    <td className="text-sm">{c.invoiceLetter} {c.invoiceNumber}</td>
+                    <td className="text-sm">{money(Number(c.netAmount))}</td>
+                    <td><strong>{money(Number(c.totalAmount))}</strong></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function RentabilidadPage() {
   const [items, setItems] = useState<VentaItem[]>([]);
   const [resumen, setResumen] = useState<Resumen | null>(null);
@@ -85,6 +193,7 @@ export default function RentabilidadPage() {
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [historial, setHistorial] = useState<HistorialMes[]>([]);
   const [historialLoading, setHistorialLoading] = useState(true);
+  const [detalle, setDetalle] = useState<{ tipo: 'ventas' | 'compras'; monthLabel: string } | null>(null);
   const limit = 20;
 
   useEffect(() => {
@@ -155,12 +264,12 @@ export default function RentabilidadPage() {
     }
   }
 
-  if (loading) {
+  if (loading && !gananciaNegocio) {
     return <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>Cargando...</div>;
   }
 
   return (
-    <div className={styles.page} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+    <div className={styles.page} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', opacity: loading ? 0.6 : 1, transition: 'opacity 0.15s' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className={styles.sectionTitle} style={{ fontSize: '1.4rem' }}>Rentabilidad — {monthLabel(month)}</h1>
@@ -176,24 +285,34 @@ export default function RentabilidadPage() {
         <div className="card" style={{ padding: '1.25rem 1.5rem' }}>
           <h2 className={styles.sectionTitle} style={{ marginBottom: '0.75rem' }}>Ganancia total del negocio</h2>
           <div className={styles.statCardHRow}>
-            <div className={`card ${styles.statCardH}`}>
+            <button
+              type="button"
+              className={`card ${styles.statCardH}`}
+              style={{ border: 'none', cursor: 'pointer', textAlign: 'left', font: 'inherit' }}
+              onClick={() => setDetalle({ tipo: 'ventas', monthLabel: monthLabel(month) })}
+            >
               <div className={styles.statCardHIcon} style={{ background: 'var(--blue-light)', color: 'var(--blue-hover)' }}>
                 <IconCart size={19} />
               </div>
               <div>
                 <div className={styles.statCardV2Label}>Ventas netas</div>
-                <div className={styles.statCardV2Value}>{money(gananciaNegocio.ventasNetas)}</div>
+                <div className={styles.statCardV2Value} style={{ color: 'var(--blue)', textDecoration: 'underline' }}>{money(gananciaNegocio.ventasNetas)}</div>
               </div>
-            </div>
-            <div className={`card ${styles.statCardH}`}>
+            </button>
+            <button
+              type="button"
+              className={`card ${styles.statCardH}`}
+              style={{ border: 'none', cursor: 'pointer', textAlign: 'left', font: 'inherit' }}
+              onClick={() => setDetalle({ tipo: 'compras', monthLabel: monthLabel(month) })}
+            >
               <div className={styles.statCardHIcon} style={{ background: 'var(--surface-low)', color: 'var(--text-secondary)' }}>
                 <IconReceipt size={19} />
               </div>
               <div>
                 <div className={styles.statCardV2Label}>Compras netas</div>
-                <div className={styles.statCardV2Value}>{money(gananciaNegocio.comprasNetas)}</div>
+                <div className={styles.statCardV2Value} style={{ color: 'var(--blue)', textDecoration: 'underline' }}>{money(gananciaNegocio.comprasNetas)}</div>
               </div>
-            </div>
+            </button>
             <div className={`card ${styles.statCardH}`} style={gananciaNegocio.ganancia >= 0 ? { borderColor: 'var(--success)' } : { borderColor: 'var(--error)' }}>
               <div className={styles.statCardHIcon} style={{ background: gananciaNegocio.ganancia >= 0 ? 'var(--success-bg)' : 'var(--error-bg)', color: gananciaNegocio.ganancia >= 0 ? 'var(--success)' : 'var(--error)' }}>
                 <IconBanknote size={19} />
@@ -409,6 +528,15 @@ export default function RentabilidadPage() {
             )}
           </div>
         </>
+      )}
+
+      {detalle && (
+        <RentabilidadDetalleModal
+          tipo={detalle.tipo}
+          month={month}
+          monthLabel={detalle.monthLabel}
+          onClose={() => setDetalle(null)}
+        />
       )}
     </div>
   );
