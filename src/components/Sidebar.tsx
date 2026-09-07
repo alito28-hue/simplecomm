@@ -139,11 +139,11 @@ export default function Sidebar({ orgName = 'Mi Organización', userEmail, mobil
         <Link href="/dashboard" onClick={close}><LogoWhite size="sm" /></Link>
         {!collapsed && orgName && <span className={styles.orgName}>{orgName}</span>}
         {!collapsed && afipConfigured === true && (
-          <span className={`${styles.afipBadge} ${styles.afipOk}`}>● AFIP activo</span>
+          <span className={`${styles.afipBadge} ${styles.afipOk}`}>● ARCA activo</span>
         )}
         {!collapsed && afipConfigured === false && (
           <Link href="/dashboard/organizacion" onClick={close} className={`${styles.afipBadge} ${styles.afipWarn}`}>
-            ⚠ Configurar AFIP
+            ⚠ Configurar ARCA
           </Link>
         )}
       </div>
