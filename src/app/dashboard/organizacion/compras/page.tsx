@@ -301,28 +301,30 @@ export default function ComprasPage() {
           <h1 className={styles.pageTitle}>Comprobantes</h1>
           <p className={styles.pageSubtitle}>Recibidos — facturas de proveedores para calcular tu posición de IVA. Cargalas a mano o subí una foto/PDF y dejá que la IA complete los datos.</p>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <input
-              type="text"
-              className="input"
-              placeholder="Buscar por emisor o CUIT..."
-              style={{ maxWidth: 220 }}
-              value={searchInput}
-              onChange={e => setSearchInput(e.target.value)}
-            />
-            {!q && <MonthPicker value={month} onChange={setMonth} />}
-          </div>
-          {q && <span className="text-sm text-muted">Buscando en todos los meses</span>}
-          {lastImportAt && (
-            <span className="text-sm text-muted">
-              Última importación ARCA: {new Date(lastImportAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
-        </div>
+        {lastImportAt && (
+          <span className="text-sm text-muted">
+            Última importación ARCA: {new Date(lastImportAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+          </span>
+        )}
       </div>
 
       <ComprobantesTabs />
+
+      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          type="text"
+          className="input"
+          placeholder="Buscar por emisor o CUIT..."
+          style={{ maxWidth: 280, flex: '1 1 220px' }}
+          value={searchInput}
+          onChange={e => setSearchInput(e.target.value)}
+        />
+        {q ? (
+          <span className="text-sm text-muted">Buscando en todos los meses</span>
+        ) : (
+          <MonthPicker value={month} onChange={setMonth} />
+        )}
+      </div>
 
       <div className="card" style={{ padding: '1.25rem' }}>
         {!showForm ? (
