@@ -3,7 +3,7 @@
  * no todas cierran en diciembre (ej. Mocla S.A. cierra en junio). "exerciciosAtras=0" es el
  * ejercicio en curso (el que contiene hoy); "1" es el último ya cerrado; etc.
  */
-export function fiscalYearRange(cierreFiscalMes: number, ejerciciosAtras: number = 0): { from: string; to: string; label: string } {
+export function fiscalYearRange(cierreFiscalMes: number, ejerciciosAtras: number = 0): { from: string; to: string; label: string; endYear: number } {
   const now = new Date();
   let endYear = now.getFullYear();
   if (now.getMonth() + 1 > cierreFiscalMes) endYear += 1;
@@ -13,7 +13,7 @@ export function fiscalYearRange(cierreFiscalMes: number, ejerciciosAtras: number
   const from = new Date(endYear - 1, cierreFiscalMes, 1); // primer día del mes siguiente al cierre, un año antes
 
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  return { from: fmt(from), to: fmt(to), label: `Ejercicio ${endYear}` };
+  return { from: fmt(from), to: fmt(to), label: `Ejercicio ${endYear}`, endYear };
 }
 
 const MESES = [
