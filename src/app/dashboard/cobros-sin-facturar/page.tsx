@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import styles from './cobranzas.module.css';
+import styles from './cobros-sin-facturar.module.css';
 
-type Tab = 'mp' | 'extracto' | 'historial';
+type Tab = 'mp' | 'extracto';
 
 type Bank = 'galicia' | 'santander';
 
@@ -68,12 +68,6 @@ export default function CobranzasPage() {
   const [extSelected, setExtSelected] = useState<Set<string>>(new Set());
   const [emitting, setEmitting] = useState(false);
   const [emitResults, setEmitResults] = useState<{ id: string; ok: boolean; invoiceNumber?: string; error?: string }[]>([]);
-
-  // --- Historial state ---
-  const [search, setSearch] = useState('');
-  const [historialInvoices, setHistorialInvoices] = useState<{ invoice_number: string | null; total_amount: number; status: string; created_at: string; buyer_name: string }[]>([]);
-  const [historialLoading, setHistorialLoading] = useState(false);
-  const [historialSearched, setHistorialSearched] = useState(false);
 
   const fetchMpPayments = useCallback(async () => {
     setMpLoading(true);
@@ -220,27 +214,18 @@ export default function CobranzasPage() {
     setEmitting(false);
   }
 
-  async function buscarHistorial() {
-    if (!search.trim()) return;
-    setHistorialLoading(true); setHistorialSearched(true);
-    try {
-      const res = await fetch('/api/facturas?limit=100');
-      const data = await res.json();
-      const all = data.data ?? [];
-      setHistorialInvoices(all.filter((i: { buyer_name: string }) =>
-        i.buyer_name.toLowerCase().includes(search.toLowerCase())
-      ));
-    } finally { setHistorialLoading(false); }
-  }
-
   const mpTotal = mpPayments.filter(p => !p.invoiced).reduce((s, p) => s + p.amount, 0);
-  const historialTotal = historialInvoices.filter(i => i.status === 'issued').reduce((s, i) => s + i.total_amount, 0);
 
   return (
     <div className={styles.page}>
       <div className={styles.header}>
-        <h1 className={styles.pageTitle}>Cobranzas</h1>
+        <h1 className={styles.pageTitle}>Cobros sin facturar</h1>
       </div>
+      <p className="text-sm text-muted" style={{ marginTop: '-0.5rem' }}>
+        Plata que ya entró (Mercado Pago, transferencias del extracto bancario) pero todavía no se convirtió en un
+        comprobante. Para ver qué facturas emitiste que el cliente todavía no te pagó, andá a{' '}
+        <a href="/dashboard/cobranzas" style={{ color: 'var(--blue)' }}>Cobranzas</a>.
+      </p>
 
       <div className={styles.tabs}>
         <button className={`${styles.tab} ${tab === 'mp' ? styles.tabActive : ''}`} onClick={() => setTab('mp')}>
@@ -248,9 +233,6 @@ export default function CobranzasPage() {
         </button>
         <button className={`${styles.tab} ${tab === 'extracto' ? styles.tabActive : ''}`} onClick={() => setTab('extracto')}>
           🏦 Extracto bancario
-        </button>
-        <button className={`${styles.tab} ${tab === 'historial' ? styles.tabActive : ''}`} onClick={() => setTab('historial')}>
-          🧾 Historial de facturas
         </button>
       </div>
 
@@ -483,58 +465,6 @@ export default function CobranzasPage() {
         </div>
       )}
 
-      {tab === 'historial' && (
-        <div className={styles.tabContent}>
-          <div className={`card ${styles.searchCard}`}>
-            <div className={styles.searchRow}>
-              <input type="text" className="input" value={search}
-                onChange={e => setSearch(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && buscarHistorial()}
-                placeholder="Buscar por nombre del receptor..." style={{ flex: 1 }} />
-              <button className="btn btn-primary" onClick={buscarHistorial}>Buscar</button>
-            </div>
-          </div>
-
-          {historialSearched && (
-            <div className="card">
-              {historialLoading ? (
-                <div className={styles.empty}>Buscando...</div>
-              ) : historialInvoices.length === 0 ? (
-                <div className={styles.empty}>No se encontraron comprobantes para &ldquo;{search}&rdquo;.</div>
-              ) : (
-                <>
-                  <div className={styles.summary}>
-                    <span className="text-muted text-sm">
-                      {historialInvoices.length} comprobante(s) — {historialInvoices.filter(i => i.status === 'issued').length} emitidos
-                    </span>
-                    <strong>Total: ${fmt(historialTotal)}</strong>
-                  </div>
-                  <div className="table-wrap">
-                    <table className="table">
-                      <thead><tr><th>N° Factura</th><th>Receptor</th><th>Fecha</th><th>Monto</th><th>Estado</th></tr></thead>
-                      <tbody>
-                        {historialInvoices.map((inv, i) => (
-                          <tr key={i}>
-                            <td className="mono text-sm">{inv.invoice_number ?? '—'}</td>
-                            <td>{inv.buyer_name}</td>
-                            <td className="text-sm text-muted">{new Date(inv.created_at).toLocaleDateString('es-AR')}</td>
-                            <td><strong>${fmt(inv.total_amount)}</strong></td>
-                            <td>
-                              <span className={`badge ${inv.status === 'issued' ? 'badge-success' : 'badge-error'}`}>
-                                {inv.status === 'issued' ? '✓ Emitida' : inv.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

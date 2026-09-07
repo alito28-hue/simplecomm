@@ -55,6 +55,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/dashboard/billing',   label: 'Comprobantes', Icon: IconReceipt, permission: 'manage_invoices' },
       { href: '/dashboard/cobranzas', label: 'Cobranzas',    Icon: IconWallet, permission: 'view_reports' },
+      { href: '/dashboard/cobros-sin-facturar', label: 'Cobros sin facturar', Icon: IconCart, permission: 'view_reports' },
     ],
   },
   {

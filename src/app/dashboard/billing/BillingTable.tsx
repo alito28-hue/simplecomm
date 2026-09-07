@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import AttachmentsPanel from '@/components/AttachmentsPanel';
 import MonthPicker from '@/components/MonthPicker';
 import { IconDownload } from '@/components/AppIcons';
@@ -87,14 +88,19 @@ function formatCaeDate(yyyymmdd: string) {
 }
 
 export default function BillingTable() {
+  // Cobranzas linkea acá con ?q=<cliente> para llevar directo a una factura pendiente
+  // puntual, sin tener que buscarla a mano.
+  const searchParams = useSearchParams();
+  const initialQ = searchParams.get('q') ?? '';
+
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
-  const [searchInput, setSearchInput] = useState('');
-  const [q, setQ] = useState('');
+  const [searchInput, setSearchInput] = useState(initialQ);
+  const [q, setQ] = useState(initialQ);
 
   // Búsqueda con debounce — espera a que el usuario deje de tipear para no pegarle a la API
   // en cada tecla.
