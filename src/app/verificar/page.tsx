@@ -1,10 +1,5 @@
 import styles from './verificar.module.css';
 
-// Mismo esquema de payload que ya usa el QR real de AFIP (ver buildAfipQrUrl en
-// gateway/src/invoice/pdf.ts) — esta página NO reemplaza esa verificación oficial, es una
-// vista de "comprobante verificado" con la marca de ARCA, pensada para comprobantes de
-// demo (con CAE de ejemplo) usados en videos tutoriales, donde no corresponde exponer datos
-// reales de clientes ni el QR de las facturas reales, que siempre sigue apuntando a ARCA.
 interface QrPayload {
   ver?: number | string;
   fecha?: string;
@@ -64,33 +59,31 @@ export default async function VerificarPage({
   const data = decodePayload(p);
 
   return (
-    <div className={styles.page}>
-      <div 
-        className={styles.header} 
-        style={{ 
-          backgroundColor: '#232c4f', 
-          padding: '1.25rem 2rem', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          justifyContent: 'center',
-          borderBottom: '3px solid #1a2238'
-        }}
-      >
-        <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '1.5rem', letterSpacing: '1px', fontFamily: 'sans-serif' }}>
-          ARCA
-        </span>
-        <span style={{ color: '#cbd5e1', fontSize: '0.75rem', letterSpacing: '0.5px', marginTop: '2px', fontFamily: 'sans-serif' }}>
-          Agencia de Recaudación y Control Aduanero
-        </span>
-      </div>
+    <div className={styles.page} style={{ backgroundColor: '#ffffff', minHeight: '100vh' }}>
+      {/* Header oficial ARCA idéntico a la captura */}
+      <header>
+        <div style={{ backgroundColor: '#18253f', padding: '14px 32px' }}>
+          <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '1.85rem', letterSpacing: '1.5px', fontFamily: 'sans-serif' }}>
+            ARCA
+          </span>
+        </div>
+        <div style={{ backgroundColor: '#42a5f5', display: 'flex', flexWrap: 'wrap', padding: '0 24px', borderBottom: '1px solid #2196f3' }}>
+          <span style={{ color: '#ffffff', padding: '10px 16px', fontSize: '0.8rem', fontWeight: '500', fontFamily: 'sans-serif', cursor: 'pointer' }}>INICIO</span>
+          <span style={{ color: '#ffffff', padding: '10px 16px', fontSize: '0.8rem', fontWeight: '500', fontFamily: 'sans-serif', cursor: 'pointer' }}>COMPROBANTES CON CAI</span>
+          <span style={{ color: '#ffffff', padding: '10px 16px', fontSize: '0.8rem', fontWeight: '500', fontFamily: 'sans-serif', cursor: 'pointer' }}>COMPROBANTES SIN CAI</span>
+          <span style={{ color: '#ffffff', padding: '10px 16px', fontSize: '0.8rem', fontWeight: '700', fontFamily: 'sans-serif', backgroundColor: '#1e88e5', cursor: 'pointer' }}>COMPROBANTES CON CAE</span>
+          <span style={{ color: '#ffffff', padding: '10px 16px', fontSize: '0.8rem', fontWeight: '500', fontFamily: 'sans-serif', cursor: 'pointer' }}>COMPROBANTES CON CAEA</span>
+        </div>
+      </header>
 
-      <div className={styles.container}>
-        <h1 className={styles.title}>Constatación de Comprobantes con CAE</h1>
-        <p className={styles.subtitle}>
-          Esta consulta permite a los receptores de comprobantes electrónicos habilitados
-          constatar que el comprobante escaneado se encuentre registrado y autorizado.
+      <div className={styles.container} style={{ padding: '32px' }}>
+        <h1 className={styles.title} style={{ color: '#1a1a1a', fontSize: '1.7rem', fontWeight: 'bold', marginBottom: '12px' }}>
+          Constatación de Comprobantes con CAE
+        </h1>
+        <p className={styles.subtitle} style={{ color: '#4a5568', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '20px' }}>
+          Esta consulta permite a los receptores de comprobantes electrónicos habilitados constatar que cada uno de ellos se encuentre autorizado. Para ello deberá completar los datos del comprobante que se indican a continuación:
         </p>
-        <hr className={styles.divider} />
+        <hr className={styles.divider} style={{ border: 'none', borderTop: '1px dotted #cbd5e1', marginBottom: '24px' }} />
 
         {data ? (
           <>
@@ -142,7 +135,7 @@ export default async function VerificarPage({
               </div>
             </div>
 
-            <div className={`${styles.result} ${styles.resultOk}`}>
+            <div className={`${styles.result} ${styles.resultOk}`} style={{ marginTop: '24px' }}>
               <span className={styles.resultIcon}>✓</span>
               <span className={styles.resultText}>
                 <strong>Comprobante verificado</strong>
@@ -151,7 +144,7 @@ export default async function VerificarPage({
             </div>
           </>
         ) : (
-          <div className={`${styles.result} ${styles.resultError}`}>
+          <div className={`${styles.result} ${styles.resultError}`} style={{ marginTop: '24px' }}>
             <span className={styles.resultIcon}>✕</span>
             <span className={styles.resultText}>
               <strong>Comprobante no encontrado</strong>
@@ -160,8 +153,9 @@ export default async function VerificarPage({
           </div>
         )}
 
-        <div className={styles.footer}>
-          Verificación de comprobante vía <a href="https://arca.gob.ar" target="_blank" rel="noopener noreferrer">ARCA</a>
+        <div className={styles.footer} style={{ marginTop: '40px', color: '#718096', fontSize: '0.85rem' }}>
+          Verificación de comprobante vía <a href="https://arca.gob.ar" target="_blank" rel="noopener noreferrer" style={{ color: '#3182ce', textDecoration: 'none' }}>ARCA</a>
+          <div style={{ marginTop: '4px', fontSize: '0.75rem', color: '#a0aec0' }}>por SimpleComm</div>
         </div>
       </div>
     </div>
