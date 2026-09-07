@@ -54,13 +54,13 @@ const NAV_GROUPS: NavGroup[] = [
     title: 'Facturación',
     items: [
       { href: '/dashboard/billing',   label: 'Comprobantes', Icon: IconReceipt, permission: 'manage_invoices' },
-      { href: '/dashboard/cobranzas', label: 'Cobranzas',    Icon: IconWallet, permission: 'view_reports' },
       { href: '/dashboard/cobros-sin-facturar', label: 'Cobros sin facturar', Icon: IconCart, permission: 'view_reports' },
     ],
   },
   {
     title: 'Finanzas',
     items: [
+      { href: '/dashboard/cobranzas', label: 'Cobranzas',    Icon: IconWallet, permission: 'view_reports' },
       { href: '/dashboard/organizacion/rentabilidad', label: 'Rentabilidad',          Icon: IconChart, permission: 'manage_products' },
       { href: '/dashboard/organizacion/iva',          label: 'IVA',                   Icon: IconPercent, permission: 'view_reports', ivaOnly: true },
       { href: '/dashboard/organizacion/ganancias',    label: 'Posición de Ganancias', Icon: IconBanknote, permission: 'view_reports', ivaOnly: true },

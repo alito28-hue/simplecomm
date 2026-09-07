@@ -1,26 +1,15 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AttachmentsPanel from '@/components/AttachmentsPanel';
 import MonthPicker from '@/components/MonthPicker';
+import MarcarCobradaModal, { type PaymentStatus } from '@/components/MarcarCobradaModal';
 import { IconDownload } from '@/components/AppIcons';
 import styles from './billing.module.css';
 
-interface RetencionExtractMeta {
-  titulo: string;
-  codigoImpuestoAFIP: number | null;
-  codigoRegimenAFIP: number | null;
-  cuitAgenteRetencion: string;
-  alicuota: number | null;
-  importeOperacionBase: number | null;
-  confidence: string;
-  notes: string;
-}
-
 interface NcModal { invoiceId: string; invoiceNumber: string | null; amount: number; buyerDoc: string | null; }
 interface PagoModal { invoiceId: string; invoiceNumber: string | null; totalAmount: number; }
-interface PaymentStatus { invoiceId: string; status: 'PENDING' | 'PAID'; paidAt: string | null; source: string | null; paidAmount: number | null; }
 
 interface DetalleModal { invoiceId: string; invoiceNumber: string | null; totalAmount: number; }
 interface RetencionRow { id: string; monto: number; tipoImpuesto: string; origen: string; fecha: string }
@@ -88,8 +77,8 @@ function formatCaeDate(yyyymmdd: string) {
 }
 
 export default function BillingTable() {
-  // Cobranzas linkea acá con ?q=<cliente> para llevar directo a una factura pendiente
-  // puntual, sin tener que buscarla a mano.
+  // Soporta ?q=<cliente> en la URL para llegar directo a una factura puntual sin tener que
+  // buscarla a mano (ej. un link externo).
   const searchParams = useSearchParams();
   const initialQ = searchParams.get('q') ?? '';
 
@@ -127,41 +116,7 @@ export default function BillingTable() {
   const [detalleRetenciones, setDetalleRetenciones] = useState<RetencionRow[]>([]);
   const [detalleMovimientos, setDetalleMovimientos] = useState<MovimientoRow[]>([]);
   const [desmarcando, setDesmarcando] = useState(false);
-  const [pagoMontoCobrado, setPagoMontoCobrado] = useState('');
-  const [pagoRetencion, setPagoRetencion] = useState('');
-  const [pagoTipoImpuesto, setPagoTipoImpuesto] = useState<'SIN_CLASIFICAR' | 'GANANCIAS' | 'IVA' | 'IIBB'>('SIN_CLASIFICAR');
-  const [pagoSaving, setPagoSaving] = useState(false);
-  const [pagoRetencionFile, setPagoRetencionFile] = useState<File | null>(null);
-  const [pagoExtracting, setPagoExtracting] = useState(false);
-  const [pagoExtractError, setPagoExtractError] = useState('');
-  const [pagoExtractMeta, setPagoExtractMeta] = useState<RetencionExtractMeta | null>(null);
-  const retencionFileRef = useRef<HTMLInputElement>(null);
-  // Costos bancarios automáticos del cobro (extracto bancario, no del comprobante del
-  // pagador) — fuente distinta de la retención de Ganancias de arriba, ver
-  // spec_costos_bancarios_cobro_y_posicion_iibb.md.
-  const [pagoIibb, setPagoIibb] = useState('');
-  const [pagoJurisdiccionIibb, setPagoJurisdiccionIibb] = useState('');
-  const [pagoLey25413Credito, setPagoLey25413Credito] = useState('');
-  const [pagoLey25413Debito, setPagoLey25413Debito] = useState('');
-  const [pagoComisionFinanciera, setPagoComisionFinanciera] = useState('');
-  const [pagoRetencionManual, setPagoRetencionManual] = useState(false);
-  const [pagoMontoTocado, setPagoMontoTocado] = useState(false);
-  const [pagoIibbManual, setPagoIibbManual] = useState(false);
-  const [pagoLey25413CreditoManual, setPagoLey25413CreditoManual] = useState(false);
-  const [pagoLey25413DebitoManual, setPagoLey25413DebitoManual] = useState(false);
-  const [alicuotaIibb, setAlicuotaIibb] = useState(2.5);
-  const [isMonotributista, setIsMonotributista] = useState(false);
   const limit = 20;
-
-  useEffect(() => {
-    fetch('/api/organizacion/empresa')
-      .then(r => r.json())
-      .then(data => {
-        if (data?.alicuotaIibb != null) setAlicuotaIibb(Number(data.alicuotaIibb));
-        setIsMonotributista(data?.fiscalTreatment === 'MONOTRIBUTISTA');
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -246,160 +201,6 @@ export default function BillingTable() {
       return;
     }
     setPagoModal({ invoiceId: inv.invoice_id, invoiceNumber: inv.invoice_number, totalAmount: inv.total_amount });
-    setPagoMontoCobrado(String(inv.total_amount));
-    setPagoRetencion('0');
-    setPagoTipoImpuesto('SIN_CLASIFICAR');
-    setPagoRetencionFile(null);
-    setPagoExtractError('');
-    setPagoExtractMeta(null);
-    setPagoIibb('');
-    setPagoJurisdiccionIibb('');
-    setPagoLey25413Credito('');
-    setPagoLey25413Debito('');
-    setPagoComisionFinanciera('');
-    setPagoRetencionManual(false);
-    setPagoMontoTocado(false);
-    setPagoIibbManual(false);
-    setPagoLey25413CreditoManual(false);
-    setPagoLey25413DebitoManual(false);
-  }
-
-  // La "Retención/percepción de Ganancias" se recalcula sola como total facturado menos la
-  // transferencia que efectivamente te acreditaron — NADA MÁS. IIBB, Ley 25413 y la comisión
-  // financiera son descuentos que el banco aplica DESPUÉS, sobre esa misma acreditación, y no
-  // tienen relación con la retención que practicó quien te pagó — no se restan acá, cada uno
-  // se registra en su propio campo. Se detiene si el usuario edita el campo a mano (o subió
-  // un comprobante que ya lo fijó).
-  useEffect(() => {
-    if (pagoRetencionManual || pagoExtractMeta || !pagoModal) return;
-    const cobrado = parseFloat(pagoMontoCobrado);
-    if (!Number.isFinite(cobrado)) { setPagoRetencion('0'); return; }
-    const diferencia = pagoModal.totalAmount - cobrado;
-    setPagoRetencion(diferencia > 0 ? String(Math.round(diferencia * 100) / 100) : '0');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagoMontoCobrado, pagoRetencionManual, pagoExtractMeta, pagoModal]);
-
-  // IIBB y Ley 25413 son alícuotas fijas (Ley 25413 siempre 0,6%; IIBB según lo que
-  // configuraste en Empresa) — se sugieren solas a partir de la transferencia acreditada,
-  // así no hay que buscarlas ni calcularlas a mano en el extracto. Igual quedan editables:
-  // si tu banco/jurisdicción aplica otra cosa, se corrige y deja de autocompletarse.
-  useEffect(() => {
-    if (pagoIibbManual) return;
-    const cobrado = parseFloat(pagoMontoCobrado);
-    if (!Number.isFinite(cobrado) || cobrado <= 0) { setPagoIibb(''); return; }
-    setPagoIibb(String(Math.round(cobrado * (alicuotaIibb / 100) * 100) / 100));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagoMontoCobrado, alicuotaIibb, pagoIibbManual]);
-
-  useEffect(() => {
-    if (pagoLey25413CreditoManual) return;
-    const cobrado = parseFloat(pagoMontoCobrado);
-    if (!Number.isFinite(cobrado) || cobrado <= 0) { setPagoLey25413Credito(''); return; }
-    setPagoLey25413Credito(String(Math.round(cobrado * 0.006 * 100) / 100));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagoMontoCobrado, pagoLey25413CreditoManual]);
-
-  useEffect(() => {
-    if (pagoLey25413DebitoManual) return;
-    const iibb = parseFloat(pagoIibb);
-    if (!Number.isFinite(iibb) || iibb <= 0) { setPagoLey25413Debito(''); return; }
-    setPagoLey25413Debito(String(Math.round(iibb * 0.006 * 100) / 100));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagoIibb, pagoLey25413DebitoManual]);
-
-  async function handleRetencionFile(file: File) {
-    setPagoRetencionFile(file);
-    setPagoExtractError('');
-    setPagoExtracting(true);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const res = await fetch('/api/organizacion/retenciones/extract', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'No se pudo extraer los datos');
-      setPagoRetencion(String(data.importe_retenido ?? ''));
-      setPagoTipoImpuesto(data.tipo_impuesto ?? 'SIN_CLASIFICAR');
-      setPagoExtractMeta({
-        titulo: data.titulo ?? '',
-        codigoImpuestoAFIP: data.codigo_impuesto_afip ?? null,
-        codigoRegimenAFIP: data.codigo_regimen_afip ?? null,
-        cuitAgenteRetencion: data.cuit_agente_retencion ?? '',
-        alicuota: data.alicuota ?? null,
-        importeOperacionBase: data.importe_operacion_base ?? null,
-        confidence: data.confidence ?? '',
-        notes: data.notes ?? '',
-      });
-    } catch (e) {
-      setPagoExtractError(e instanceof Error ? e.message : 'Error al extraer los datos. Cargá los datos manualmente.');
-    } finally {
-      setPagoExtracting(false);
-    }
-  }
-
-  async function confirmarCobro() {
-    if (!pagoModal) return;
-    setPagoSaving(true);
-    try {
-      const res = await fetch(`/api/pagos/${pagoModal.invoiceId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          status: 'PAID',
-          invoiceNumber: pagoModal.invoiceNumber,
-          paidAmount: parseFloat(pagoMontoCobrado) || pagoModal.totalAmount,
-        }),
-      });
-      if (!res.ok) return;
-      const updated = await res.json();
-
-      const monto = isMonotributista ? 0 : (parseFloat(pagoRetencion) || 0);
-      if (monto > 0) {
-        const fd = new FormData();
-        fd.append('monto', String(monto));
-        fd.append('tipoImpuesto', pagoTipoImpuesto);
-        fd.append('invoiceId', pagoModal.invoiceId);
-        if (pagoExtractMeta) {
-          // Hay comprobante leído por IA: el origen queda como evidencia auditable, con los
-          // códigos AFIP que lo respaldan (ver spec_retenciones_percepciones_ganancias.md).
-          fd.append('origen', 'COMPROBANTE_RETENCION');
-          if (pagoExtractMeta.codigoImpuestoAFIP != null) fd.append('codigoImpuestoAFIP', String(pagoExtractMeta.codigoImpuestoAFIP));
-          if (pagoExtractMeta.codigoRegimenAFIP != null) fd.append('codigoRegimenAFIP', String(pagoExtractMeta.codigoRegimenAFIP));
-          if (pagoExtractMeta.cuitAgenteRetencion) fd.append('cuitAgenteRetencion', pagoExtractMeta.cuitAgenteRetencion);
-          if (pagoExtractMeta.alicuota != null) fd.append('alicuota', String(pagoExtractMeta.alicuota));
-          if (pagoExtractMeta.importeOperacionBase != null) fd.append('importeOperacionBase', String(pagoExtractMeta.importeOperacionBase));
-          if (pagoRetencionFile) fd.append('file', pagoRetencionFile);
-        } else {
-          // Sin comprobante: si el usuario eligió el tipo a mano es una clasificación MANUAL
-          // confiable; si dejó "Sin clasificar" sobre el monto sugerido por diferencia bancaria,
-          // es solo una inferencia (ver spec, Caso 1).
-          fd.append('origen', pagoTipoImpuesto === 'SIN_CLASIFICAR' ? 'INFERIDO_BANCO' : 'MANUAL');
-        }
-        await fetch('/api/organizacion/retenciones', { method: 'POST', body: fd }).catch(() => {});
-      }
-
-      const movimientos: { tipo: string; monto: number; jurisdiccionIIBB?: string }[] = [];
-      if (!isMonotributista) {
-        const iibb = parseFloat(pagoIibb) || 0;
-        if (iibb > 0) movimientos.push({ tipo: 'PERCEPCION_IIBB_BANCO', monto: iibb, jurisdiccionIIBB: pagoJurisdiccionIibb || undefined });
-        const ley25413c = parseFloat(pagoLey25413Credito) || 0;
-        if (ley25413c > 0) movimientos.push({ tipo: 'LEY25413_CREDITO', monto: ley25413c });
-        const ley25413d = parseFloat(pagoLey25413Debito) || 0;
-        if (ley25413d > 0) movimientos.push({ tipo: 'LEY25413_DEBITO', monto: ley25413d });
-        const comisionFinanciera = parseFloat(pagoComisionFinanciera) || 0;
-        if (comisionFinanciera > 0) movimientos.push({ tipo: 'COMISION_FINANCIERA', monto: comisionFinanciera });
-      }
-
-      await Promise.all(movimientos.map(m => fetch('/api/organizacion/movimientos-cobro', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...m, origen: 'MANUAL', invoiceId: pagoModal.invoiceId }),
-      }).catch(() => {})));
-
-      setPayments(p => ({ ...p, [pagoModal.invoiceId]: updated }));
-      setPagoModal(null);
-    } finally {
-      setPagoSaving(false);
-    }
   }
 
   async function emitirNC(invoiceId: string) {
@@ -663,127 +464,16 @@ export default function BillingTable() {
       )}
 
       {pagoModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
-          onClick={() => !pagoSaving && setPagoModal(null)}>
-          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
-            onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.75rem' }}>Marcar como cobrada</h2>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-              Facturaste <strong>{formatMoney(pagoModal.totalAmount)}</strong>
-              {pagoModal.invoiceNumber ? ` (factura ${pagoModal.invoiceNumber})` : ''}.
-              {isMonotributista
-                ? ' Poné el monto que te acreditaron.'
-                : ' Poné el monto de la transferencia que te acreditaron (la línea de ingreso en tu extracto, antes de cualquier descuento posterior del banco) — la retención de quien te pagó se calcula sola con la diferencia.'}
-            </p>
-            <label className="text-sm" style={{ display: 'block', marginBottom: '0.75rem' }}>
-              Monto de la transferencia acreditada
-              <input type="number" step="0.01" className="input" value={pagoMontoCobrado}
-                style={!pagoMontoTocado ? { borderColor: 'var(--warning)', background: 'var(--warning-bg)' } : undefined}
-                onChange={e => { setPagoMontoCobrado(e.target.value); setPagoMontoTocado(true); }} />
-              {!pagoMontoTocado && (
-                <span className="text-sm" style={{ display: 'block', color: 'var(--warning)', fontWeight: 600 }}>
-                  ⚠ Prellenado con el total facturado — confirmalo o corregilo con lo que realmente te transfirieron.
-                </span>
-              )}
-            </label>
-
-            {!isMonotributista && (
-              <>
-                <label className="text-sm" style={{ display: 'block', marginBottom: '0.75rem' }}>
-                  Retención/percepción de Ganancias sufrida
-                  <input type="number" step="0.01" className="input" value={pagoRetencion}
-                    onChange={e => { setPagoRetencion(e.target.value); setPagoRetencionManual(true); setPagoExtractMeta(null); setPagoRetencionFile(null); }} />
-                  <span className="text-sm text-muted">
-                    Se calcula sola: total facturado menos la transferencia acreditada. Editala si no aplica.
-                  </span>
-                </label>
-
-                {parseFloat(pagoRetencion) > 0 && (
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <input ref={retencionFileRef} type="file" accept="image/*,application/pdf" style={{ display: 'none' }}
-                      onChange={e => { const f = e.target.files?.[0]; if (f) handleRetencionFile(f); }} />
-                    {!pagoExtractMeta && (
-                      <button type="button" className="btn btn-outline btn-sm" onClick={() => retencionFileRef.current?.click()} disabled={pagoExtracting}>
-                        {pagoExtracting ? 'Leyendo comprobante...' : '📎 Subí el comprobante de retención (opcional, clasifica solo)'}
-                      </button>
-                    )}
-                    {pagoExtractError && <p className="text-sm" style={{ color: 'var(--error)', marginTop: '0.4rem' }}>{pagoExtractError}</p>}
-                    {pagoExtractMeta && (
-                      <p className="text-sm" style={{ color: 'var(--success)', marginTop: '0.4rem' }}>
-                        ✓ Comprobante leído: {pagoExtractMeta.titulo || 'retención/percepción'}
-                        {pagoExtractMeta.codigoImpuestoAFIP != null ? ` (código Impuesto ${pagoExtractMeta.codigoImpuestoAFIP})` : ''}.
-                        {pagoExtractMeta.confidence === 'low' ? ' Confianza baja — revisá el tipo antes de confirmar.' : ''}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {parseFloat(pagoRetencion) > 0 && (
-                  <label className="text-sm" style={{ display: 'block' }}>
-                    ¿De qué impuesto es?{!pagoExtractMeta && ' (si lo sabés)'}
-                    <select className="select" value={pagoTipoImpuesto}
-                      onChange={e => setPagoTipoImpuesto(e.target.value as typeof pagoTipoImpuesto)}>
-                      <option value="SIN_CLASIFICAR">No sé / sin clasificar</option>
-                      <option value="GANANCIAS">Ganancias (RG 830)</option>
-                      <option value="IVA">IVA</option>
-                      <option value="IIBB">Ingresos Brutos</option>
-                    </select>
-                    <span className="text-sm text-muted">
-                      {pagoTipoImpuesto === 'GANANCIAS'
-                        ? 'Se va a descontar del Impuesto a las Ganancias estimado.'
-                        : 'No se descuenta de ningún impuesto automáticamente — solo queda registrada.'}
-                    </span>
-                  </label>
-                )}
-
-                <div style={{ marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
-                  <p className="text-sm" style={{ fontWeight: 700, marginBottom: '0.35rem' }}>Costos del cobro (opcional)</p>
-                  <p className="text-sm text-muted" style={{ marginBottom: '0.6rem' }}>
-                    Se calculan solos a partir de la transferencia de arriba (IIBB al {alicuotaIibb}% que configuraste
-                    en Empresa, Ley 25413 al 0,6% fijo) — corregilos si tu extracto muestra otra cosa. Si cobraste en
-                    efectivo, dejalos en 0. Si cobraste con un cheque que descontaste en una financiera, usá el
-                    último campo.
-                  </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '0.6rem' }}>
-                    <label className="text-sm">Percepción IIBB (banco)
-                      <input type="number" step="0.01" className="input" placeholder="0" value={pagoIibb}
-                        onChange={e => { setPagoIibb(e.target.value); setPagoIibbManual(true); }} />
-                    </label>
-                    <label className="text-sm">Jurisdicción
-                      <input className="input" placeholder="Ej: CABA" value={pagoJurisdiccionIibb} onChange={e => setPagoJurisdiccionIibb(e.target.value)} />
-                    </label>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem', marginBottom: '0.6rem' }}>
-                    <label className="text-sm">Ley 25413 (crédito)
-                      <input type="number" step="0.01" className="input" placeholder="0" value={pagoLey25413Credito}
-                        onChange={e => { setPagoLey25413Credito(e.target.value); setPagoLey25413CreditoManual(true); }} />
-                    </label>
-                    <label className="text-sm">Ley 25413 (débito)
-                      <input type="number" step="0.01" className="input" placeholder="0" value={pagoLey25413Debito}
-                        onChange={e => { setPagoLey25413Debito(e.target.value); setPagoLey25413DebitoManual(true); }} />
-                    </label>
-                  </div>
-                  <label className="text-sm" style={{ display: 'block' }}>
-                    Comisión por descontar un cheque en una financiera
-                    <input type="number" step="0.01" className="input" placeholder="0" value={pagoComisionFinanciera} onChange={e => setPagoComisionFinanciera(e.target.value)} />
-                  </label>
-                  <span className="text-sm text-muted" style={{ display: 'block', marginTop: '0.4rem' }}>
-                    La percepción de IIBB se acumula en Posición de IIBB. De Ley 25413 se descuenta de Ganancias
-                    solo el % computable según tu categoría Pyme (configurable en Empresa). La comisión de la
-                    financiera y el resto de Ley 25413 se muestran como costo real, aparte del impuesto estimado.
-                  </span>
-                </div>
-              </>
-            )}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1.25rem' }}>
-              <button className="btn btn-ghost btn-sm" onClick={() => setPagoModal(null)} disabled={pagoSaving}>Cancelar</button>
-              <button className="btn btn-primary btn-sm" onClick={confirmarCobro} disabled={pagoSaving}>
-                {pagoSaving ? 'Guardando...' : 'Confirmar cobro'}
-              </button>
-            </div>
-          </div>
-        </div>
+        <MarcarCobradaModal
+          invoiceId={pagoModal.invoiceId}
+          invoiceNumber={pagoModal.invoiceNumber}
+          totalAmount={pagoModal.totalAmount}
+          onClose={() => setPagoModal(null)}
+          onSaved={updated => {
+            setPayments(p => ({ ...p, [pagoModal.invoiceId]: updated }));
+            setPagoModal(null);
+          }}
+        />
       )}
 
       {detalleModal && (

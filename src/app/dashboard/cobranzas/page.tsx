@@ -5,6 +5,7 @@ import Link from 'next/link';
 import pageStyles from '../organizacion/clientes/clientes.module.css';
 import dashStyles from '../dashboard.module.css';
 import { IconWallet } from '@/components/AppIcons';
+import MarcarCobradaModal, { type PaymentStatus } from '@/components/MarcarCobradaModal';
 
 interface Pendiente {
   invoice_id: string;
@@ -15,6 +16,8 @@ interface Pendiente {
   created_at: string;
   origin: string;
 }
+
+interface CobroModal { invoiceId: string; invoiceNumber: string | null; totalAmount: number; }
 
 function money(n: number) {
   return `$${n.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
@@ -35,14 +38,17 @@ export default function CobranzasPage() {
   const [pendientes, setPendientes] = useState<Pendiente[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [cobroModal, setCobroModal] = useState<CobroModal | null>(null);
 
-  useEffect(() => {
+  function load() {
     fetch('/api/pagos/pendientes')
       .then(r => r.json())
       .then(d => { setPendientes(d.data ?? []); setTotal(d.totalPendiente ?? 0); })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+  }
+
+  useEffect(load, []);
 
   return (
     <div className={pageStyles.page}>
@@ -97,7 +103,6 @@ export default function CobranzasPage() {
                 <tbody>
                   {pendientes.map(p => {
                     const dias = diasPendiente(p.created_at);
-                    const q = p.buyer_doc || p.buyer_name;
                     return (
                       <tr key={p.invoice_id}>
                         <td className="text-sm text-muted">{new Date(p.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
@@ -110,9 +115,13 @@ export default function CobranzasPage() {
                           </span>
                         </td>
                         <td>
-                          <Link href={`/dashboard/billing?q=${encodeURIComponent(q)}`} className="btn btn-outline btn-sm">
-                            Marcar como cobrada →
-                          </Link>
+                          <button
+                            type="button"
+                            className="btn btn-outline btn-sm"
+                            onClick={() => setCobroModal({ invoiceId: p.invoice_id, invoiceNumber: p.invoice_number, totalAmount: p.total_amount })}
+                          >
+                            Marcar como cobrada
+                          </button>
                         </td>
                       </tr>
                     );
@@ -122,6 +131,20 @@ export default function CobranzasPage() {
             </div>
           </div>
         </>
+      )}
+
+      {cobroModal && (
+        <MarcarCobradaModal
+          invoiceId={cobroModal.invoiceId}
+          invoiceNumber={cobroModal.invoiceNumber}
+          totalAmount={cobroModal.totalAmount}
+          onClose={() => setCobroModal(null)}
+          onSaved={(_updated: PaymentStatus) => {
+            setCobroModal(null);
+            setLoading(true);
+            load();
+          }}
+        />
       )}
     </div>
   );
