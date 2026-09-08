@@ -353,13 +353,19 @@ function drawInvoicePage(
     doc.text(showIva ? 'Subtotal sin IVA' : 'Importe', colX.subtotal, y + 7, { width: colSubtotal - 8, align: 'right' });
 
     y += 22;
-    const rowH = 20;
+    const descText = data.description ?? 'Venta';
+    doc.font('Helvetica').fontSize(8);
+    // Alto real según cuántas líneas envuelve la descripción — antes era un valor fijo de
+    // 20pt, así que una descripción larga (ej. "Compra en mesames.com.ar - Pedido #...")
+    // desbordaba hacia abajo y la línea separadora del renglón la cortaba por la mitad.
+    const descHeight = doc.heightOfString(descText, { width: descW - 12 });
+    const rowH = Math.max(20, descHeight + 12);
     for (const item of lineItems) {
       // Solo una línea separadora abajo de cada renglón, no un recuadro cerrado — un
       // rectángulo por ítem se ve como si la descripción estuviera "enjaulada".
       doc.moveTo(leftCol, y + rowH).lineTo(leftCol + pageWidth, y + rowH).stroke(BLACK);
       doc.fillColor(BLACK).font('Helvetica').fontSize(8)
-        .text(data.description ?? 'Venta', colX.desc + 6, y + 6, { width: descW - 12 })
+        .text(descText, colX.desc + 6, y + 6, { width: descW - 12 })
         .text('1', colX.cant, y + 6, { width: colCant, align: 'center' })
         .text('UN', colX.unit, y + 6, { width: colUnit, align: 'center' })
         .text(formatMoney(item.baseImp), colX.precio, y + 6, { width: colPrecio, align: 'right' })
@@ -421,6 +427,8 @@ function drawInvoicePage(
     doc.image(qrBuffer, leftCol, caeY, { width: qrSize, height: qrSize });
 
     doc.rect(caeBoxX, caeY, caeBoxW, qrSize).stroke(BLACK);
+    doc.fillColor(GRAY).font('Helvetica').fontSize(7)
+      .text('Pág. 1/1', caeBoxX + 8, caeY + 4);
     doc.fillColor(GRAY).font('Helvetica').fontSize(8)
       .text('CAE N°:', caeBoxX + 8, caeY + 16)
       .text('Fecha de Vto. de CAE:', caeBoxX + 8, caeY + 36);
