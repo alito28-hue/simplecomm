@@ -174,6 +174,23 @@ export function isoToAfipDate(iso: string): string {
   return iso.replace(/-/g, '');
 }
 
+// RG 5616 — "Condición frente al IVA del receptor", obligatoria desde el 1/12/2026 (ARCA
+// rechaza automáticamente cualquier solicitud sin este dato a partir de esa fecha). Tabla de
+// parámetros: https://www.afip.gob.ar/fe/ayuda/tablas.asp ("Operación / Condición IVA").
+// Factura A implica siempre receptor Responsable Inscripto (ya lo exige el resto del código:
+// requiere CUIT/CUIL). Para B/C, SimpleComm hoy no le pregunta al comprador su condición frente
+// al IVA — se asume Consumidor Final, que es el caso real abrumadoramente mayoritario en el
+// uso de la plataforma (facturación de e-commerce). Si algún día se factura a un comprador con
+// CUIT que declare ser Monotributista/Exento en una B o C, este valor va a quedar incorrecto —
+// ARCA no lo va a rechazar por eso (es informativo, no cruza contra el padrón en tiempo real),
+// pero no es 100% preciso.
+const CONDICION_IVA_RECEPTOR_RI = 1;
+const CONDICION_IVA_RECEPTOR_CONSUMIDOR_FINAL = 5;
+
+export function condicionIVAReceptorId(invoiceLetter: InvoiceLetterType): number {
+  return invoiceLetter === 'A' ? CONDICION_IVA_RECEPTOR_RI : CONDICION_IVA_RECEPTOR_CONSUMIDOR_FINAL;
+}
+
 export function docTypeToAfipId(docType: string): number {
   const map: Record<string, number> = {
     CUIT: 80, CUIL: 86, CDI: 87, DNI: 96,

@@ -36,6 +36,8 @@ export interface InvoiceRequest {
   fchVtoPago?: string;    // YYYYMMDD — obligatorio si concept es 2 o 3
   monId?: string;         // AFIP MonId: "PES" (default) o "DOL"
   monCotiz?: number;      // Cotización del día; 1 para PES
+  condicionIVAReceptorId: number; // RG 5616 — obligatorio desde el 1/12/2026, ARCA rechaza sin
+                                   // esto. 1=RI (Facturas A), 5=Consumidor Final (B/C), etc.
   cbtesAsoc?: CbteAsociado[]; // Comprobantes asociados — obligatorio en Notas de Crédito/Débito,
                               // referencian el comprobante original que se está ajustando.
 }
@@ -271,6 +273,7 @@ export async function feCAESolicitar(
           ${req.fchVtoPago ? `<ar:FchVtoPago>${req.fchVtoPago}</ar:FchVtoPago>` : ''}
           <ar:MonId>${req.monId ?? 'PES'}</ar:MonId>
           <ar:MonCotiz>${(req.monCotiz ?? 1).toFixed(4)}</ar:MonCotiz>
+          <ar:CondicionIVAReceptorId>${req.condicionIVAReceptorId}</ar:CondicionIVAReceptorId>
           ${cbtesAsocBlock}
           ${ivaBlock}
         </ar:FECAEDetRequest>

@@ -4,7 +4,7 @@ import { authenticateApiKey } from '../middleware/apikey';
 import { db } from '../db/client';
 import { getValidTicket } from '../wsaa/cache';
 import { feCompUltimoAutorizado, feCAESolicitar } from '../wsfe/client';
-import { calculateFacturaB, toAfipDate, formatInvoiceNumber } from '../invoice/calculate';
+import { calculateFacturaB, condicionIVAReceptorId, toAfipDate, formatInvoiceNumber } from '../invoice/calculate';
 import { generateInvoicePdf } from '../invoice/pdf';
 import { endpoints } from '../config';
 import { randomUUID } from 'node:crypto';
@@ -168,6 +168,7 @@ export async function batchRoutes(app: FastifyInstance): Promise<void> {
             impIVA: amounts.impIVA,
             impTrib: amounts.impTrib,
             ivaItems: amounts.ivaItems,
+            condicionIVAReceptorId: condicionIVAReceptorId('B'),
           });
 
           // Generar PDF

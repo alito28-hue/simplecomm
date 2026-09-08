@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { db } from '../db/client';
 import { getValidTicket, invalidateTicket } from '../wsaa/cache';
 import { feCompUltimoAutorizado, feCAESolicitar } from '../wsfe/client';
-import { calculateByType, CBTE_TYPE, NC_TYPE, letterFromCbteType, toAfipDate, isoToAfipDate, docTypeToAfipId, formatInvoiceNumber, parseIvaRate, type InvoiceLetterType, type IvaRateId, type InvoiceAmounts } from './calculate';
+import { calculateByType, CBTE_TYPE, NC_TYPE, letterFromCbteType, condicionIVAReceptorId, toAfipDate, isoToAfipDate, docTypeToAfipId, formatInvoiceNumber, parseIvaRate, type InvoiceLetterType, type IvaRateId, type InvoiceAmounts } from './calculate';
 import { generateInvoicePdf } from './pdf';
 import { endpoints } from '../config';
 
@@ -172,6 +172,7 @@ export async function issueInvoice(req: IssueRequest): Promise<IssueResult> {
       fchVtoPago,
       monId,
       monCotiz,
+      condicionIVAReceptorId: condicionIVAReceptorId(invoiceLetter),
     });
 
     // ── Generar PDF ───────────────────────────────────────────────────────
@@ -377,6 +378,7 @@ export async function issueCreditNote(req: CreditNoteRequest): Promise<IssueResu
       ivaItems: amounts.ivaItems,
       monId: original.moneda,
       monCotiz: Number(original.cotizacion),
+      condicionIVAReceptorId: condicionIVAReceptorId(invoiceLetter),
       cbtesAsoc: [{ tipo: original.invoiceType, ptoVta: original.ptoVta, nro: original.invoiceNumber }],
     });
 
