@@ -211,7 +211,7 @@ function drawInvoicePage(
   // ── Encabezado: emisor | letra | comprobante ──────────────────────────
     const emisorLines = [
       `CUIT: ${formatCuit(data.tenant.cuit)}`,
-      emisorIvaCondition(letter),
+      `Condición Frente al IVA: ${emisorIvaCondition(letter)}`,
       `Ingresos Brutos: ${data.tenant.iibb ?? data.tenant.cuit}`,
     ];
     if (data.tenant.address) emisorLines.push(`Domicilio: ${data.tenant.address}`);
@@ -389,7 +389,7 @@ function drawInvoicePage(
     doc.font('Helvetica-Oblique').fontSize(8);
     const sonH = doc.heightOfString(sonText, { width: pageWidth });
 
-    const ivaLinesCount = showIva ? 2 + data.amounts.ivaItems.length : 0;
+    const ivaLinesCount = showIva ? 3 + data.amounts.ivaItems.length : 0;
     const totalsBlockH = ivaLinesCount * 15 + (showIva ? 2 : 0) + 28 + 10 + sonH;
 
     y = Math.max(y + 16, caeY - totalsBlockH - 10);
@@ -407,6 +407,9 @@ function drawInvoicePage(
           .text(`${currencySymbol} ${formatMoney(item.importe)}`, totalsX + 130, y, { width: 90, align: 'right' });
         y += 15;
       }
+      doc.text('Importe Otros Tributos:', totalsX, y)
+        .text(`${currencySymbol} ${formatMoney(data.amounts.impTrib)}`, totalsX + 130, y, { width: 90, align: 'right' });
+      y += 15;
       y += 2;
     }
 
