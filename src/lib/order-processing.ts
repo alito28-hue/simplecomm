@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { registrarVentaItem } from '@/lib/venta-items';
+import { notifyLowStockIfNeeded } from '@/lib/stock-alerts';
 import { randomUUID } from 'crypto';
 
 export interface OrderBuyer {
@@ -125,13 +126,13 @@ export async function processIncomingOrder(
       // Dos consultas separadas (en vez de un .or() con el SKU interpolado) porque el SKU
       // viene de un pedido externo no confiable — evita filter injection en PostgREST.
       let product = (await db.from('products')
-        .select('id, stock')
+        .select('id, stock, stockMinimo, description')
         .eq('organizationId', organizationId)
         .eq('sku', item.sku)
         .maybeSingle()).data;
       if (!product) {
         product = (await db.from('products')
-          .select('id, stock')
+          .select('id, stock, stockMinimo, description')
           .eq('organizationId', organizationId)
           .eq('code', item.sku)
           .maybeSingle()).data;
@@ -139,9 +140,11 @@ export async function processIncomingOrder(
 
       if (product) {
         if (product.stock !== null) {
+          const newStock = Math.max(0, product.stock - item.quantity);
           await db.from('products')
-            .update({ stock: Math.max(0, product.stock - item.quantity), updatedAt: now })
+            .update({ stock: newStock, updatedAt: now })
             .eq('id', product.id);
+          await notifyLowStockIfNeeded(organizationId, product, product.stock, newStock);
         }
         productsMatched.push(product.id);
       } else {
@@ -160,7 +163,7 @@ export async function processIncomingOrder(
         }).select('id').single();
         if (error) throw error;
         productsCreated.push(created.id);
-        product = { id: created.id, stock: null };
+        product = { id: created.id, stock: null, stockMinimo: null, description: item.name || item.sku };
       }
 
       // La factura de este pedido la emite cada webhook aparte con el Gateway (no acá), así

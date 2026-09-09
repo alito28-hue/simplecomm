@@ -7,6 +7,7 @@ import { getAllowedInvoiceLetters } from '@/lib/fiscal';
 import { translateGatewayError } from '@/lib/afip-errors';
 import { buildInvoiceFilename } from '@/lib/invoice-filename';
 import { registrarVentaItem } from '@/lib/venta-items';
+import { notifyLowStockIfNeeded } from '@/lib/stock-alerts';
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -173,11 +174,13 @@ export async function POST(req: NextRequest) {
   // canal — antes esas ventas quedaban completamente afuera.
   if (productId) {
     const { data: product } = await supabase.from('products')
-      .select('stock').eq('id', productId).eq('organizationId', user.id).maybeSingle();
+      .select('stock, stockMinimo, description').eq('id', productId).eq('organizationId', user.id).maybeSingle();
     if (product && product.stock !== null) {
+      const newStock = Math.max(0, product.stock - quantity);
       await supabase.from('products')
-        .update({ stock: Math.max(0, product.stock - quantity), updatedAt: new Date().toISOString() })
+        .update({ stock: newStock, updatedAt: new Date().toISOString() })
         .eq('id', productId).eq('organizationId', user.id);
+      await notifyLowStockIfNeeded(user.id, { id: productId, description: product.description, stockMinimo: product.stockMinimo }, product.stock, newStock);
     }
   }
   await registrarVentaItem({

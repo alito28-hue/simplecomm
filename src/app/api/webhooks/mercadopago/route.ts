@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
 import { registrarVentaItem } from '@/lib/venta-items';
+import { notifyLowStockIfNeeded } from '@/lib/stock-alerts';
 
 /**
  * Detecta tipo de factura igual que en ML:
@@ -207,11 +208,13 @@ export async function POST(req: NextRequest) {
       if (pendingSale) {
         if (pendingSale.productId && pendingSale.quantity) {
           const { data: product } = await admin.from('products')
-            .select('stock').eq('id', pendingSale.productId).eq('organizationId', integration.organizationId).maybeSingle();
+            .select('stock, stockMinimo, description').eq('id', pendingSale.productId).eq('organizationId', integration.organizationId).maybeSingle();
           if (product && product.stock !== null) {
+            const newStock = Math.max(0, product.stock - pendingSale.quantity);
             await admin.from('products')
-              .update({ stock: Math.max(0, product.stock - pendingSale.quantity), updatedAt: new Date().toISOString() })
+              .update({ stock: newStock, updatedAt: new Date().toISOString() })
               .eq('id', pendingSale.productId).eq('organizationId', integration.organizationId);
+            await notifyLowStockIfNeeded(integration.organizationId, { id: pendingSale.productId, description: product.description, stockMinimo: product.stockMinimo }, product.stock, newStock);
           }
           await registrarVentaItem({
             organizationId: integration.organizationId,

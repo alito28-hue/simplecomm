@@ -5,14 +5,17 @@ import styles from '../clientes/clientes.module.css';
 
 interface Producto {
   id: string; code: string; sku: string | null; description: string; netPrice: number; ivaRate: string;
-  stock: number | null; needsReview: boolean; costo: number | null;
+  stock: number | null; stockMinimo: number | null; needsReview: boolean; costo: number | null;
   pesoKg: number | null; altoCm: number | null; anchoCm: number | null; profundidadCm: number | null;
 }
 const IVA_RATES = ['EXENTO','NO_GRAVADO','IVA_2_5','IVA_5','IVA_10_5','IVA_21','IVA_27'];
 const EMPTY = {
-  code: '', sku: '', description: '', netPrice: '', ivaRate: 'IVA_21', stock: '', costo: '',
+  code: '', sku: '', description: '', netPrice: '', ivaRate: 'IVA_21', stock: '', stockMinimo: '', costo: '',
   pesoKg: '', altoCm: '', anchoCm: '', profundidadCm: '',
 };
+
+// Umbral de stock bajo para el badge cuando el producto no tiene uno propio configurado.
+const DEFAULT_STOCK_WARNING = 5;
 
 export default function ProductosPage() {
   const [items, setItems] = useState<Producto[]>([]);
@@ -58,6 +61,7 @@ export default function ProductosPage() {
     setForm({
       code: p.code, sku: p.sku ?? '', description: p.description, netPrice: String(p.netPrice), ivaRate: p.ivaRate,
       stock: p.stock === null ? '' : String(p.stock),
+      stockMinimo: p.stockMinimo === null ? '' : String(p.stockMinimo),
       costo: p.costo === null ? '' : String(p.costo),
       pesoKg: p.pesoKg === null ? '' : String(p.pesoKg),
       altoCm: p.altoCm === null ? '' : String(p.altoCm),
@@ -78,6 +82,7 @@ export default function ProductosPage() {
         sku: form.sku || null,
         netPrice: parseFloat(form.netPrice) || 0,
         stock: form.stock === '' ? null : parseInt(form.stock, 10),
+        stockMinimo: form.stockMinimo === '' ? null : parseInt(form.stockMinimo, 10),
         costo: form.costo === '' ? null : parseFloat(form.costo),
         pesoKg: form.pesoKg === '' ? null : parseFloat(form.pesoKg),
         altoCm: form.altoCm === '' ? null : parseFloat(form.altoCm),
@@ -139,8 +144,15 @@ export default function ProductosPage() {
                   </td>
                   <td><span className="badge badge-blue">{p.ivaRate.replace('_', ' ')}</span></td>
                   <td>
-                    {p.stock === null ? <span className="text-sm text-muted">—</span> :
-                      <span className={`badge ${p.stock === 0 ? 'badge-error' : p.stock <= 5 ? 'badge-warning' : 'badge-success'}`}>{p.stock}</span>}
+                    {p.stock === null ? <span className="text-sm text-muted">—</span> : (() => {
+                      const umbral = p.stockMinimo ?? DEFAULT_STOCK_WARNING;
+                      return (
+                        <span className={`badge ${p.stock === 0 ? 'badge-error' : p.stock <= umbral ? 'badge-warning' : 'badge-success'}`}
+                          title={p.stockMinimo != null ? `Alerta configurada en ${p.stockMinimo} unidades` : undefined}>
+                          {p.stock}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td>
                     <div style={{ display: 'flex', gap: '0.35rem' }}>
@@ -190,6 +202,10 @@ export default function ProductosPage() {
                 <div className={styles.field}>
                   <label>Costo (precio de compra)</label>
                   <input className="input" type="number" step="0.01" min="0" value={form.costo} onChange={e => setForm(f => ({ ...f, costo: e.target.value }))} placeholder="Vacío = sin dato de costo" />
+                </div>
+                <div className={styles.field}>
+                  <label>Avisarme si el stock baja de</label>
+                  <input className="input" type="number" min="0" step="1" value={form.stockMinimo} onChange={e => setForm(f => ({ ...f, stockMinimo: e.target.value }))} placeholder={`Vacío = umbral por defecto (${DEFAULT_STOCK_WARNING})`} />
                 </div>
               </div>
               <div className={styles.row}>
