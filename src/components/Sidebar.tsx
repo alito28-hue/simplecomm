@@ -11,7 +11,7 @@ import {
 } from './LandingIcons';
 import {
   IconUsers, IconWallet, IconBanknote, IconCalendar, IconTruck, IconLink, IconTag, IconFolder,
-  IconBook, IconHelp, IconGear, IconBolt, IconHome,
+  IconBook, IconHelp, IconGear, IconBolt, IconHome, IconClipboard,
 } from './AppIcons';
 import styles from './Sidebar.module.css';
 
@@ -53,6 +53,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Facturación',
     items: [
+      { href: '/dashboard/presupuestos', label: 'Presupuestos', Icon: IconClipboard, permission: 'manage_invoices' },
       { href: '/dashboard/billing',   label: 'Comprobantes', Icon: IconReceipt, permission: 'manage_invoices' },
       { href: '/dashboard/cobros-sin-facturar', label: 'Cobros sin facturar', Icon: IconCart, permission: 'view_reports' },
     ],

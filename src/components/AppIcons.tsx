@@ -212,3 +212,13 @@ export function IconPencil({ size = 20 }: IconProps) {
     </svg>
   );
 }
+
+export function IconClipboard({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <path d="M9 4.5h6a1 1 0 0 1 1 1V7H8V5.5a1 1 0 0 1 1-1Z" />
+      <path d="M6 6.5h12a1 1 0 0 1 1 1V19a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7.5a1 1 0 0 1 1-1Z" />
+      <path d="M8.5 11.5h7M8.5 14.8h7M8.5 18h4" />
+    </svg>
+  );
+}

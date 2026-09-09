@@ -76,6 +76,7 @@ export default function FacturacionManualPage() {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipPadronRef = useRef(false);
   const searchParams = useSearchParams();
+  const fromQuoteRef = useRef<string | null>(null);
 
   // Filtrar tipos de comprobante según la condición fiscal de la organización
   useEffect(() => {
@@ -99,6 +100,21 @@ export default function FacturacionManualPage() {
       setBuyer(b => ({ ...b, fullName: name ?? b.fullName, docType: docType ?? b.docType, docNumber: docNumber ?? b.docNumber }));
       if (email) { setRecipientEmail(email); setSendEmail(true); }
     }
+
+    // Llegó desde un presupuesto aceptado ("Convertir a factura") — precarga los ítems
+    // tal cual estaban en el presupuesto y guarda el id para avisarle al backend, una vez
+    // emitida la factura, que ese presupuesto ya se convirtió.
+    const itemsParam = searchParams.get('items');
+    const fromQuote = searchParams.get('fromQuote');
+    if (itemsParam) {
+      try {
+        const parsed = JSON.parse(itemsParam) as { description: string; quantity: number; unitPrice: number }[];
+        if (parsed.length > 0) {
+          setItems(parsed.map(it => ({ description: it.description, quantity: it.quantity, unitPrice: it.unitPrice, ivaRate: 'IVA_21' })));
+        }
+      } catch { /* ignora un query param mal formado */ }
+    }
+    if (fromQuote) fromQuoteRef.current = fromQuote;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -270,6 +286,14 @@ export default function FacturacionManualPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setResult(data);
+      if (fromQuoteRef.current) {
+        fetch(`/api/presupuestos/${fromQuoteRef.current}/convertir`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ invoiceNumber: data.invoiceNumber }),
+        }).catch(() => {});
+        fromQuoteRef.current = null;
+      }
     } catch (e) { setError(e instanceof Error ? e.message : 'Error'); }
     finally { setLoading(false); }
   }
