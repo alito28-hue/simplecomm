@@ -11,48 +11,54 @@ const GEMINI_MODEL = 'gemini-3.8-flash';
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'];
 
+// Formato de schema propio de Gemini (subset de OpenAPI): tipos en MAYÚSCULA y `nullable`
+// en vez de uniones `type: [...]` — no acepta el dialecto JSON-Schema estándar.
 const EXTRACTION_SCHEMA = {
-  type: 'object',
+  type: 'OBJECT',
   properties: {
     titulo: {
-      type: 'string',
+      type: 'STRING',
       description: 'Título/encabezado del comprobante tal cual aparece impreso (ej. "Retención de Ganancias", "Retención/Percepción de Ingresos Brutos"). Vacío si no es legible.',
     },
     codigo_impuesto_afip: {
-      type: ['number', 'null'],
+      type: 'NUMBER',
+      nullable: true,
       description: 'Código numérico del campo "Impuesto" (tabla SICORE, RG AFIP 2233/2007 Anexo III) — ej. 217 = Impuesto a las Ganancias. null si el comprobante no tiene ese campo o no es legible.',
     },
     codigo_regimen_afip: {
-      type: ['number', 'null'],
+      type: 'NUMBER',
+      nullable: true,
       description: 'Código numérico del campo "Régimen" — ej. 94 = Locaciones de Obra y/o Servicios. null si no aplica o no es legible.',
     },
     cuit_agente_retencion: {
-      type: 'string',
+      type: 'STRING',
       description: 'CUIT de quien practicó la retención/percepción (el "Agente de Retención"), solo dígitos, 11 caracteres. Vacío si no es legible.',
     },
     nro_ib_presente: {
-      type: 'boolean',
+      type: 'BOOLEAN',
       description: 'true si el comprobante tiene un campo "Nro. I.B." (Ingresos Brutos) completado con un número — false si está vacío o no existe ese campo.',
     },
     importe_operacion_base: {
-      type: ['number', 'null'],
+      type: 'NUMBER',
+      nullable: true,
       description: 'Importe de la Operación — la base sobre la que se calculó la retención/percepción (antes de aplicar la alícuota). null si no es legible.',
     },
     alicuota: {
-      type: ['number', 'null'],
+      type: 'NUMBER',
+      nullable: true,
       description: 'Alícuota aplicada, como fracción decimal (ej. 2,00% del comprobante → 0.02). null si no es legible.',
     },
     importe_retenido: {
-      type: 'number',
+      type: 'NUMBER',
       description: 'Importe Retenido/Percibido — el monto final de la retención o percepción, siempre positivo (ignorar el signo negativo si el comprobante lo imprime así). Este es el dato más importante — extraelo con precisión.',
     },
     confidence: {
-      type: 'string',
+      type: 'STRING',
       enum: ['high', 'medium', 'low'],
       description: '"low" si la imagen está borrosa o el código de Impuesto no se pudo leer con certeza.',
     },
     notes: {
-      type: 'string',
+      type: 'STRING',
       description: 'Aclaraciones breves: campos no legibles, inconsistencias detectadas.',
     },
   },
@@ -60,7 +66,6 @@ const EXTRACTION_SCHEMA = {
     'titulo', 'codigo_impuesto_afip', 'codigo_regimen_afip', 'cuit_agente_retencion',
     'nro_ib_presente', 'importe_operacion_base', 'alicuota', 'importe_retenido', 'confidence', 'notes',
   ],
-  additionalProperties: false,
 };
 
 const SYSTEM_PROMPT = `Sos un asistente experto en comprobantes fiscales argentinos. Tu tarea es extraer datos estructurados de un COMPROBANTE DE RETENCIÓN O PERCEPCIÓN (el papel que un cliente/agente de retención le entrega a un contribuyente cuando le retuvo o percibió un impuesto al pagarle) — no es una factura.
@@ -125,30 +130,30 @@ export async function POST(req: NextRequest) {
 
   const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-  const filePart = mediaType === 'application/pdf'
-    ? { type: 'document' as const, data: base64, mime_type: 'application/pdf' }
-    : { type: 'image' as const, data: base64, mime_type: mediaType };
-
   try {
-    const interaction = await client.interactions.create({
+    const response = await client.models.generateContent({
       model: GEMINI_MODEL,
-      system_instruction: SYSTEM_PROMPT,
-      input: [
-        filePart,
-        { type: 'text', text: 'Extraé los datos de este comprobante de retención/percepción.' },
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { inlineData: { data: base64, mimeType: mediaType } },
+            { text: 'Extraé los datos de este comprobante de retención/percepción.' },
+          ],
+        },
       ],
-      response_format: {
-        type: 'text',
-        mime_type: 'application/json',
-        schema: EXTRACTION_SCHEMA,
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+        responseMimeType: 'application/json',
+        responseSchema: EXTRACTION_SCHEMA,
       },
     });
 
-    if (!interaction.output_text) {
+    if (!response.text) {
       return NextResponse.json({ error: 'La extracción no devolvió resultados. Cargá los datos manualmente.' }, { status: 422 });
     }
 
-    const extracted = JSON.parse(interaction.output_text) as {
+    const extracted = JSON.parse(response.text) as {
       titulo: string;
       codigo_impuesto_afip: number | null;
       codigo_regimen_afip: number | null;

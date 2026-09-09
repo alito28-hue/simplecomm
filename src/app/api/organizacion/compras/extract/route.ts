@@ -19,62 +19,64 @@ const LETTER_KIND_TO_TIPO: Record<string, Record<string, number>> = {
   M: { FACTURA: 51, NOTA_DEBITO: 52, NOTA_CREDITO: 53 },
 };
 
+// Formato de schema propio de Gemini (subset de OpenAPI): tipos en MAYÚSCULA y `nullable`
+// en vez de uniones `type: [...]` — no acepta el dialecto JSON-Schema estándar.
 const EXTRACTION_SCHEMA = {
-  type: 'object',
+  type: 'OBJECT',
   properties: {
     issuer_name: {
-      type: 'string',
+      type: 'STRING',
       description: 'Razón social o nombre del emisor de la factura/tique/recibo. Vacío si no es legible.',
     },
     issuer_cuit: {
-      type: 'string',
+      type: 'STRING',
       description: 'CUIT del emisor, solo dígitos (11 caracteres), sin guiones ni espacios. Vacío si no aparece o no es legible.',
     },
     invoice_letter: {
-      type: 'string',
+      type: 'STRING',
       enum: ['A', 'B', 'C', 'T', 'M', 'E', 'X', 'OTRO', 'DESCONOCIDO'],
       description: 'Letra del comprobante (A/B/C/T/M/E/X). Si es un tique sin letra visible o no aplica, usar OTRO. Si no se puede determinar, DESCONOCIDO.',
     },
     comprobante_kind: {
-      type: 'string',
+      type: 'STRING',
       enum: ['FACTURA', 'NOTA_DEBITO', 'NOTA_CREDITO'],
       description: 'Tipo de comprobante. La gran mayoría de las compras son FACTURA — usar NOTA_DEBITO o NOTA_CREDITO solo si el comprobante lo dice explícitamente impreso en el encabezado.',
     },
     punto_venta: {
-      type: 'string',
+      type: 'STRING',
       description: 'Punto de venta, la primera parte del número impreso (ej. en "0004-00012345" es "0004"). Solo dígitos, sin ceros a la izquierda. Vacío si no es legible.',
     },
     invoice_number: {
-      type: 'string',
+      type: 'STRING',
       description: 'Número de comprobante SIN el punto de venta (ej. en "0004-00012345" es "12345"). Solo dígitos, sin ceros a la izquierda. Vacío si no es legible.',
     },
     issue_date: {
-      type: 'string',
+      type: 'STRING',
       description: 'Fecha de emisión en formato YYYY-MM-DD. Vacío si no es legible.',
     },
     net_amount: {
-      type: 'number',
+      type: 'NUMBER',
       description: 'Monto neto gravado (sin IVA). Si el comprobante no discrimina IVA (ej. tique de consumidor final), calcular neto = total / (1 + tasa), asumiendo tasa 21% salvo que el rubro sugiera otra tasa (ej. 10.5%).',
     },
     iva_amount: {
-      type: 'number',
+      type: 'NUMBER',
       description: 'Monto de IVA, discriminado en el comprobante o calculado como total - neto si no está discriminado.',
     },
     other_taxes_amount: {
-      type: 'number',
+      type: 'NUMBER',
       description: 'Otros tributos por fuera del neto y el IVA — típico en combustible ("Impuesto interno a nivel item", su IVA asociado, tasas municipales, etc.). Sumá ahí TODO lo que en el tique aparezca entre el neto gravado y el total que no sea el IVA general de la venta (ej. "Importe Total Otros Tributos" si el tique lo totaliza así). 0 si el comprobante no tiene nada de esto.',
     },
     total_amount: {
-      type: 'number',
+      type: 'NUMBER',
       description: 'Monto total del comprobante, incluyendo IVA y otros tributos. Este es casi siempre legible con certeza.',
     },
     confidence: {
-      type: 'string',
+      type: 'STRING',
       enum: ['high', 'medium', 'low'],
       description: 'Confianza general de la extracción. "low" si la imagen está borrosa o hubo que asumir datos (ej. tasa de IVA, CUIT no legible).',
     },
     notes: {
-      type: 'string',
+      type: 'STRING',
       description: 'Aclaraciones breves: campos no legibles, supuestos usados (ej. "se asumió IVA 21% porque el tique no lo discrimina"), inconsistencias detectadas.',
     },
   },
@@ -82,7 +84,6 @@ const EXTRACTION_SCHEMA = {
     'issuer_name', 'issuer_cuit', 'invoice_letter', 'comprobante_kind', 'punto_venta', 'invoice_number', 'issue_date',
     'net_amount', 'iva_amount', 'other_taxes_amount', 'total_amount', 'confidence', 'notes',
   ],
-  additionalProperties: false,
 };
 
 const SYSTEM_PROMPT = `Sos un asistente experto en comprobantes fiscales argentinos (facturas A/B/C, tiques, recibos). Tu tarea es extraer datos estructurados de una imagen o PDF de un comprobante de COMPRA (un gasto que la empresa recibió, no una venta propia).
@@ -134,30 +135,30 @@ export async function POST(req: NextRequest) {
 
   const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-  const filePart = mediaType === 'application/pdf'
-    ? { type: 'document' as const, data: base64, mime_type: 'application/pdf' }
-    : { type: 'image' as const, data: base64, mime_type: mediaType };
-
   try {
-    const interaction = await client.interactions.create({
+    const response = await client.models.generateContent({
       model: GEMINI_MODEL,
-      system_instruction: SYSTEM_PROMPT,
-      input: [
-        filePart,
-        { type: 'text', text: 'Extraé los datos de este comprobante de compra.' },
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { inlineData: { data: base64, mimeType: mediaType } },
+            { text: 'Extraé los datos de este comprobante de compra.' },
+          ],
+        },
       ],
-      response_format: {
-        type: 'text',
-        mime_type: 'application/json',
-        schema: EXTRACTION_SCHEMA,
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+        responseMimeType: 'application/json',
+        responseSchema: EXTRACTION_SCHEMA,
       },
     });
 
-    if (!interaction.output_text) {
+    if (!response.text) {
       return NextResponse.json({ error: 'La extracción no devolvió resultados. Cargá los datos manualmente.' }, { status: 422 });
     }
 
-    const extracted = JSON.parse(interaction.output_text) as {
+    const extracted = JSON.parse(response.text) as {
       issuer_name: string;
       issuer_cuit: string;
       invoice_letter: string;
