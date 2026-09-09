@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { db } from '../db/client';
 import { getValidTicket, invalidateTicket } from '../wsaa/cache';
 import { feCompUltimoAutorizado, feCAESolicitar } from '../wsfe/client';
-import { calculateByType, CBTE_TYPE, NC_TYPE, letterFromCbteType, condicionIVAReceptorId, toAfipDate, isoToAfipDate, docTypeToAfipId, formatInvoiceNumber, parseIvaRate, type InvoiceLetterType, type IvaRateId, type InvoiceAmounts } from './calculate';
+import { calculateByType, CBTE_TYPE, NC_TYPE, ND_TYPE, letterFromCbteType, condicionIVAReceptorId, toAfipDate, isoToAfipDate, docTypeToAfipId, formatInvoiceNumber, parseIvaRate, type InvoiceLetterType, type IvaRateId, type InvoiceAmounts } from './calculate';
 import { generateInvoicePdf } from './pdf';
 import { endpoints } from '../config';
 
@@ -424,6 +424,200 @@ export async function issueCreditNote(req: CreditNoteRequest): Promise<IssueResu
 
     await log(req.tenantId, dbInvoice.id, requestId, 'issued', 'pkijs', true,
       `Nota de crédito emitida: ${formatInvoiceNumber(original.ptoVta, result.cbteNro)} | CAE: ${result.cae}`);
+
+    return {
+      status: 'issued',
+      invoiceId: dbInvoice.id,
+      invoiceNumber: formatInvoiceNumber(original.ptoVta, result.cbteNro),
+      cae: result.cae,
+      caeDueDate: result.caeFchVto,
+      pdfBase64,
+      buyerName: original.buyerName,
+    };
+
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (message.startsWith('WSAA ')) {
+      await invalidateTicket(req.tenantId).catch(() => {});
+    }
+    await db.invoice.update({
+      where: { id: dbInvoice.id },
+      data: { status: 'ERROR', errorMessage: message },
+    });
+    await log(req.tenantId, dbInvoice.id, requestId, 'error', null, false, message);
+    throw err;
+  }
+}
+
+export interface DebitNoteRequest {
+  tenantId: string;
+  idempotencyKey: string;
+  originalInvoiceId: string;
+  amount: number;      // Monto del cargo adicional, interpretado según la letra del original (neto para A, total para B/C) — no tiene que coincidir con el total de la factura original.
+  reason: string;      // Motivo obligatorio (ej. "Intereses por mora", "Ajuste de precio") — va impreso en el comprobante.
+  sourceApp?: string;
+}
+
+/**
+ * Emite una Nota de Débito por un cargo adicional asociado a una factura ya emitida — a
+ * diferencia de la Nota de Crédito (que siempre anula el total), acá el monto lo define quien
+ * llama (ej. un interés por mora, una diferencia de precio), nunca se infiere de la factura
+ * original. La letra, el punto de venta, el receptor, la moneda y la alícuota de IVA sí se
+ * derivan de la factura original — mismo motivo que en issueCreditNote: evitar repetir el bug
+ * de "letra mal derivada" que terminaba pidiendo un comprobante que AFIP rechaza para la
+ * condición fiscal del comprador.
+ */
+export async function issueDebitNote(req: DebitNoteRequest): Promise<IssueResult> {
+  const requestId = randomUUID();
+
+  const existing = await db.invoice.findUnique({
+    where: { idempotencyKey: req.idempotencyKey },
+  });
+  if (existing) {
+    if (existing.status === 'ISSUED') {
+      const artifact = await db.invoiceArtifact.findUnique({ where: { invoiceId: existing.id } });
+      return {
+        status: 'duplicate',
+        invoiceId: existing.id,
+        invoiceNumber: formatInvoiceNumber(existing.ptoVta, existing.invoiceNumber!),
+        cae: existing.cae!,
+        caeDueDate: existing.caeDueDate!,
+        pdfBase64: artifact?.pdfBase64 ?? '',
+        buyerName: existing.buyerName,
+      };
+    }
+  }
+
+  const tenant = await db.tenant.findUnique({ where: { id: req.tenantId } });
+  if (!tenant || tenant.status !== 'ACTIVE') {
+    throw new Error(`Tenant ${req.tenantId} no encontrado o inactivo`);
+  }
+
+  const original = await db.invoice.findFirst({
+    where: { id: req.originalInvoiceId, tenantId: req.tenantId },
+  });
+  if (!original) throw new Error('Factura original no encontrada');
+  if (original.status !== 'ISSUED' || !original.cae || original.invoiceNumber == null) {
+    throw new Error('La factura original no está emitida (sin CAE) — no se le puede hacer una Nota de Débito');
+  }
+  if (original.concept !== 1) {
+    throw new Error('Todavía no soportamos Notas de Débito para facturas de servicios (concepto 2/3) — falta el período facturado original');
+  }
+
+  const invoiceLetter: InvoiceLetterType = letterFromCbteType(original.invoiceType);
+  const cbteType = ND_TYPE[invoiceLetter];
+
+  const origNeto = Number(original.netAmount);
+  const origIVA = Number(original.ivaAmount);
+  const ivaRateId: IvaRateId = origIVA > 0 && origNeto > 0 ? parseIvaRate((origIVA / origNeto) * 100) : 5;
+  const amounts = calculateByType(req.amount, invoiceLetter, ivaRateId);
+
+  const cbteFch = toAfipDate();
+  const description = `${req.reason} — ref. ${formatInvoiceNumber(original.ptoVta, original.invoiceNumber)}`;
+
+  const dbInvoice = existing
+    ? await db.invoice.update({
+        where: { id: existing.id },
+        data: { status: 'PENDING', errorMessage: null },
+      })
+    : await db.invoice.create({
+        data: {
+          tenantId: req.tenantId,
+          idempotencyKey: req.idempotencyKey,
+          ptoVta: original.ptoVta,
+          invoiceType: cbteType,
+          buyerDocType: original.buyerDocType,
+          buyerDocNumber: original.buyerDocNumber,
+          buyerName: original.buyerName,
+          buyerAddress: original.buyerAddress,
+          totalAmount: amounts.impTotal,
+          netAmount: amounts.impNeto,
+          ivaAmount: amounts.impIVA,
+          concept: original.concept,
+          moneda: original.moneda,
+          cotizacion: original.cotizacion,
+          description,
+          relatedInvoiceId: original.id,
+          sourceApp: req.sourceApp,
+          status: 'PENDING',
+        },
+      });
+
+  try {
+    await log(req.tenantId, dbInvoice.id, requestId, 'wsaa', null, true, 'Obteniendo TA');
+    const ticket = await getValidTicket(req.tenantId);
+
+    await log(req.tenantId, dbInvoice.id, requestId, 'wsfe_last', 'pkijs', true, 'Consultando último comprobante');
+    const lastNumber = await feCompUltimoAutorizado(
+      endpoints.wsfe, ticket, tenant.cuit, original.ptoVta, cbteType
+    );
+    const nextNumber = lastNumber + 1;
+
+    await log(req.tenantId, dbInvoice.id, requestId, 'wsfe_issue', 'pkijs', true, `Solicitando CAE para ND ${nextNumber}`);
+    const result = await feCAESolicitar(endpoints.wsfe, ticket, tenant.cuit, {
+      ptoVta: original.ptoVta,
+      cbteType,
+      concept: original.concept,
+      docType: original.buyerDocType,
+      docNumber: original.buyerDocNumber,
+      cbteDesde: nextNumber,
+      cbteHasta: nextNumber,
+      cbteFch,
+      impTotal: amounts.impTotal,
+      impTotConc: amounts.impTotConc,
+      impNeto: amounts.impNeto,
+      impOpEx: amounts.impOpEx,
+      impIVA: amounts.impIVA,
+      impTrib: amounts.impTrib,
+      ivaItems: amounts.ivaItems,
+      monId: original.moneda,
+      monCotiz: Number(original.cotizacion),
+      condicionIVAReceptorId: condicionIVAReceptorId(invoiceLetter),
+      cbtesAsoc: [{ tipo: original.invoiceType, ptoVta: original.ptoVta, nro: original.invoiceNumber }],
+    });
+
+    await log(req.tenantId, dbInvoice.id, requestId, 'pdf', 'pkijs', true, 'Generando PDF');
+    const pdfBase64 = await generateInvoicePdf({
+      tenant,
+      invoiceNumber: formatInvoiceNumber(original.ptoVta, result.cbteNro),
+      invoiceDate: cbteFch,
+      invoiceLetter,
+      docLabel: 'NOTA DE DÉBITO',
+      cbteTypeCode: cbteType,
+      buyer: {
+        fullName: original.buyerName,
+        docType: original.buyerDocType === 80 ? 'CUIT' : original.buyerDocType === 96 ? 'DNI' : 'CONSUMIDOR_FINAL',
+        docNumber: original.buyerDocNumber,
+        address: original.buyerAddress ?? undefined,
+      },
+      amounts,
+      description,
+      cae: result.cae,
+      caeDueDate: result.caeFchVto,
+      currency: original.moneda,
+      exchangeRate: Number(original.cotizacion),
+    });
+
+    await db.invoice.update({
+      where: { id: dbInvoice.id },
+      data: {
+        invoiceNumber: result.cbteNro,
+        cae: result.cae,
+        caeDueDate: result.caeFchVto,
+        status: 'ISSUED',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        afipResponse: result as any,
+      },
+    });
+
+    await db.invoiceArtifact.upsert({
+      where: { invoiceId: dbInvoice.id },
+      create: { invoiceId: dbInvoice.id, pdfBase64 },
+      update: { pdfBase64 },
+    });
+
+    await log(req.tenantId, dbInvoice.id, requestId, 'issued', 'pkijs', true,
+      `Nota de débito emitida: ${formatInvoiceNumber(original.ptoVta, result.cbteNro)} | CAE: ${result.cae}`);
 
     return {
       status: 'issued',

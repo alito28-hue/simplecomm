@@ -38,6 +38,12 @@ export const NC_TYPE: Record<InvoiceLetterType, number> = {
   C: 13,
 };
 
+export const ND_TYPE: Record<InvoiceLetterType, number> = {
+  A: 2,
+  B: 7,
+  C: 12,
+};
+
 /** Inversa de CBTE_TYPE — de un CbteTipo AFIP de factura a su letra. */
 export function letterFromCbteType(cbteType: number): InvoiceLetterType {
   const found = (Object.entries(CBTE_TYPE) as [InvoiceLetterType, number][]).find(([, v]) => v === cbteType);

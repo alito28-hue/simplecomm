@@ -1,11 +1,18 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { issueInvoice, issueCreditNote } from '../invoice/service';
+import { issueInvoice, issueCreditNote, issueDebitNote } from '../invoice/service';
 import { authenticateApiKey } from '../middleware/apikey';
 import { db } from '../db/client';
 
 const creditNoteSchema = z.object({
   idempotency_key: z.string().min(1).max(255),
+  source_app: z.string().optional(),
+});
+
+const debitNoteSchema = z.object({
+  idempotency_key: z.string().min(1).max(255),
+  amount: z.number().positive(),
+  reason: z.string().min(1).max(255),
   source_app: z.string().optional(),
 });
 
@@ -178,6 +185,48 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       app.log.error({ err, tenantId: request.tenantId }, 'Error emitiendo nota de crédito');
+      return reply.status(502).send({ error: message });
+    }
+  });
+
+  /**
+   * POST /v1/invoices/:id/debit-note
+   * Emite una Nota de Débito por un cargo adicional asociado a una factura ya emitida por
+   * este mismo tenant. Letra, receptor, punto de venta y moneda se toman de la factura
+   * original; el monto y el motivo los define quien llama.
+   */
+  app.post<{ Params: { id: string } }>('/v1/invoices/:id/debit-note', {
+    preHandler: authenticateApiKey,
+  }, async (request, reply) => {
+    const parse = debitNoteSchema.safeParse(request.body);
+    if (!parse.success) {
+      return reply.status(400).send({ error: 'Payload inválido', details: parse.error.flatten().fieldErrors });
+    }
+    const body = parse.data;
+
+    try {
+      const result = await issueDebitNote({
+        tenantId: request.tenantId,
+        idempotencyKey: body.idempotency_key,
+        originalInvoiceId: request.params.id,
+        amount: body.amount,
+        reason: body.reason,
+        sourceApp: body.source_app,
+      });
+
+      const statusCode = result.status === 'duplicate' ? 200 : 201;
+      return reply.status(statusCode).send({
+        status: result.status,
+        invoice_id: result.invoiceId,
+        invoice_number: result.invoiceNumber,
+        cae: result.cae,
+        cae_due_date: result.caeDueDate,
+        pdf_base64: result.pdfBase64,
+        buyer_name: result.buyerName,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      app.log.error({ err, tenantId: request.tenantId }, 'Error emitiendo nota de débito');
       return reply.status(502).send({ error: message });
     }
   });

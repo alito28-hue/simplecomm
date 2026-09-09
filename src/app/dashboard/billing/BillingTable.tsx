@@ -9,6 +9,7 @@ import { IconDownload } from '@/components/AppIcons';
 import styles from './billing.module.css';
 
 interface NcModal { invoiceId: string; invoiceNumber: string | null; amount: number; buyerDoc: string | null; }
+interface NdModal { invoiceId: string; invoiceNumber: string | null; }
 interface PagoModal { invoiceId: string; invoiceNumber: string | null; totalAmount: number; }
 
 interface DetalleModal { invoiceId: string; invoiceNumber: string | null; totalAmount: number; }
@@ -52,6 +53,8 @@ const TIPO_LABEL: Record<number, string> = {
   2: 'Nota de Déb. A', 7: 'Nota de Déb. B', 12: 'Nota de Déb. C',
 };
 const NC_TYPES = new Set([3, 8, 13]);
+const ND_TYPES = new Set([2, 7, 12]);
+const ADJUSTMENT_TYPES = new Set([...NC_TYPES, ...ND_TYPES]);
 function tipoLabel(t: number | null | undefined): string {
   return t != null ? (TIPO_LABEL[t] ?? `Cód. ${t}`) : '—';
 }
@@ -108,6 +111,12 @@ export default function BillingTable() {
   const [ncLoading, setNcLoading] = useState(false);
   const [ncResult, setNcResult] = useState<string | null>(null);
   const [ncEmail, setNcEmail] = useState('');
+  const [ndModal, setNdModal] = useState<NdModal | null>(null);
+  const [ndLoading, setNdLoading] = useState(false);
+  const [ndResult, setNdResult] = useState<string | null>(null);
+  const [ndAmount, setNdAmount] = useState('');
+  const [ndReason, setNdReason] = useState('');
+  const [ndEmail, setNdEmail] = useState('');
   const [payments, setPayments] = useState<Record<string, PaymentStatus>>({});
   const [attachmentsInvoiceId, setAttachmentsInvoiceId] = useState<string | null>(null);
   const [pagoModal, setPagoModal] = useState<PagoModal | null>(null);
@@ -223,6 +232,35 @@ export default function BillingTable() {
       window.dispatchEvent(new Event('comprobantes:refresh'));
     } finally {
       setNcLoading(false);
+    }
+  }
+
+  async function emitirND(invoiceId: string) {
+    const parsedAmount = parseFloat(ndAmount);
+    if (!parsedAmount || parsedAmount <= 0) { setNdResult('Error: el monto debe ser mayor a cero'); return; }
+    if (!ndReason.trim()) { setNdResult('Error: el motivo es obligatorio'); return; }
+    setNdLoading(true);
+    setNdResult(null);
+    try {
+      const res = await fetch('/api/invoices/nota-debito', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          originalInvoiceId: invoiceId,
+          amount: parsedAmount,
+          reason: ndReason.trim(),
+          recipientEmail: ndEmail.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setNdResult(`Error: ${data.error}`); return; }
+      setNdResult(
+        `✓ Nota de débito emitida: ${data.invoiceNumber ?? ''}. Ya aparece en esta tabla (comprobante tipo "Nota de Déb.") — descargala con el botón ⬇.`
+        + (data.emailSent ? ` Se envió por email a ${ndEmail.trim()}.` : '')
+      );
+      window.dispatchEvent(new Event('comprobantes:refresh'));
+    } finally {
+      setNdLoading(false);
     }
   }
 
@@ -388,13 +426,22 @@ export default function BillingTable() {
                       >
                         📎
                       </button>
-                      {inv.status === 'issued' && !NC_TYPES.has(inv.invoice_type ?? -1) && (
+                      {inv.status === 'issued' && !ADJUSTMENT_TYPES.has(inv.invoice_type ?? -1) && (
                         <button
                           onClick={() => { setNcModal({ invoiceId: inv.invoice_id, invoiceNumber: inv.invoice_number, amount: inv.total_amount, buyerDoc: inv.buyer_doc }); setNcResult(null); setNcEmail(''); }}
                           className="btn btn-ghost btn-sm"
                           title="Emitir Nota de Crédito"
                         >
                           NC
+                        </button>
+                      )}
+                      {inv.status === 'issued' && !ADJUSTMENT_TYPES.has(inv.invoice_type ?? -1) && (
+                        <button
+                          onClick={() => { setNdModal({ invoiceId: inv.invoice_id, invoiceNumber: inv.invoice_number }); setNdResult(null); setNdAmount(''); setNdReason(''); setNdEmail(''); }}
+                          className="btn btn-ghost btn-sm"
+                          title="Emitir Nota de Débito"
+                        >
+                          ND
                         </button>
                       )}
                     </div>
@@ -456,6 +503,55 @@ export default function BillingTable() {
               {!ncResult?.startsWith('✓') && (
                 <button className="btn btn-primary btn-sm" onClick={() => emitirNC(ncModal.invoiceId)} disabled={ncLoading}>
                   {ncLoading ? 'Emitiendo...' : 'Confirmar'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {ndModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          onClick={() => !ndLoading && setNdModal(null)}>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', maxWidth: 420, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
+            onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.75rem' }}>Emitir Nota de Débito</h2>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+              Cargo adicional sobre {ndModal.invoiceNumber ? `la factura ${ndModal.invoiceNumber}` : 'esta factura'}. Usalo para cosas como intereses por mora o un ajuste de precio — no reemplaza a la factura original.
+            </p>
+            {!ndResult?.startsWith('✓') && (
+              <>
+                <label className="text-sm" style={{ display: 'block', marginBottom: '0.75rem' }}>
+                  Monto
+                  <input type="number" className="input" placeholder="0.00" min="0" step="0.01"
+                    value={ndAmount} onChange={e => setNdAmount(e.target.value)} disabled={ndLoading} />
+                </label>
+                <label className="text-sm" style={{ display: 'block', marginBottom: '0.75rem' }}>
+                  Motivo
+                  <input type="text" className="input" placeholder="Ej: Intereses por mora"
+                    value={ndReason} onChange={e => setNdReason(e.target.value)} disabled={ndLoading} />
+                </label>
+                <label className="text-sm" style={{ display: 'block', marginBottom: '1rem' }}>
+                  Email del cliente (opcional, para enviarle la ND por correo)
+                  <input type="email" className="input" placeholder="cliente@email.com"
+                    value={ndEmail} onChange={e => setNdEmail(e.target.value)} disabled={ndLoading} />
+                </label>
+              </>
+            )}
+            {ndResult && (
+              <p style={{ fontSize: '0.85rem', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius)', marginBottom: '1rem',
+                background: ndResult.startsWith('✓') ? 'color-mix(in srgb, var(--success) 10%, transparent)' : 'color-mix(in srgb, var(--error) 10%, transparent)',
+                color: ndResult.startsWith('✓') ? 'var(--success)' : 'var(--error)' }}>
+                {ndResult}
+              </p>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => setNdModal(null)} disabled={ndLoading}>
+                {ndResult?.startsWith('✓') ? 'Cerrar' : 'Cancelar'}
+              </button>
+              {!ndResult?.startsWith('✓') && (
+                <button className="btn btn-primary btn-sm" onClick={() => emitirND(ndModal.invoiceId)} disabled={ndLoading}>
+                  {ndLoading ? 'Emitiendo...' : 'Confirmar'}
                 </button>
               )}
             </div>
