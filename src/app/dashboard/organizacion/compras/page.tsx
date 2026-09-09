@@ -307,6 +307,14 @@ export default function ComprasPage() {
 
   return (
     <div className={styles.page}>
+      {extracting && (
+        <div className={dashStyles.aiOverlay}>
+          <div className={dashStyles.aiOverlayCard}>
+            <div className={dashStyles.spinner} />
+            <span className={dashStyles.aiOverlayText}>Extrayendo datos con IA...</span>
+          </div>
+        </div>
+      )}
       <div className={styles.pageHeader}>
         <div>
           <h1 className={styles.pageTitle}>Comprobantes</h1>
@@ -352,7 +360,6 @@ export default function ComprasPage() {
           </div>
         ) : (
           <div>
-            {extracting && <p className="text-sm text-muted" style={{ marginBottom: '0.75rem' }}>Extrayendo datos con IA...</p>}
             {extractError && <p className="text-sm" style={{ color: 'var(--error)', marginBottom: '0.75rem' }}>{extractError}</p>}
             {extractConfidence && extractConfidence !== 'high' && (
               <p className="text-sm" style={{ color: 'var(--warning)', marginBottom: '0.75rem' }}>
