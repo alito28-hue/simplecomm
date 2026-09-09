@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getOrgUsage } from '@/lib/usage';
-import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenAI } from '@google/genai';
+
+// gemini-3.8-flash: modelo estable y recomendado por Google al momento de escribir esto
+// (no un "preview", para no quedar pegados a un modelo que se dé de baja de golpe — ya nos
+// pasó con la familia Gemini 2.5, que Google discontinúa en octubre 2026).
+const GEMINI_MODEL = 'gemini-3.8-flash';
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'application/pdf'];
@@ -97,9 +102,9 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.GEMINI_API_KEY) {
     return NextResponse.json(
-      { error: 'La extracción automática no está configurada (falta ANTHROPIC_API_KEY). Podés cargar los datos manualmente.' },
+      { error: 'La extracción automática no está configurada (falta GEMINI_API_KEY). Podés cargar los datos manualmente.' },
       { status: 503 },
     );
   }
@@ -127,43 +132,32 @@ export async function POST(req: NextRequest) {
   const bytes = Buffer.from(await file.arrayBuffer());
   const base64 = bytes.toString('base64');
 
-  const client = new Anthropic();
+  const client = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-  const contentBlock = mediaType === 'application/pdf'
-    ? { type: 'document' as const, source: { type: 'base64' as const, media_type: 'application/pdf' as const, data: base64 } }
-    : { type: 'image' as const, source: { type: 'base64' as const, media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/webp', data: base64 } };
+  const filePart = mediaType === 'application/pdf'
+    ? { type: 'document' as const, data: base64, mime_type: 'application/pdf' }
+    : { type: 'image' as const, data: base64, mime_type: mediaType };
 
   try {
-    const response = await client.messages.create({
-      model: 'claude-opus-4-8',
-      max_tokens: 4096,
-      thinking: { type: 'adaptive' },
-      system: SYSTEM_PROMPT,
-      output_config: {
-        effort: 'high',
-        format: { type: 'json_schema', schema: EXTRACTION_SCHEMA },
-      },
-      messages: [
-        {
-          role: 'user',
-          content: [
-            contentBlock,
-            { type: 'text', text: 'Extraé los datos de este comprobante de compra.' },
-          ],
-        },
+    const interaction = await client.interactions.create({
+      model: GEMINI_MODEL,
+      system_instruction: SYSTEM_PROMPT,
+      input: [
+        filePart,
+        { type: 'text', text: 'Extraé los datos de este comprobante de compra.' },
       ],
+      response_format: {
+        type: 'text',
+        mime_type: 'application/json',
+        schema: EXTRACTION_SCHEMA,
+      },
     });
 
-    if (response.stop_reason === 'refusal') {
-      return NextResponse.json({ error: 'No se pudo procesar la imagen (rechazada por el modelo). Cargá los datos manualmente.' }, { status: 422 });
-    }
-
-    const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === 'text');
-    if (!textBlock) {
+    if (!interaction.output_text) {
       return NextResponse.json({ error: 'La extracción no devolvió resultados. Cargá los datos manualmente.' }, { status: 422 });
     }
 
-    const extracted = JSON.parse(textBlock.text) as {
+    const extracted = JSON.parse(interaction.output_text) as {
       issuer_name: string;
       issuer_cuit: string;
       invoice_letter: string;
