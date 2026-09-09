@@ -209,27 +209,34 @@ function drawInvoicePage(
     .text(copyLabel, leftCol, copyBoxY + 5, { width: pageWidth, align: 'center' });
 
   // ── Encabezado: emisor | letra | comprobante ──────────────────────────
-    const emisorLines = [
-      `CUIT: ${formatCuit(data.tenant.cuit)}`,
-      `Condición Frente al IVA: ${emisorIvaCondition(letter)}`,
-      `Ingresos Brutos: ${data.tenant.iibb ?? data.tenant.cuit}`,
-    ];
-    if (data.tenant.address) emisorLines.push(`Domicilio: ${data.tenant.address}`);
+    // Dos columnas dentro de la caja del emisor (domicilio + condición IVA a la
+    // izquierda, CUIT + Ingresos Brutos + inicio de actividades a la derecha) —
+    // igual que el modelo que reimprime ARCA, en vez de todo apilado en una sola
+    // columna. Cada columna mide su alto real (puede envolver a 2 líneas en
+    // domicilios/condiciones largas) y la caja usa el máximo de las dos.
+    const emisorLeftLines = [];
+    if (data.tenant.address) emisorLeftLines.push(`Domicilio: ${data.tenant.address}`);
+    emisorLeftLines.push(`Condición Frente al IVA: ${emisorIvaCondition(letter)}`);
+
+    const emisorRightLines = [`CUIT: ${formatCuit(data.tenant.cuit)}`, `Ingresos Brutos: ${data.tenant.iibb ?? data.tenant.cuit}`];
     if (data.tenant.activityStartDate) {
-      emisorLines.push(`Inicio de Actividades: ${formatDateAR(data.tenant.activityStartDate)}`);
+      emisorRightLines.push(`Inicio de Actividades: ${formatDateAR(data.tenant.activityStartDate)}`);
     }
 
-    const col1W = 230;
+    const col1W = 260;
     const col2W = 60;
     const col3X = leftCol + col1W + col2W;
     const col3W = pageWidth - col1W - col2W;
-    const emisorTextWidth = col1W - 16;
+    const emisorColGap = 10;
+    const emisorSubColW = (col1W - 16 - emisorColGap) / 2;
+    const emisorRightX = leftCol + 8 + emisorSubColW + emisorColGap;
 
-    // Cada línea puede envolver a más de un renglón (ej: domicilios largos),
-    // así que medimos la altura real en vez de asumir un alto fijo por línea.
-    doc.font('Helvetica').fontSize(9);
-    const lineHeights = emisorLines.map((line) => doc.heightOfString(line, { width: emisorTextWidth }));
-    const emisorTextHeight = lineHeights.reduce((sum, h) => sum + h + 2, 0);
+    doc.font('Helvetica').fontSize(8);
+    const leftLineHeights = emisorLeftLines.map((line) => doc.heightOfString(line, { width: emisorSubColW }));
+    const rightLineHeights = emisorRightLines.map((line) => doc.heightOfString(line, { width: emisorSubColW }));
+    const emisorLeftH = leftLineHeights.reduce((sum, h) => sum + h + 2, 0);
+    const emisorRightH = rightLineHeights.reduce((sum, h) => sum + h + 2, 0);
+    const emisorTextHeight = Math.max(emisorLeftH, emisorRightH);
 
     const headerY = 45;
     const headerH = Math.max(100, 34 + emisorTextHeight);
@@ -239,12 +246,17 @@ function drawInvoicePage(
     doc.rect(col3X, headerY, col3W, headerH).stroke(BLACK);
 
     doc.fillColor(BLACK).font('Helvetica-Bold').fontSize(11)
-      .text(data.tenant.name, leftCol + 8, headerY + 8, { width: emisorTextWidth });
-    doc.font('Helvetica').fontSize(9).fillColor(GRAY);
-    let emisorLineY = headerY + 26;
-    emisorLines.forEach((line, i) => {
-      doc.text(line, leftCol + 8, emisorLineY, { width: emisorTextWidth });
-      emisorLineY += lineHeights[i] + 2;
+      .text(data.tenant.name, leftCol + 8, headerY + 8, { width: col1W - 16 });
+    doc.font('Helvetica').fontSize(8).fillColor(GRAY);
+    let leftY = headerY + 26;
+    emisorLeftLines.forEach((line, i) => {
+      doc.text(line, leftCol + 8, leftY, { width: emisorSubColW });
+      leftY += leftLineHeights[i] + 2;
+    });
+    let rightY = headerY + 26;
+    emisorRightLines.forEach((line, i) => {
+      doc.text(line, emisorRightX, rightY, { width: emisorSubColW });
+      rightY += rightLineHeights[i] + 2;
     });
 
     const letterCodes: Record<InvoiceLetterType, string> = { A: 'COD. 001', B: 'COD. 006', C: 'COD. 011' };
