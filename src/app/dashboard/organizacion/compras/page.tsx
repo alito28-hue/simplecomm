@@ -360,18 +360,29 @@ export default function ComprasPage() {
                 {extractNotes ? ` ${extractNotes}` : ''}
               </p>
             )}
+            {proveedores.length > 0 && (
+              <label className="text-sm" style={{ display: 'block', marginBottom: '0.75rem' }}>
+                Proveedor ya cargado antes (opcional)
+                <select
+                  className="select"
+                  defaultValue=""
+                  onChange={e => {
+                    const cuit = e.target.value;
+                    if (!cuit) return;
+                    const elegido = proveedores.find(p => p.cuit === cuit);
+                    if (elegido) setForm(f => ({ ...f, issuerCuit: elegido.cuit, issuerName: elegido.nombre }));
+                  }}
+                >
+                  <option value="">Elegí un proveedor de la lista, o cargá el CUIT abajo si es nuevo</option>
+                  {proveedores.map(p => <option key={p.cuit} value={p.cuit}>{p.nombre} — {p.cuit}</option>)}
+                </select>
+              </label>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
               <label className="text-sm">CUIT/CUIL *
-                <input className="input" value={form.issuerCuit} maxLength={11} list="proveedores-list"
+                <input className="input" value={form.issuerCuit} maxLength={11}
                   placeholder="Empezá por acá — precarga el emisor"
-                  onChange={e => {
-                    const cuit = e.target.value.replace(/[^0-9]/g, '');
-                    const conocido = proveedores.find(p => p.cuit === cuit);
-                    setForm(f => ({ ...f, issuerCuit: cuit, issuerName: conocido ? conocido.nombre : f.issuerName }));
-                  }} />
-                <datalist id="proveedores-list">
-                  {proveedores.map(p => <option key={p.cuit} value={p.cuit}>{p.nombre}</option>)}
-                </datalist>
+                  onChange={e => setForm(f => ({ ...f, issuerCuit: e.target.value.replace(/[^0-9]/g, '') }))} />
                 {padronStatus === 'loading' && <span className="text-sm text-muted">Consultando ARCA...</span>}
                 {padronStatus === 'found' && padronData && (
                   <span className="text-sm" style={{ color: 'var(--success)' }}>✓ {padronData.nombre}</span>
