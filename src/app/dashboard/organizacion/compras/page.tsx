@@ -113,6 +113,17 @@ export default function ComprasPage() {
   const [padronStatus, setPadronStatus] = useState<PadronStatus>('idle');
   const [padronData, setPadronData] = useState<PadronData | null>(null);
 
+  // Proveedores ya usados antes (derivado del historial de compras, no es una tabla propia) —
+  // para no retipear el CUIT cada vez que llega otra factura del mismo proveedor (ej. siempre
+  // la misma estación de servicio).
+  const [proveedores, setProveedores] = useState<{ cuit: string; nombre: string }[]>([]);
+  useEffect(() => {
+    fetch('/api/organizacion/compras/proveedores')
+      .then(r => r.json())
+      .then(d => setProveedores(d.data ?? []))
+      .catch(() => {});
+  }, []);
+
   const [lastImportAt, setLastImportAt] = useState<string | null>(null);
   const [importModal, setImportModal] = useState<{ status: ImportCsvStatus; message: string | null } | null>(null);
   const csvRef = useRef<HTMLInputElement>(null);
@@ -351,9 +362,16 @@ export default function ComprasPage() {
             )}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem' }}>
               <label className="text-sm">CUIT/CUIL *
-                <input className="input" value={form.issuerCuit} maxLength={11}
+                <input className="input" value={form.issuerCuit} maxLength={11} list="proveedores-list"
                   placeholder="Empezá por acá — precarga el emisor"
-                  onChange={e => setForm(f => ({ ...f, issuerCuit: e.target.value.replace(/[^0-9]/g, '') }))} />
+                  onChange={e => {
+                    const cuit = e.target.value.replace(/[^0-9]/g, '');
+                    const conocido = proveedores.find(p => p.cuit === cuit);
+                    setForm(f => ({ ...f, issuerCuit: cuit, issuerName: conocido ? conocido.nombre : f.issuerName }));
+                  }} />
+                <datalist id="proveedores-list">
+                  {proveedores.map(p => <option key={p.cuit} value={p.cuit}>{p.nombre}</option>)}
+                </datalist>
                 {padronStatus === 'loading' && <span className="text-sm text-muted">Consultando ARCA...</span>}
                 {padronStatus === 'found' && padronData && (
                   <span className="text-sm" style={{ color: 'var(--success)' }}>✓ {padronData.nombre}</span>

@@ -65,6 +65,9 @@ export async function GET(req: NextRequest) {
   if (!month || !/^\d{4}-\d{2}$/.test(month)) {
     return NextResponse.json({ error: 'Parámetro "month" inválido (formato YYYY-MM)' }, { status: 400 });
   }
+  const tipoParam = searchParams.get('tipo') ?? 'all'; // 'all' | 'ventas' | 'compras'
+  const incluirVentas = tipoParam !== 'compras';
+  const incluirCompras = tipoParam !== 'ventas';
   const [year, monthNum] = month.split('-').map(Number);
   const from = `${month}-01`;
   const to = `${month}-${String(new Date(year, monthNum, 0).getDate()).padStart(2, '0')}`;
@@ -73,7 +76,7 @@ export async function GET(req: NextRequest) {
   const gatewayKeys = new Set<string>();
 
   // ── Ventas: facturas emitidas por el Gateway ────────────────────────────
-  try {
+  if (incluirVentas) try {
     const apiKey = await getGatewayKey(user.id);
     let page = 1;
     let pages = 1;
@@ -111,12 +114,12 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Ventas: importadas de ARCA que no estén ya en el Gateway ────────────
-  const { data: arcaSales } = await supabase
+  const { data: arcaSales } = incluirVentas ? await supabase
     .from('arca_sales_invoices')
     .select('tipoComprobante, puntoVenta, numeroComprobante, issueDate, receptorNombre, receptorCuit, netAmount, ivaAmount, totalAmount, cae')
     .eq('organizationId', user.id)
     .gte('issueDate', from)
-    .lte('issueDate', to);
+    .lte('issueDate', to) : { data: null };
 
   for (const r of arcaSales ?? []) {
     if (gatewayKeys.has(naturalKey(r.tipoComprobante, r.puntoVenta, r.numeroComprobante))) continue;
@@ -135,12 +138,12 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Compras: manual + foto/IA + ARCA importado, ya conviven en una tabla ─
-  const { data: purchases } = await supabase
+  const { data: purchases } = incluirCompras ? await supabase
     .from('purchase_invoices')
     .select('issueDate, issuerName, issuerCuit, invoiceLetter, invoiceNumber, netAmount, ivaAmount, totalAmount, source')
     .eq('organizationId', user.id)
     .gte('issueDate', from)
-    .lte('issueDate', to);
+    .lte('issueDate', to) : { data: null };
 
   for (const p of purchases ?? []) {
     rows.push({
@@ -175,10 +178,11 @@ export async function GET(req: NextRequest) {
 
   const csv = [header, ...csvRows].join('\r\n');
 
+  const suffix = tipoParam === 'ventas' ? '_ventas' : tipoParam === 'compras' ? '_compras' : '';
   return new NextResponse(csv, {
     headers: {
       'Content-Type': 'text/csv; charset=utf-8',
-      'Content-Disposition': `attachment; filename="posicion-iva_${month}.csv"`,
+      'Content-Disposition': `attachment; filename="posicion-iva_${month}${suffix}.csv"`,
     },
   });
 }

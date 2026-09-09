@@ -6,7 +6,7 @@ import styles from '../clientes/clientes.module.css';
 import dashStyles from '../../dashboard.module.css';
 import ivaStyles from './iva.module.css';
 import { IconReceipt, IconChart } from '@/components/LandingIcons';
-import { IconWallet, IconScale, IconCalendar, IconInfo, IconDownload } from '@/components/AppIcons';
+import { IconWallet, IconScale, IconCalendar, IconInfo } from '@/components/AppIcons';
 
 interface IvaPosition {
   applicable: boolean;
@@ -416,12 +416,24 @@ export default function IvaPage() {
                     </td>
                     <td className="text-sm text-muted">{vencimientoGrupo ?? '—'}</td>
                     <td className="text-sm">
-                      <a
-                        href={`/api/organizacion/iva/export?month=${m.year}-${String(m.month).padStart(2, '0')}`}
-                        className="btn btn-outline btn-sm"
+                      <select
+                        className="select"
+                        style={{ width: 118, fontSize: '0.78rem' }}
+                        defaultValue=""
+                        onChange={e => {
+                          const tipo = e.target.value;
+                          if (!tipo) return;
+                          const monthStr = `${m.year}-${String(m.month).padStart(2, '0')}`;
+                          const qTipo = tipo === 'all' ? '' : `&tipo=${tipo}`;
+                          window.location.href = `/api/organizacion/iva/export?month=${monthStr}${qTipo}`;
+                          e.target.value = '';
+                        }}
                       >
-                        <IconDownload size={13} /> CSV
-                      </a>
+                        <option value="">⬇ CSV</option>
+                        <option value="all">Todo</option>
+                        <option value="compras">Solo compras</option>
+                        <option value="ventas">Solo ventas</option>
+                      </select>
                     </td>
                   </tr>
                 ))}
