@@ -54,7 +54,7 @@ export default function MercadoPagoPage() {
             Los pagos aprobados generarán facturas automáticamente (A, B o C según el comprador).
           </p>
           <div className={styles.connectedActions}>
-            <Link href="/dashboard/facturacion" className="btn btn-primary">Ver facturas →</Link>
+            <Link href="/dashboard/billing" className="btn btn-primary">Ver facturas →</Link>
             <button onClick={desconectar} className="btn btn-ghost">Desconectar</button>
           </div>
         </div>

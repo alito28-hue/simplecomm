@@ -77,7 +77,7 @@ export default function ShopifyPage() {
               {shops.map(s => (
                 <div key={s} className={styles.connectedActions} style={{ marginTop: '0.75rem' }}>
                   <span style={{ flex: 1 }}>🟩 {s}</span>
-                  <Link href="/dashboard/facturacion" className="btn btn-primary btn-sm">Ver facturas</Link>
+                  <Link href="/dashboard/billing" className="btn btn-primary btn-sm">Ver facturas</Link>
                   <button onClick={() => desconectar(s)} className="btn btn-ghost btn-sm">Desconectar</button>
                 </div>
               ))}
