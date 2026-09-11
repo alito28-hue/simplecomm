@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
 import { processIncomingOrder, type OrderLineItem } from '@/lib/order-processing';
+import { claimMpPayment } from '@/lib/mp-payment-claims';
 
 /**
  * Detecta el tipo de factura según:
@@ -89,6 +90,26 @@ export async function POST(req: NextRequest) {
     // Solo órdenes pagadas
     if (order.status !== 'paid') {
       return NextResponse.json({ ok: true, skipped: `status: ${order.status}` });
+    }
+
+    // Una orden de ML se cobra por dentro de Mercado Pago con el/los mismos ID de pago que
+    // devuelve la API de pagos de MP — si esta cuenta también tiene conectado el webhook de
+    // Mercado Pago directo, ese mismo pago puede llegar por los dos lados. Reclamamos acá
+    // cada payment id de la orden para que el webhook de MP se abstenga si ya llegamos primero.
+    // ⚠️ El shape de order.payments no está verificado contra un pedido real (mismo caveat que
+    // order_items más abajo) — si no viene o viene vacío, no bloqueamos nada y seguimos como
+    // antes, no hay forma de que esto empeore el comportamiento actual.
+    const orderPayments = ((order.payments as Record<string, unknown>[]) ?? [])
+      .map(p => (p.id != null ? String(p.id) : null))
+      .filter((id): id is string => id != null);
+    let claimedByOther = false;
+    for (const paymentId of orderPayments) {
+      const claim = await claimMpPayment(integration.organizationId, paymentId, 'mercadolibre');
+      if (!claim.claimed) claimedByOther = true;
+    }
+    if (claimedByOther) {
+      console.log(`[ML webhook] Orden ${orderId} ya facturada por Mercado Pago directo — se omite para no duplicar.`);
+      return NextResponse.json({ ok: true, skipped: 'already_claimed_by_mercadopago' });
     }
 
     const totalAmount = order.total_amount ?? 0;

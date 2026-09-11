@@ -16,6 +16,19 @@ export async function getFreeTierLimit(): Promise<number> {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_TRIAL_LIMIT;
 }
 
+const DEFAULT_API_KEY_MONTHLY_LIMIT = 500;
+
+/**
+ * Cupo mensual con el que se crea una API key nueva de autoservicio (Plan API) — independiente
+ * del límite de comprobantes del dashboard. Configurable por el admin (tabla app_settings).
+ */
+export async function getApiKeyDefaultLimit(): Promise<number> {
+  const db = createAdminClient();
+  const { data } = await db.from('app_settings').select('value').eq('key', 'api_key_default_limit').maybeSingle();
+  const parsed = data?.value ? parseInt(data.value, 10) : NaN;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_API_KEY_MONTHLY_LIMIT;
+}
+
 async function getPlanLimit(supabase: Awaited<ReturnType<typeof createClient>>, planId: string | null) {
   const id = planId ?? 'plan_starter';
 

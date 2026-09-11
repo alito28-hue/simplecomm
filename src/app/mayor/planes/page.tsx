@@ -40,6 +40,10 @@ export default function PlanesPage() {
   const [freeTierInput, setFreeTierInput]   = useState('');
   const [savingFreeTier, setSavingFreeTier] = useState(false);
 
+  const [apiKeyLimit, setApiKeyLimit]           = useState<number | null>(null);
+  const [apiKeyLimitInput, setApiKeyLimitInput] = useState('');
+  const [savingApiKeyLimit, setSavingApiKeyLimit] = useState(false);
+
   async function load() {
     setLoading(true);
     const res  = await fetch('/api/admin/planes');
@@ -55,6 +59,10 @@ export default function PlanesPage() {
       setFreeTierLimit(data.freeTierLimit);
       setFreeTierInput(String(data.freeTierLimit));
     }
+    if (typeof data.apiKeyDefaultLimit === 'number') {
+      setApiKeyLimit(data.apiKeyDefaultLimit);
+      setApiKeyLimitInput(String(data.apiKeyDefaultLimit));
+    }
   }
 
   async function saveFreeTier() {
@@ -67,6 +75,18 @@ export default function PlanesPage() {
     const data = await res.json();
     if (res.ok) setFreeTierLimit(data.freeTierLimit);
     setSavingFreeTier(false);
+  }
+
+  async function saveApiKeyLimit() {
+    setSavingApiKeyLimit(true);
+    const res = await fetch('/api/admin/configuracion', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ apiKeyDefaultLimit: Number(apiKeyLimitInput) }),
+    });
+    const data = await res.json();
+    if (res.ok) setApiKeyLimit(data.apiKeyDefaultLimit);
+    setSavingApiKeyLimit(false);
   }
 
   useEffect(() => { load(); loadFreeTier(); }, []);
@@ -220,6 +240,29 @@ export default function PlanesPage() {
             {savingFreeTier ? 'Guardando...' : 'Guardar'}
           </button>
           {freeTierLimit !== null && <span className="text-sm text-muted">Actual: {freeTierLimit}/mes</span>}
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: '1.25rem' }}>
+        <h2 style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.25rem' }}>🔌 Cupo por defecto — Plan API</h2>
+        <p className="text-sm text-muted" style={{ marginBottom: '0.75rem' }}>
+          Comprobantes por mes que trae una API key nueva generada desde el autoservicio (Configuración → API en el
+          dashboard del cliente). Es independiente del límite de comprobantes de arriba — lo controla el Gateway,
+          no la app. Cambiar este valor no afecta keys ya generadas, solo las nuevas.
+        </p>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <input
+            className="input"
+            type="number"
+            min="0"
+            style={{ maxWidth: 120 }}
+            value={apiKeyLimitInput}
+            onChange={e => setApiKeyLimitInput(e.target.value)}
+          />
+          <button className="btn btn-primary btn-sm" onClick={saveApiKeyLimit} disabled={savingApiKeyLimit || apiKeyLimitInput === ''}>
+            {savingApiKeyLimit ? 'Guardando...' : 'Guardar'}
+          </button>
+          {apiKeyLimit !== null && <span className="text-sm text-muted">Actual: {apiKeyLimit}/mes</span>}
         </div>
       </div>
 

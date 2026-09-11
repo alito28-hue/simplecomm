@@ -5,6 +5,7 @@ import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
 import { registrarVentaItem } from '@/lib/venta-items';
 import { notifyLowStockIfNeeded } from '@/lib/stock-alerts';
+import { claimMpPayment } from '@/lib/mp-payment-claims';
 
 /**
  * Detecta tipo de factura igual que en ML:
@@ -89,6 +90,14 @@ export async function POST(req: NextRequest) {
     // Solo pagos aprobados
     if (payment.status !== 'approved') {
       return NextResponse.json({ ok: true, skipped: `status: ${payment.status}` });
+    }
+
+    // Si este mismo pago ya lo reclamó el webhook de MercadoLibre (porque la venta vino de
+    // ahí y se cobró por dentro de Mercado Pago), no facturamos de nuevo acá.
+    const claim = await claimMpPayment(integration.organizationId, String(paymentId), 'mercadopago');
+    if (!claim.claimed) {
+      console.log(`[MP webhook] Pago ${paymentId} ya facturado por otro origen (${claim.claimedBy}) — se omite para no duplicar.`);
+      return NextResponse.json({ ok: true, skipped: 'already_claimed', claimedBy: claim.claimedBy });
     }
 
     const totalAmount  = payment.transaction_amount ?? 0;
