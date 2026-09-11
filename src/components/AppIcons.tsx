@@ -231,3 +231,13 @@ export function IconCode({ size = 20 }: IconProps) {
     </svg>
   );
 }
+
+export function IconClockCheck({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <circle cx="11" cy="12" r="7.5" />
+      <path d="M11 7.5V12l3 2" />
+      <path d="M17 17.5l2 2 3.5-3.5" />
+    </svg>
+  );
+}

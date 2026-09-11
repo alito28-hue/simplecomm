@@ -4,6 +4,7 @@ import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
 import { processIncomingOrder, type OrderLineItem } from '@/lib/order-processing';
 import { claimMpPayment } from '@/lib/mp-payment-claims';
+import { createPendingInvoice } from '@/lib/pending-platform-invoices';
 
 /**
  * Detecta el tipo de factura según:
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: integration } = await supabase
     .from('integrations')
-    .select('accessToken, organizationId')
+    .select('accessToken, organizationId, mode')
     .eq('platform', 'MERCADO_LIBRE')
     .eq('status', 'CONNECTED')
     .maybeSingle();
@@ -175,6 +176,31 @@ export async function POST(req: NextRequest) {
     const amountForGateway = letter === 'A'
       ? Math.round((totalAmount / (1 + IVA_RATE)) * 100) / 100
       : totalAmount;
+
+    // Modalidad de la integración: AUTOMATIC (default) factura directo, CONFIRMATION deja la
+    // venta esperando aprobación manual, PAUSED no factura nada — en los tres casos el
+    // producto/stock ya se sincronizó arriba (processIncomingOrder), solo se gatea la emisión.
+    if (integration.mode === 'PAUSED') {
+      console.log(`[ML webhook] Orden ${orderId} — integración pausada, no se factura.`);
+      return NextResponse.json({ ok: true, skipped: 'paused' });
+    }
+    if (integration.mode === 'CONFIRMATION') {
+      await createPendingInvoice({
+        organizationId: integration.organizationId,
+        platform: 'mercadolibre',
+        externalRef: String(orderId),
+        buyerName,
+        buyerDocType: docType,
+        buyerDocNumber: docNumber,
+        buyerEmail: buyer.email || null,
+        amount: amountForGateway,
+        invoiceLetter: letter,
+        description: `Venta ML #${orderId}`,
+        metadata: { mlOrderId: orderId, mlUserId, clientId: orderResult.clientId },
+      });
+      console.log(`[ML webhook] Orden ${orderId} — queda pendiente de aprobación (modalidad confirmación).`);
+      return NextResponse.json({ ok: true, pending: true });
+    }
 
     const usageCheck = await checkAndIncrementUsage(integration.organizationId);
     if (!usageCheck.allowed) {

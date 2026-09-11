@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import styles from '../integracion.module.css';
 
+type Mode = 'AUTOMATIC' | 'CONFIRMATION' | 'PAUSED';
+
 function getInitialStatus(): 'idle' | 'connected' | 'error' {
   if (typeof window === 'undefined') return 'idle';
   const params = new URLSearchParams(window.location.search);
@@ -12,21 +14,29 @@ function getInitialStatus(): 'idle' | 'connected' | 'error' {
   return 'idle';
 }
 
+const MODE_OPTIONS: { value: Mode; label: string; desc: string }[] = [
+  { value: 'AUTOMATIC', label: 'Automática', desc: 'Cada venta pagada se factura sola, sin que tengas que hacer nada.' },
+  { value: 'CONFIRMATION', label: 'Con confirmación', desc: 'Te avisamos de cada venta y vos aprobás antes de que se emita la factura.' },
+  { value: 'PAUSED', label: 'Pausada', desc: 'Seguimos sincronizando tus ventas, pero no se emite ninguna factura.' },
+];
+
 export default function MercadoLibrePage() {
   const [status, setStatus] = useState<'idle' | 'connected' | 'error'>(getInitialStatus);
   const [loading, setLoading] = useState(() => getInitialStatus() === 'idle');
+  const [mode, setMode] = useState<Mode>('AUTOMATIC');
+  const [savingMode, setSavingMode] = useState(false);
 
   useEffect(() => {
     const initialStatus = getInitialStatus();
-    if (initialStatus !== 'idle') {
-      return;
-    }
+    if (initialStatus === 'idle') setLoading(true);
 
-    // Verificar si ya está conectado
     fetch('/api/integraciones/mercadolibre/status')
       .then(r => r.json())
-      .then(d => setStatus(d.connected ? 'connected' : 'idle'))
-      .catch(() => setStatus('idle'))
+      .then(d => {
+        if (initialStatus === 'idle') setStatus(d.connected ? 'connected' : 'idle');
+        setMode((d.mode as Mode) ?? 'AUTOMATIC');
+      })
+      .catch(() => { if (initialStatus === 'idle') setStatus('idle'); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -38,6 +48,17 @@ export default function MercadoLibrePage() {
     if (!confirm('¿Desconectar Mercado Libre?')) return;
     await fetch('/api/integraciones/mercadolibre/disconnect', { method: 'DELETE' });
     setStatus('idle');
+  }
+
+  async function cambiarModo(nuevoModo: Mode) {
+    setSavingMode(true);
+    const prev = mode;
+    setMode(nuevoModo);
+    const res = await fetch('/api/integraciones/mercadolibre/modo', {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: nuevoModo }),
+    });
+    if (!res.ok) setMode(prev);
+    setSavingMode(false);
   }
 
   return (
@@ -56,17 +77,39 @@ export default function MercadoLibrePage() {
       {loading ? (
         <div className={`card ${styles.loadingCard}`}>Verificando conexión...</div>
       ) : status === 'connected' ? (
-        <div className={`card ${styles.connectedCard}`}>
-          <div className={styles.connectedIcon}>✅</div>
-          <h2 className={styles.connectedTitle}>¡Mercado Libre conectado!</h2>
-          <p className={styles.connectedDesc}>
-            Tus ventas de Mercado Libre se facturarán automáticamente cuando se paguen.
-          </p>
-          <div className={styles.connectedActions}>
-            <Link href="/dashboard/billing" className="btn btn-primary">Ver facturas →</Link>
-            <button onClick={desconectar} className="btn btn-ghost">Desconectar</button>
+        <>
+          <div className={`card ${styles.connectedCard}`}>
+            <div className={styles.connectedIcon}>✅</div>
+            <h2 className={styles.connectedTitle}>¡Mercado Libre conectado!</h2>
+            <p className={styles.connectedDesc}>
+              Tus ventas de Mercado Libre se facturarán según la modalidad que elijas abajo.
+            </p>
+            <div className={styles.connectedActions}>
+              <Link href="/dashboard/billing" className="btn btn-primary">Ver facturas →</Link>
+              <button onClick={desconectar} className="btn btn-ghost">Desconectar</button>
+            </div>
           </div>
-        </div>
+
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <h2 className={styles.sectionTitle}>Modalidad de facturación</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.75rem' }}>
+              {MODE_OPTIONS.map(opt => (
+                <label key={opt.value} style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', cursor: 'pointer', padding: '0.6rem', borderRadius: 'var(--radius)', border: `1px solid ${mode === opt.value ? 'var(--blue)' : 'var(--border)'}` }}>
+                  <input type="radio" name="ml-mode" checked={mode === opt.value} onChange={() => cambiarModo(opt.value)} disabled={savingMode} style={{ marginTop: '0.2rem' }} />
+                  <span>
+                    <strong style={{ display: 'block' }}>{opt.label}</strong>
+                    <span className="text-sm text-muted">{opt.desc}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            {mode === 'CONFIRMATION' && (
+              <p className="text-sm text-muted" style={{ marginTop: '0.75rem' }}>
+                Revisá las ventas esperando aprobación en <Link href="/dashboard/facturas-pendientes" style={{ color: 'var(--blue)' }}>Pendientes de aprobación</Link>.
+              </p>
+            )}
+          </div>
+        </>
       ) : (
         <>
           <div className="card" style={{ padding: '1.5rem' }}>

@@ -6,6 +6,7 @@ import { checkAndIncrementUsage } from '@/lib/usage';
 import { registrarVentaItem } from '@/lib/venta-items';
 import { notifyLowStockIfNeeded } from '@/lib/stock-alerts';
 import { claimMpPayment } from '@/lib/mp-payment-claims';
+import { createPendingInvoice } from '@/lib/pending-platform-invoices';
 
 /**
  * Detecta tipo de factura igual que en ML:
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
   // Buscar integración por el MP user_id almacenado en config
   const { data: integrations } = await supabase
     .from('integrations')
-    .select('accessToken, organizationId, config')
+    .select('accessToken, organizationId, config, mode')
     .eq('platform', 'MERCADO_PAGO')
     .eq('status', 'CONNECTED');
 
@@ -147,6 +148,31 @@ export async function POST(req: NextRequest) {
     const amountForGateway = letter === 'A'
       ? Math.round((totalAmount / (1 + IVA_RATE)) * 100) / 100
       : totalAmount;
+
+    // Modalidad de la integración — no aplica a "Venta Rápida" (pendingSale): esa venta ya la
+    // aprobó el usuario al crear el link de cobro, no tiene sentido volver a pedirle
+    // confirmación o dejarla sin facturar solo porque la integración esté en otro modo.
+    if (!pendingSale && integration.mode === 'PAUSED') {
+      console.log(`[MP webhook] Pago ${paymentId} — integración pausada, no se factura.`);
+      return NextResponse.json({ ok: true, skipped: 'paused' });
+    }
+    if (!pendingSale && integration.mode === 'CONFIRMATION') {
+      await createPendingInvoice({
+        organizationId: integration.organizationId,
+        platform: 'mercadopago',
+        externalRef: String(paymentId),
+        buyerName,
+        buyerDocType: docType,
+        buyerDocNumber: docNumber,
+        buyerEmail: payer.email || null,
+        amount: amountForGateway,
+        invoiceLetter: letter,
+        description: `Pago MP #${paymentId}`,
+        metadata: { mpPaymentId: paymentId, mpSellerId },
+      });
+      console.log(`[MP webhook] Pago ${paymentId} — queda pendiente de aprobación (modalidad confirmación).`);
+      return NextResponse.json({ ok: true, pending: true });
+    }
 
     const usageCheck = await checkAndIncrementUsage(integration.organizationId);
     if (!usageCheck.allowed) {

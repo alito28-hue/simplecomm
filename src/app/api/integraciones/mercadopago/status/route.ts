@@ -7,10 +7,10 @@ export async function GET() {
   if (!user) return NextResponse.json({ connected: false });
 
   const { data } = await supabase.from('integrations')
-    .select('status')
+    .select('status, mode')
     .eq('organizationId', user.id)
     .eq('platform', 'MERCADO_PAGO')
-    .single();
+    .maybeSingle();
 
-  return NextResponse.json({ connected: data?.status === 'CONNECTED' });
+  return NextResponse.json({ connected: data?.status === 'CONNECTED', mode: data?.mode ?? 'AUTOMATIC' });
 }
