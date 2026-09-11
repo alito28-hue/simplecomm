@@ -126,7 +126,7 @@ export default function PresupuestosPage() {
     const res = await fetch(`/api/presupuestos/${id}`);
     const quote = await res.json();
     const items = (quote.items as QuoteItem[]).map((it) => ({
-      description: it.description, quantity: Number(it.quantity), unitPrice: Number(it.unitPrice),
+      description: it.description, quantity: Number(it.quantity), unitPrice: Number(it.unitPrice), productId: it.productId,
     }));
     const params = new URLSearchParams({
       name: quote.buyerName,

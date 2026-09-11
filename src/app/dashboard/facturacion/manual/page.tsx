@@ -34,7 +34,7 @@ const DOC_TYPES_BC = ['CUIT', 'CUIL', 'DNI', 'CONSUMIDOR_FINAL'];
 // al bundle del cliente) — se duplica acá, mismo criterio que otras constantes chicas del sitio.
 const CANAL_SUGGESTIONS = ['Instagram', 'WhatsApp', 'Facebook', 'Presencial / Local'];
 
-interface Item { description: string; quantity: number; unitPrice: number; ivaRate: string; }
+interface Item { description: string; quantity: number; unitPrice: number; ivaRate: string; productId?: string | null; }
 
 function PersonaCard({ data }: { data: PadronData }) {
   const activo = data.estadoClave === 'ACTIVO';
@@ -108,9 +108,9 @@ export default function FacturacionManualPage() {
     const fromQuote = searchParams.get('fromQuote');
     if (itemsParam) {
       try {
-        const parsed = JSON.parse(itemsParam) as { description: string; quantity: number; unitPrice: number }[];
+        const parsed = JSON.parse(itemsParam) as { description: string; quantity: number; unitPrice: number; productId?: string | null }[];
         if (parsed.length > 0) {
-          setItems(parsed.map(it => ({ description: it.description, quantity: it.quantity, unitPrice: it.unitPrice, ivaRate: 'IVA_21' })));
+          setItems(parsed.map(it => ({ description: it.description, quantity: it.quantity, unitPrice: it.unitPrice, ivaRate: 'IVA_21', productId: it.productId ?? null })));
         }
       } catch { /* ignora un query param mal formado */ }
     }
@@ -287,10 +287,16 @@ export default function FacturacionManualPage() {
       if (!res.ok) throw new Error(data.error);
       setResult(data);
       if (fromQuoteRef.current) {
+        // Manda los ítems TAL COMO se terminaron emitiendo (después de cualquier edición del
+        // usuario en este formulario) — no los del presupuesto original — para descontar
+        // stock de la cantidad real facturada, no de la cotizada.
+        const stockItems = items
+          .filter(it => it.productId)
+          .map(it => ({ productId: it.productId, quantity: it.quantity }));
         fetch(`/api/presupuestos/${fromQuoteRef.current}/convertir`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ invoiceNumber: data.invoiceNumber }),
+          body: JSON.stringify({ invoiceNumber: data.invoiceNumber, items: stockItems }),
         }).catch(() => {});
         fromQuoteRef.current = null;
       }
