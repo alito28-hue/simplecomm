@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-const MP_CLIENT_ID     = process.env.MP_CLIENT_ID ?? '';
-const MP_CLIENT_SECRET = process.env.MP_CLIENT_SECRET ?? '';
+// App separada de Mercado Pago (Checkout API / Marketplace) — ver connect/route.ts.
+const MP_CLIENT_ID     = process.env.MP_MARKETPLACE_CLIENT_ID ?? '';
+const MP_CLIENT_SECRET = process.env.MP_MARKETPLACE_CLIENT_SECRET ?? '';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://simplecomm.com.ar';
 const REDIRECT_URI = `${APP_URL}/api/integraciones/mercadopago/callback`;
 
@@ -24,7 +25,11 @@ export async function GET(req: NextRequest) {
     }),
   });
 
-  if (!tokenRes.ok) return NextResponse.redirect(`${APP_URL}/dashboard/integraciones/mercadopago?error=token`);
+  if (!tokenRes.ok) {
+    const errBody = await tokenRes.text().catch(() => '');
+    console.error('[MP callback] Error intercambiando code por token:', tokenRes.status, errBody);
+    return NextResponse.redirect(`${APP_URL}/dashboard/integraciones/mercadopago?error=token`);
+  }
 
   const tokens = await tokenRes.json();
   const supabase = await createClient();

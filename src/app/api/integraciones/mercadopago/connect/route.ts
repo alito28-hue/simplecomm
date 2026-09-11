@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
-const MP_CLIENT_ID = process.env.MP_CLIENT_ID ?? '';
+// App separada de Mercado Pago (Checkout API / Marketplace) — la app "Pagos online/Checkout
+// Pro" (MP_CLIENT_ID) no soporta OAuth para conectar cuentas de terceros, solo cobrar pagos
+// propios de SimpleComm.
+const MP_CLIENT_ID = process.env.MP_MARKETPLACE_CLIENT_ID ?? '';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://simplecomm.com.ar';
 const REDIRECT_URI = `${APP_URL}/api/integraciones/mercadopago/callback`;
 
