@@ -8,6 +8,19 @@ interface Payment {
   id: string; planId: string; amount: number; currency: string;
   status: string; mpPayerEmail: string | null; periodStart: string | null;
   periodEnd: string | null; createdAt: string;
+  paymentMethod: string | null; cardLastFour: string | null;
+}
+
+const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  visa: 'Visa', master: 'Mastercard', amex: 'Amex', naranja: 'Naranja', cabal: 'Cabal',
+  cencosud: 'Cencosud', argencard: 'Argencard', tarshop: 'Tarjeta Shopping',
+  account_money: 'Dinero en cuenta MP', pse: 'PSE', debvisa: 'Visa Débito', debmaster: 'Maestro',
+};
+
+function medioDePago(p: Payment): string {
+  if (!p.paymentMethod) return '—';
+  const label = PAYMENT_METHOD_LABEL[p.paymentMethod] ?? (p.paymentMethod.charAt(0).toUpperCase() + p.paymentMethod.slice(1));
+  return p.cardLastFour ? `${label} •••• ${p.cardLastFour}` : label;
 }
 interface Usage {
   planId: PlanId; planLabel: string; monthlyLimit: number;
@@ -186,16 +199,17 @@ export default function CuentaPage() {
         <div className="table-wrap">
           <table className="table">
             <thead>
-              <tr><th>Fecha</th><th>Plan</th><th>Monto</th><th>Email MP</th><th>Período</th><th>Estado</th></tr>
+              <tr><th>Fecha</th><th>Plan</th><th>Monto</th><th>Medio de pago</th><th>Email MP</th><th>Período</th><th>Estado</th></tr>
             </thead>
             <tbody>
               {payments.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Sin pagos registrados aún.</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Sin pagos registrados aún.</td></tr>
               ) : payments.map(p => (
                 <tr key={p.id}>
                   <td className="text-sm text-muted">{fmt(p.createdAt)}</td>
                   <td><span className="badge badge-blue">{PLANS[p.planId as PlanId]?.label ?? p.planId}</span></td>
                   <td><strong>{money(p.amount)}</strong></td>
+                  <td className="text-sm">{medioDePago(p)}</td>
                   <td className="text-sm">{p.mpPayerEmail ?? '—'}</td>
                   <td className="text-sm text-muted">
                     {p.periodStart && p.periodEnd ? `${fmt(p.periodStart)} → ${fmt(p.periodEnd)}` : '—'}

@@ -1,3 +1,6 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import styles from './integraciones.module.css';
 import Link from 'next/link';
 
@@ -8,6 +11,7 @@ const INTEGRACIONES = [
     desc: 'Automatizá el fulfillment y sincronizá inventario en el marketplace más grande de Latinoamérica.',
     estado: 'disponible', categoria: 'marketplace', logo: '🛒',
     href: '/dashboard/integraciones/mercadolibre',
+    statusUrl: '/api/integraciones/mercadolibre/status',
   },
   {
     id: 'mercadopago',
@@ -15,6 +19,7 @@ const INTEGRACIONES = [
     desc: 'Sincronizá pagos y conciliá transacciones de Mercado Pago automáticamente.',
     estado: 'disponible', categoria: 'marketplace', logo: '💳',
     href: '/dashboard/integraciones/mercadopago',
+    statusUrl: '/api/integraciones/mercadopago/status',
   },
   {
     id: 'tiendanube',
@@ -22,6 +27,7 @@ const INTEGRACIONES = [
     desc: 'Sincronizá productos de tu nube y centralizá la gestión de ventas en tiempo real.',
     estado: 'disponible', categoria: 'ecommerce', logo: '☁',
     href: '/dashboard/integraciones/tiendanube',
+    statusUrl: '/api/integraciones/tiendanube/status',
   },
   {
     id: 'shopify',
@@ -29,6 +35,7 @@ const INTEGRACIONES = [
     desc: 'Conectá tus tiendas Shopify internacionales para reportes globales unificados.',
     estado: 'disponible', categoria: 'ecommerce', logo: '🟩',
     href: '/dashboard/integraciones/shopify',
+    statusUrl: '/api/integraciones/shopify/status',
   },
   {
     id: 'enviopack',
@@ -36,6 +43,7 @@ const INTEGRACIONES = [
     desc: 'Cotizá y generá guías de envío con múltiples correos desde una sola integración.',
     estado: 'disponible', categoria: 'logistica', logo: '📦',
     href: '/dashboard/integraciones/enviopack',
+    statusUrl: '/api/integraciones/enviopack/status',
   },
   {
     id: 'woocommerce',
@@ -64,7 +72,28 @@ const INTEGRACIONES = [
 ];
 
 export default function IntegracionesPage() {
-  const conectadas = INTEGRACIONES.filter(i => i.estado === 'disponible').length;
+  const [connected, setConnected] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const targets = INTEGRACIONES.filter(i => i.estado === 'disponible' && i.statusUrl);
+
+    Promise.all(
+      targets.map(i =>
+        fetch(i.statusUrl!).then(r => r.json()).then(d => [i.id, !!d.connected] as const).catch(() => [i.id, false] as const)
+      ),
+    ).then(results => {
+      if (cancelled) return;
+      setConnected(Object.fromEntries(results));
+      setLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, []);
+
+  const conectadas = Object.values(connected).filter(Boolean).length;
+  const disponibles = INTEGRACIONES.filter(i => i.estado === 'disponible').length;
 
   return (
     <div className={styles.page}>
@@ -80,25 +109,36 @@ export default function IntegracionesPage() {
       </div>
 
       <div className={styles.grid}>
-        {INTEGRACIONES.map((int) => (
-          <div key={int.id} className={`card ${styles.intCard}`}>
-            <div className={styles.cardHeader}>
-              <div className={styles.intLogo}>{int.logo}</div>
-              <span className={`badge ${int.estado === 'disponible' ? 'badge-success' : 'badge-gray'}`}>
-                {int.estado === 'disponible' ? '● Disponible' : '○ Próximamente'}
-              </span>
+        {INTEGRACIONES.map((int) => {
+          const isConnected = int.estado === 'disponible' && connected[int.id];
+          return (
+            <div key={int.id} className={`card ${styles.intCard}`}>
+              <div className={styles.cardHeader}>
+                <div className={styles.intLogo}>{int.logo}</div>
+                {int.estado === 'disponible' ? (
+                  isConnected ? (
+                    <span className="badge badge-success">● Conectado</span>
+                  ) : (
+                    <span className="badge badge-gray">○ {loading ? 'Verificando...' : 'No conectado'}</span>
+                  )
+                ) : (
+                  <span className="badge badge-gray">○ Próximamente</span>
+                )}
+              </div>
+              <h3 className={styles.intName}>{int.nombre}</h3>
+              <p className={styles.intDesc}>{int.desc}</p>
+              <div className={styles.cardActions}>
+                {int.estado === 'disponible' && int.href ? (
+                  <Link href={int.href} className={`btn btn-sm ${isConnected ? 'btn-outline' : 'btn-primary'}`}>
+                    {isConnected ? 'Configurar' : 'Conectar'}
+                  </Link>
+                ) : (
+                  <button className="btn btn-ghost btn-sm" disabled>Próximamente</button>
+                )}
+              </div>
             </div>
-            <h3 className={styles.intName}>{int.nombre}</h3>
-            <p className={styles.intDesc}>{int.desc}</p>
-            <div className={styles.cardActions}>
-              {int.estado === 'disponible' && int.href ? (
-                <Link href={int.href} className="btn btn-primary btn-sm">Conectar</Link>
-              ) : (
-                <button className="btn btn-ghost btn-sm" disabled>Próximamente</button>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
 
         {/* Request Integration */}
         <div className={`card ${styles.requestCard}`}>
@@ -111,21 +151,10 @@ export default function IntegracionesPage() {
         </div>
       </div>
 
-      {/* API Status Bar */}
       <div className={`card ${styles.apiBar}`}>
         <div className={styles.apiStat}>
-          <span className={styles.apiNum}>{conectadas}/{INTEGRACIONES.length}</span>
-          <span className={styles.apiLabel}>Integraciones disponibles. Uptime 98.95%.</span>
-        </div>
-        <div className={styles.apiDivider} />
-        <div className={styles.apiStat}>
-          <span className={styles.apiNum}>1.2k</span>
-          <span className={styles.apiLabel}>Latencia promedio (ms)</span>
-        </div>
-        <div className={styles.apiDivider} />
-        <div className={styles.apiStat}>
-          <span className={styles.apiNum}>342k</span>
-          <span className={styles.apiLabel}>Registros sincronizados por día</span>
+          <span className={styles.apiNum}>{conectadas}/{disponibles}</span>
+          <span className={styles.apiLabel}>Integraciones conectadas en tu cuenta.</span>
         </div>
       </div>
     </div>

@@ -49,6 +49,8 @@ export async function POST(req: NextRequest) {
       status:         'approved',
       mpPaymentId:    String(paymentId),
       mpPayerEmail:   payment.payer?.email ?? null,
+      paymentMethod:  payment.payment_method_id ?? null,
+      cardLastFour:   payment.card?.last_four_digits ?? null,
       periodStart:    now.toISOString(),
       periodEnd:      periodEnd.toISOString(),
       createdAt:      now.toISOString(),

@@ -85,6 +85,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: 'Configuración',
     items: [
       { href: '/dashboard/organizacion/usuarios', label: 'Usuarios y Permisos', Icon: IconUsers, permission: 'manage_settings' },
+      { href: '/dashboard/perfil',                label: 'Mi Perfil',           Icon: IconUser },
       { href: '/dashboard/cuenta',                label: 'Mi cuenta',           Icon: IconCard },
       { href: '/dashboard/organizacion',          label: 'Configuración',       Icon: IconGear, permission: 'manage_settings' },
     ],

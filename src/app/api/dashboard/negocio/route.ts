@@ -31,7 +31,11 @@ export async function GET() {
   for (const c of issuedThisMonth) {
     const p = paidMap.get(c.invoice_id);
     if (p?.status === 'PAID') {
-      cobradoMes += Number(p.paidAmount ?? c.total_amount);
+      // Una factura PAID está saldada por el total, no por paidAmount (el neto que entró al
+      // banco) — la diferencia son retenciones/IIBB/Ley25413/comisión ya descontados en
+      // origen, no plata que el cliente todavía deba. Usar paidAmount acá hacía que el
+      // dashboard mostrara facturas cobradas como "pendientes de cobro" por el monto retenido.
+      cobradoMes += c.total_amount;
       cantidadCobradas += 1;
     }
   }
