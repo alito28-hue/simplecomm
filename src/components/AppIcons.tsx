@@ -222,3 +222,12 @@ export function IconClipboard({ size = 20 }: IconProps) {
     </svg>
   );
 }
+
+export function IconCode({ size = 20 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" {...base}>
+      <path d="M9 6.5 3.8 12 9 17.5" />
+      <path d="M15 6.5 20.2 12 15 17.5" />
+    </svg>
+  );
+}

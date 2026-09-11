@@ -37,6 +37,7 @@ const updateTenantSchema = z.object({
 
 const createKeySchema = z.object({
   name: z.string().min(2).max(80), // ej: "mesames-checkout"
+  monthly_limit: z.number().int().positive().optional(), // ausente = key interna, sin límite propio
 });
 
 export async function adminRoutes(app: FastifyInstance): Promise<void> {
@@ -247,7 +248,15 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     const keyHash = await bcrypt.hash(rawKey, 10);
 
     await db.apiKey.create({
-      data: { tenantId: tenant.id, name: parse.data.name, keyHash, prefix, active: true },
+      data: {
+        tenantId: tenant.id,
+        name: parse.data.name,
+        keyHash,
+        prefix,
+        active: true,
+        monthlyLimit: parse.data.monthly_limit,
+        countResetAt: parse.data.monthly_limit != null ? new Date() : undefined,
+      },
     });
 
     return reply.status(201).send({
@@ -255,6 +264,45 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       api_key:        rawKey,   // ⚠️ Solo visible esta vez
       api_key_prefix: prefix,
     });
+  });
+
+  /**
+   * GET /v1/admin/tenants/:id/keys
+   * Lista las API keys de un tenant (sin exponer las keys en sí, solo metadata).
+   */
+  app.get<{ Params: { id: string } }>('/v1/admin/tenants/:id/keys', async (request, reply) => {
+    if (!requireAdminAuth(request.headers.authorization)) {
+      return reply.status(401).send({ error: 'Admin secret requerido' });
+    }
+
+    const { id } = request.params;
+    const keys = await db.apiKey.findMany({
+      where: { tenantId: id },
+      select: {
+        id: true, name: true, prefix: true, active: true,
+        monthlyLimit: true, monthlyCount: true, countResetAt: true, createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return reply.send({ keys });
+  });
+
+  /**
+   * DELETE /v1/admin/tenants/:id/keys/:keyId
+   * Revoca (desactiva) una API key puntual, sin tocar las demás del tenant.
+   */
+  app.delete<{ Params: { id: string; keyId: string } }>('/v1/admin/tenants/:id/keys/:keyId', async (request, reply) => {
+    if (!requireAdminAuth(request.headers.authorization)) {
+      return reply.status(401).send({ error: 'Admin secret requerido' });
+    }
+
+    const { id, keyId } = request.params;
+    const key = await db.apiKey.findFirst({ where: { id: keyId, tenantId: id } });
+    if (!key) return reply.status(404).send({ error: 'API key no encontrada' });
+
+    await db.apiKey.update({ where: { id: keyId }, data: { active: false } });
+    return reply.send({ ok: true });
   });
 
   /**

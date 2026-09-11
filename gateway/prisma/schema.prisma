@@ -58,6 +58,15 @@ model ApiKey {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
 
+  // Cupo mensual propio de "API directa" — null significa sin límite (así queda por defecto
+  // la key interna que usa la propia app de SimpleComm, cuyo límite lo controla SimpleComm en
+  // su propia base, no acá). Una key con monthlyLimit no-null es una key de "Plan API" emitida
+  // en el autoservicio del dashboard, medida acá mismo en el Gateway — independiente del
+  // contador de comprobantes de la app.
+  monthlyLimit Int?
+  monthlyCount Int       @default(0)
+  countResetAt DateTime?
+
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("api_keys")

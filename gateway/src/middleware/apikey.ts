@@ -6,6 +6,7 @@ declare module 'fastify' {
   interface FastifyRequest {
     tenantId: string;
     tenantCuit: string;
+    apiKeyId: string;
   }
 }
 
@@ -43,6 +44,7 @@ export async function authenticateApiKey(
     if (valid && apiKey.tenant.status === 'ACTIVE') {
       request.tenantId = apiKey.tenant.id;
       request.tenantCuit = apiKey.tenant.cuit;
+      request.apiKeyId = apiKey.id;
       return;
     }
   }

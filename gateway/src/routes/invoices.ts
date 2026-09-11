@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { issueInvoice, issueCreditNote, issueDebitNote } from '../invoice/service';
 import { authenticateApiKey } from '../middleware/apikey';
+import { enforceApiKeyQuota } from '../invoice/api-usage';
 import { db } from '../db/client';
 
 const creditNoteSchema = z.object({
@@ -58,6 +59,9 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
         details: parse.error.flatten().fieldErrors,
       });
     }
+
+    const quota = await enforceApiKeyQuota(request.apiKeyId);
+    if (!quota.ok) return reply.status(402).send({ error: quota.message });
 
     const body = parse.data;
 
@@ -162,6 +166,8 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
     if (!parse.success) {
       return reply.status(400).send({ error: 'Payload inválido', details: parse.error.flatten().fieldErrors });
     }
+    const quota = await enforceApiKeyQuota(request.apiKeyId);
+    if (!quota.ok) return reply.status(402).send({ error: quota.message });
     const body = parse.data;
 
     try {
@@ -202,6 +208,8 @@ export async function invoiceRoutes(app: FastifyInstance): Promise<void> {
     if (!parse.success) {
       return reply.status(400).send({ error: 'Payload inválido', details: parse.error.flatten().fieldErrors });
     }
+    const quota = await enforceApiKeyQuota(request.apiKeyId);
+    if (!quota.ok) return reply.status(402).send({ error: quota.message });
     const body = parse.data;
 
     try {

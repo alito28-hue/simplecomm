@@ -1,0 +1,308 @@
+.page {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text-primary);
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 2rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────── */
+
+.body {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 3rem;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 2.5rem 2rem 6rem;
+}
+
+@media (max-width: 900px) {
+  .body { grid-template-columns: 1fr; }
+  .toc { display: none; }
+}
+
+.toc {
+  position: sticky;
+  top: 5rem;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-height: calc(100vh - 6rem);
+  overflow-y: auto;
+}
+
+.tocGroup {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 1.1rem 0 0.35rem;
+}
+.tocGroup:first-child { margin-top: 0; }
+
+.tocLink {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  padding: 0.3rem 0.6rem;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+}
+.tocLink:hover { background: var(--surface-low); color: var(--text-primary); }
+
+.content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3.5rem;
+}
+
+/* ── Hero ───────────────────────────────────────────────────────────── */
+
+.hero {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--blue);
+  margin-bottom: 0.75rem;
+}
+
+.heroTitle {
+  font-family: var(--font-heading);
+  font-size: clamp(1.9rem, 4vw, 2.6rem);
+  font-weight: 700;
+  line-height: 1.1;
+  text-wrap: balance;
+  margin-bottom: 0.9rem;
+}
+
+.heroDesc {
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  max-width: 62ch;
+  margin-bottom: 1.5rem;
+}
+
+.heroMeta {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.pill {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: var(--radius-full);
+  background: var(--surface-low);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+/* ── Sections ───────────────────────────────────────────────────────── */
+
+.section { scroll-margin-top: 5.5rem; }
+
+.sectionTitle {
+  font-family: var(--font-heading);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+}
+
+.sectionDesc {
+  color: var(--text-secondary);
+  max-width: 68ch;
+  margin-bottom: 1.25rem;
+}
+
+.subTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 1.5rem 0 0.6rem;
+}
+
+/* ── Endpoint badge ─────────────────────────────────────────────────── */
+
+.endpointRow {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.method {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.03em;
+}
+.method.post { background: var(--blue-light); color: var(--blue-hover); }
+.method.get  { background: var(--success-bg); color: #067a55; }
+
+.path {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+/* ── Code blocks ────────────────────────────────────────────────────── */
+
+.codeBlock {
+  background: var(--navy);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin: 1rem 0;
+}
+
+.codeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 1rem;
+  background: var(--navy-muted);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: #9db3d4;
+  letter-spacing: 0.02em;
+}
+
+.codeBlock pre {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+}
+
+.codeBlock code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: #e3ecfb;
+  white-space: pre;
+}
+
+/* ── Field tables ───────────────────────────────────────────────────── */
+
+.tableWrap { overflow-x: auto; margin: 1rem 0; }
+
+.fieldTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  min-width: 520px;
+}
+
+.fieldTable th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 500;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.fieldTable td {
+  padding: 0.65rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  color: var(--text-secondary);
+}
+
+.fieldTable code {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--text-primary);
+}
+
+.req {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--error);
+}
+.opt {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+/* ── Callouts ───────────────────────────────────────────────────────── */
+
+.note {
+  border-left: 3px solid var(--blue);
+  background: var(--blue-light);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 0.85rem 1.1rem;
+  font-size: 0.88rem;
+  color: var(--navy);
+  margin: 1rem 0;
+}
+
+.warn {
+  border-left: 3px solid var(--warning);
+  background: var(--warning-bg);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 0.85rem 1.1rem;
+  font-size: 0.88rem;
+  color: #7a4e02;
+  margin: 1rem 0;
+}
+
+/* ── Error/status table ─────────────────────────────────────────────── */
+
+.statusCode {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.statusCode.s2xx { color: #067a55; }
+.statusCode.s4xx { color: #b45309; }
+.statusCode.s5xx { color: var(--error); }
+
+/* ── CTA footer ─────────────────────────────────────────────────────── */
+
+.ctaBox {
+  background: var(--navy);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  color: var(--text-inverse);
+}
+
+.ctaBox h3 { font-family: var(--font-heading); font-size: 1.2rem; margin-bottom: 0.35rem; }
+.ctaBox p { color: #b6c3db; font-size: 0.9rem; max-width: 42ch; }

@@ -11,7 +11,7 @@ import {
 } from './LandingIcons';
 import {
   IconUsers, IconWallet, IconBanknote, IconCalendar, IconTruck, IconLink, IconTag, IconFolder,
-  IconBook, IconHelp, IconGear, IconBolt, IconHome, IconClipboard,
+  IconBook, IconHelp, IconGear, IconBolt, IconHome, IconClipboard, IconCode,
 } from './AppIcons';
 import styles from './Sidebar.module.css';
 
@@ -74,6 +74,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/dashboard/envios',       label: 'Envíos',        Icon: IconTruck, permission: 'manage_invoices' },
       { href: '/dashboard/integraciones', label: 'Integraciones', Icon: IconLink, permission: 'manage_settings' },
+      { href: '/dashboard/organizacion/api', label: 'API', Icon: IconCode, permission: 'manage_settings' },
       { href: '/dashboard/organizacion/listas-precios', label: 'Listas de Precios', Icon: IconTag, permission: 'manage_products' },
       { href: '/dashboard/organizacion/centros-costo',  label: 'Centros de Costo',  Icon: IconFolder, permission: 'manage_clients' },
       { href: '/dashboard/tutoriales', label: 'Tutoriales', Icon: IconBook },

@@ -338,6 +338,7 @@ export default async function Home() {
             <a href="#planes">Planes</a>
             <a href="#canales">Integraciones</a>
             <Link href="/faq">Centro de ayuda</Link>
+            <Link href="/desarrolladores">API para desarrolladores</Link>
           </div>
           <div>
             <h4>Compañía</h4>
