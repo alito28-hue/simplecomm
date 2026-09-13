@@ -71,8 +71,13 @@ const INTEGRACIONES = [
   },
 ];
 
+const MODE_LABEL: Record<string, string> = {
+  AUTOMATIC: 'Automática', CONFIRMATION: 'Con confirmación', PAUSED: 'Pausada',
+};
+
 export default function IntegracionesPage() {
   const [connected, setConnected] = useState<Record<string, boolean>>({});
+  const [modes, setModes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -81,11 +86,14 @@ export default function IntegracionesPage() {
 
     Promise.all(
       targets.map(i =>
-        fetch(i.statusUrl!).then(r => r.json()).then(d => [i.id, !!d.connected] as const).catch(() => [i.id, false] as const)
+        fetch(i.statusUrl!).then(r => r.json())
+          .then(d => [i.id, !!d.connected, d.mode as string | undefined] as const)
+          .catch(() => [i.id, false, undefined] as const)
       ),
     ).then(results => {
       if (cancelled) return;
-      setConnected(Object.fromEntries(results));
+      setConnected(Object.fromEntries(results.map(([id, ok]) => [id, ok])));
+      setModes(Object.fromEntries(results.filter(([, , mode]) => mode).map(([id, , mode]) => [id, mode as string])));
       setLoading(false);
     });
 
@@ -127,6 +135,11 @@ export default function IntegracionesPage() {
               </div>
               <h3 className={styles.intName}>{int.nombre}</h3>
               <p className={styles.intDesc}>{int.desc}</p>
+              {isConnected && modes[int.id] && (
+                <p className="text-sm text-muted" style={{ marginTop: '-0.5rem', marginBottom: '0.75rem' }}>
+                  Facturación: <strong>{MODE_LABEL[modes[int.id]] ?? modes[int.id]}</strong>
+                </p>
+              )}
               <div className={styles.cardActions}>
                 {int.estado === 'disponible' && int.href ? (
                   <Link href={int.href} className={`btn btn-sm ${isConnected ? 'btn-outline' : 'btn-primary'}`}>
