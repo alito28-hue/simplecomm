@@ -25,6 +25,7 @@ export default function MercadoPagoPage() {
   const [loading, setLoading] = useState(() => getInitialStatus() === 'idle');
   const [mode, setMode] = useState<Mode>('AUTOMATIC');
   const [savingMode, setSavingMode] = useState(false);
+  const [modeMsg, setModeMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     const initialStatus = getInitialStatus();
@@ -47,14 +48,22 @@ export default function MercadoPagoPage() {
   }
 
   async function cambiarModo(nuevoModo: Mode) {
-    setSavingMode(true);
+    setSavingMode(true); setModeMsg(null);
     const prev = mode;
     setMode(nuevoModo);
-    const res = await fetch('/api/integraciones/mercadopago/modo', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: nuevoModo }),
-    });
-    if (!res.ok) setMode(prev);
-    setSavingMode(false);
+    try {
+      const res = await fetch('/api/integraciones/mercadopago/modo', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: nuevoModo }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setMode(prev); setModeMsg({ ok: false, text: data.error ?? 'No se pudo guardar' }); }
+      else setModeMsg({ ok: true, text: '✓ Modalidad guardada.' });
+    } catch {
+      setMode(prev);
+      setModeMsg({ ok: false, text: 'No se pudo guardar — revisá tu conexión.' });
+    } finally {
+      setSavingMode(false);
+    }
   }
 
   return (
@@ -99,6 +108,9 @@ export default function MercadoPagoPage() {
                 </label>
               ))}
             </div>
+            {modeMsg && (
+              <p className="text-sm" style={{ color: modeMsg.ok ? 'var(--success)' : 'var(--error)', marginTop: '0.75rem' }}>{modeMsg.text}</p>
+            )}
             {mode === 'CONFIRMATION' && (
               <p className="text-sm text-muted" style={{ marginTop: '0.75rem' }}>
                 Revisá los cobros esperando aprobación en <Link href="/dashboard/facturas-pendientes" style={{ color: 'var(--blue)' }}>Pendientes de aprobación</Link>.
