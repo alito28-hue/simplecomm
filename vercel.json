@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/monotributo-categorias",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/mp-payment-poll",
+      "schedule": "0 14 * * *"
     }
   ]
 }
