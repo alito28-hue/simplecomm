@@ -5,38 +5,7 @@ import { checkAndIncrementUsage } from '@/lib/usage';
 import { processIncomingOrder, type OrderLineItem } from '@/lib/order-processing';
 import { claimMpPayment } from '@/lib/mp-payment-claims';
 import { createPendingInvoice } from '@/lib/pending-platform-invoices';
-
-/**
- * Detecta el tipo de factura según:
- * - Condición fiscal del VENDEDOR (tenant): si es monotributista → siempre C
- * - Datos del COMPRADOR en la orden de ML:
- *     · CUIT en billing_info → presume Responsable Inscripto → Factura A
- *     · DNI o sin datos → Consumidor Final → Factura B
- */
-function detectInvoiceType(
-  sellerFiscalTreatment: string,
-  buyerDocType: string | null,
-  buyerDocNumber: string | null
-): { letter: 'A' | 'B' | 'C'; docType: string; docNumber: string } {
-
-  // Vendedor monotributista → siempre C
-  if (sellerFiscalTreatment === 'MONOTRIBUTISTA') {
-    return { letter: 'C', docType: buyerDocType ?? 'CONSUMIDOR_FINAL', docNumber: buyerDocNumber ?? '0' };
-  }
-
-  // Comprador con CUIT → Responsable Inscripto → Factura A
-  if (buyerDocType === 'CUIT' && buyerDocNumber && buyerDocNumber !== '0') {
-    return { letter: 'A', docType: 'CUIT', docNumber: buyerDocNumber };
-  }
-
-  // Comprador con DNI identificado → Factura B identificada
-  if (buyerDocType === 'DNI' && buyerDocNumber && buyerDocNumber !== '0') {
-    return { letter: 'B', docType: 'DNI', docNumber: buyerDocNumber };
-  }
-
-  // Default: Consumidor Final → Factura B
-  return { letter: 'B', docType: 'CONSUMIDOR_FINAL', docNumber: '0' };
-}
+import { detectInvoiceTypeWithPadron } from '@/lib/detect-invoice-type';
 
 export async function POST(req: NextRequest) {
   let body: { resource?: string; topic?: string; user_id?: number };
@@ -122,7 +91,7 @@ export async function POST(req: NextRequest) {
     const buyerDocNumber = billingInfo.doc_number ?? null;  // "30-12345678-9", null
     const buyerName = [buyer.first_name, buyer.last_name].filter(Boolean).join(' ') || 'Consumidor Final';
 
-    const { letter, docType, docNumber } = detectInvoiceType(
+    const { letter, docType, docNumber } = await detectInvoiceTypeWithPadron(
       sellerFiscalTreatment,
       buyerDocType,
       buyerDocNumber

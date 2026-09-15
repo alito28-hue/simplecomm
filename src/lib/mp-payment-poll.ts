@@ -3,7 +3,7 @@ import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
 import { claimMpPayment } from '@/lib/mp-payment-claims';
 import { createPendingInvoice } from '@/lib/pending-platform-invoices';
-import { detectInvoiceType } from '@/lib/detect-invoice-type';
+import { detectInvoiceTypeWithPadron } from '@/lib/detect-invoice-type';
 
 const IVA_RATE = 0.21;
 const OVERLAP_MS = 2 * 60 * 60 * 1000; // 2hs de margen sobre el último checkpoint
@@ -99,7 +99,7 @@ export async function runMercadoPagoPoll(): Promise<{ processed: number; issued:
         const buyerDocNumber = String(identification.number ?? '').replace(/\D/g, '') || null;
         const buyerName = [payment.payer?.first_name, payment.payer?.last_name].filter(Boolean).join(' ')
           || payment.payer?.email || 'Consumidor Final';
-        const { letter, docType, docNumber } = detectInvoiceType(sellerFiscalTreatment, buyerDocType, buyerDocNumber);
+        const { letter, docType, docNumber } = await detectInvoiceTypeWithPadron(sellerFiscalTreatment, buyerDocType, buyerDocNumber);
         const amountForGateway = letter === 'A'
           ? Math.round((payment.transaction_amount / (1 + IVA_RATE)) * 100) / 100
           : payment.transaction_amount;

@@ -7,30 +7,7 @@ import { registrarVentaItem } from '@/lib/venta-items';
 import { notifyLowStockIfNeeded } from '@/lib/stock-alerts';
 import { claimMpPayment } from '@/lib/mp-payment-claims';
 import { createPendingInvoice } from '@/lib/pending-platform-invoices';
-
-/**
- * Detecta tipo de factura igual que en ML:
- * - Vendedor monotributista → C
- * - Comprador con CUIT → A (bruto viene con IVA incluido, se calcula neto)
- * - Comprador con DNI identificado → B
- * - Sin datos → B consumidor final
- */
-function detectInvoiceType(
-  sellerFiscalTreatment: string,
-  buyerDocType: string | null,
-  buyerDocNumber: string | null
-): { letter: 'A' | 'B' | 'C'; docType: string; docNumber: string } {
-  if (sellerFiscalTreatment === 'MONOTRIBUTISTA') {
-    return { letter: 'C', docType: buyerDocType ?? 'CONSUMIDOR_FINAL', docNumber: buyerDocNumber ?? '0' };
-  }
-  if (buyerDocType === 'CUIT' && buyerDocNumber && buyerDocNumber !== '0') {
-    return { letter: 'A', docType: 'CUIT', docNumber: buyerDocNumber };
-  }
-  if (buyerDocType === 'DNI' && buyerDocNumber && buyerDocNumber !== '0') {
-    return { letter: 'B', docType: 'DNI', docNumber: buyerDocNumber };
-  }
-  return { letter: 'B', docType: 'CONSUMIDOR_FINAL', docNumber: '0' };
-}
+import { detectInvoiceTypeWithPadron } from '@/lib/detect-invoice-type';
 
 export async function POST(req: NextRequest) {
   let body: { type?: string; action?: string; data?: { id?: string }; user_id?: number };
@@ -138,7 +115,7 @@ export async function POST(req: NextRequest) {
       buyerName = [payer.first_name, payer.last_name].filter(Boolean).join(' ')
         || payer.email
         || 'Consumidor Final';
-      ({ letter, docType, docNumber } = detectInvoiceType(sellerFiscalTreatment, buyerDocType, buyerDocNumber));
+      ({ letter, docType, docNumber } = await detectInvoiceTypeWithPadron(sellerFiscalTreatment, buyerDocType, buyerDocNumber));
     }
 
     console.log(`[MP webhook] Pago ${paymentId} → Factura ${letter} | Comprador: ${buyerName} | Doc: ${docType} ${docNumber}${pendingSale ? ' | Venta Rápida' : ''}`);
