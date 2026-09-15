@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getGatewayKey, GATEWAY_URL } from '@/lib/gateway';
 import { checkAndIncrementUsage } from '@/lib/usage';
 import { translateGatewayError } from '@/lib/afip-errors';
@@ -10,7 +11,8 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { data: pending } = await supabase.from('pending_platform_invoices')
+  const admin = createAdminClient();
+  const { data: pending } = await admin.from('pending_platform_invoices')
     .select('*').eq('id', id).eq('organizationId', user.id).eq('status', 'PENDING').maybeSingle();
   if (!pending) return NextResponse.json({ error: 'No encontrada o ya resuelta' }, { status: 404 });
 
@@ -51,7 +53,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ error: translateGatewayError(invoiceData.error) }, { status: 502 });
   }
 
-  await supabase.from('pending_platform_invoices')
+  await admin.from('pending_platform_invoices')
     .update({ status: 'APPROVED', resolvedAt: new Date().toISOString() })
     .eq('id', id);
 
