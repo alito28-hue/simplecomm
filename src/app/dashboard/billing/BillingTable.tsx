@@ -10,6 +10,7 @@ import styles from './billing.module.css';
 
 interface NcModal { invoiceId: string; invoiceNumber: string | null; amount: number; buyerDoc: string | null; }
 interface NdModal { invoiceId: string; invoiceNumber: string | null; }
+interface ReenviarModal { invoiceId: string; invoiceNumber: string | null; }
 interface PagoModal { invoiceId: string; invoiceNumber: string | null; totalAmount: number; }
 
 interface DetalleModal { invoiceId: string; invoiceNumber: string | null; totalAmount: number; }
@@ -117,6 +118,10 @@ export default function BillingTable() {
   const [ndAmount, setNdAmount] = useState('');
   const [ndReason, setNdReason] = useState('');
   const [ndEmail, setNdEmail] = useState('');
+  const [reenviarModal, setReenviarModal] = useState<ReenviarModal | null>(null);
+  const [reenviarLoading, setReenviarLoading] = useState(false);
+  const [reenviarResult, setReenviarResult] = useState<string | null>(null);
+  const [reenviarEmail, setReenviarEmail] = useState('');
   const [payments, setPayments] = useState<Record<string, PaymentStatus>>({});
   const [attachmentsInvoiceId, setAttachmentsInvoiceId] = useState<string | null>(null);
   const [pagoModal, setPagoModal] = useState<PagoModal | null>(null);
@@ -261,6 +266,27 @@ export default function BillingTable() {
       window.dispatchEvent(new Event('comprobantes:refresh'));
     } finally {
       setNdLoading(false);
+    }
+  }
+
+  async function reenviarEmail_(invoiceId: string) {
+    if (!reenviarEmail.trim() || !reenviarEmail.includes('@')) {
+      setReenviarResult('Error: ingresá un email válido');
+      return;
+    }
+    setReenviarLoading(true);
+    setReenviarResult(null);
+    try {
+      const res = await fetch(`/api/facturas/${invoiceId}/reenviar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: reenviarEmail.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setReenviarResult(`Error: ${data.error}`); return; }
+      setReenviarResult(`✓ Comprobante enviado a ${reenviarEmail.trim()}.`);
+    } finally {
+      setReenviarLoading(false);
     }
   }
 
@@ -444,6 +470,15 @@ export default function BillingTable() {
                           ND
                         </button>
                       )}
+                      {inv.status === 'issued' && inv.invoice_number && (
+                        <button
+                          onClick={() => { setReenviarModal({ invoiceId: inv.invoice_id, invoiceNumber: inv.invoice_number }); setReenviarResult(null); setReenviarEmail(''); }}
+                          className="btn btn-ghost btn-sm"
+                          title="Reenviar por email"
+                        >
+                          ✉
+                        </button>
+                      )}
                     </div>
                   )}
                 </td>
@@ -552,6 +587,43 @@ export default function BillingTable() {
               {!ndResult?.startsWith('✓') && (
                 <button className="btn btn-primary btn-sm" onClick={() => emitirND(ndModal.invoiceId)} disabled={ndLoading}>
                   {ndLoading ? 'Emitiendo...' : 'Confirmar'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {reenviarModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          onClick={() => !reenviarLoading && setReenviarModal(null)}>
+          <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', maxWidth: 420, width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}
+            onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '0.75rem' }}>Reenviar por email</h2>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+              Reenviar el comprobante{reenviarModal.invoiceNumber ? ` ${reenviarModal.invoiceNumber}` : ''} en PDF por correo.
+            </p>
+            {!reenviarResult?.startsWith('✓') && (
+              <label className="text-sm" style={{ display: 'block', marginBottom: '1rem' }}>
+                Email de destino
+                <input type="email" className="input" placeholder="cliente@email.com"
+                  value={reenviarEmail} onChange={e => setReenviarEmail(e.target.value)} disabled={reenviarLoading} />
+              </label>
+            )}
+            {reenviarResult && (
+              <p style={{ fontSize: '0.85rem', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius)', marginBottom: '1rem',
+                background: reenviarResult.startsWith('✓') ? 'color-mix(in srgb, var(--success) 10%, transparent)' : 'color-mix(in srgb, var(--error) 10%, transparent)',
+                color: reenviarResult.startsWith('✓') ? 'var(--success)' : 'var(--error)' }}>
+                {reenviarResult}
+              </p>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => setReenviarModal(null)} disabled={reenviarLoading}>
+                {reenviarResult?.startsWith('✓') ? 'Cerrar' : 'Cancelar'}
+              </button>
+              {!reenviarResult?.startsWith('✓') && (
+                <button className="btn btn-primary btn-sm" onClick={() => reenviarEmail_(reenviarModal.invoiceId)} disabled={reenviarLoading}>
+                  {reenviarLoading ? 'Enviando...' : 'Enviar'}
                 </button>
               )}
             </div>
