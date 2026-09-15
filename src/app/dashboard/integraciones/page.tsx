@@ -16,7 +16,7 @@ const INTEGRACIONES = [
   {
     id: 'mercadopago',
     nombre: 'Mercado Pago',
-    desc: 'Sincronizá pagos y conciliá transacciones de Mercado Pago automáticamente.',
+    desc: 'Facturá tus ventas de Mercado Libre y los cobros que generés con Facturación Rápida.',
     estado: 'disponible', categoria: 'marketplace', logo: '💳',
     href: '/dashboard/integraciones/mercadopago',
     statusUrl: '/api/integraciones/mercadopago/status',

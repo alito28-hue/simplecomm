@@ -15,9 +15,9 @@ function getInitialStatus(): 'idle' | 'connected' | 'error' {
 }
 
 const MODE_OPTIONS: { value: Mode; label: string; desc: string }[] = [
-  { value: 'AUTOMATIC', label: 'Automática', desc: 'Cada pago aprobado se factura solo, sin que tengas que hacer nada.' },
-  { value: 'CONFIRMATION', label: 'Con confirmación', desc: 'Te avisamos de cada cobro y vos aprobás antes de que se emita la factura.' },
-  { value: 'PAUSED', label: 'Pausada', desc: 'No se emite ninguna factura por los pagos que lleguen. Las ventas de "Venta Rápida" con link de cobro siguen funcionando igual.' },
+  { value: 'AUTOMATIC', label: 'Automática', desc: 'Cada venta de Mercado Libre y cada cobro de Facturación Rápida se factura solo, sin que tengas que hacer nada.' },
+  { value: 'CONFIRMATION', label: 'Con confirmación', desc: 'Te avisamos de cada venta de Mercado Libre y vos aprobás antes de que se emita la factura. Los cobros de Facturación Rápida se facturan igual, sin pasar por esta cola.' },
+  { value: 'PAUSED', label: 'Pausada', desc: 'No se emite factura por las ventas de Mercado Libre. Los cobros de Facturación Rápida siguen funcionando igual.' },
 ];
 
 export default function MercadoPagoPage() {
@@ -74,7 +74,7 @@ export default function MercadoPagoPage() {
         <div className={styles.logo}>💳</div>
         <div>
           <h1 className={styles.title}>Mercado Pago</h1>
-          <p className={styles.subtitle}>Facturación automática por cada pago aprobado.</p>
+          <p className={styles.subtitle}>Facturación automática de tus ventas de Mercado Libre y de los cobros que generás con Facturación Rápida.</p>
         </div>
         {status === 'connected' && <span className="badge badge-success">● Conectado</span>}
       </div>
@@ -87,7 +87,10 @@ export default function MercadoPagoPage() {
             <div className={styles.connectedIcon}>✅</div>
             <h2 className={styles.connectedTitle}>¡Mercado Pago conectado!</h2>
             <p className={styles.connectedDesc}>
-              Los pagos aprobados se facturarán según la modalidad que elijas abajo (A, B o C según el comprador).
+              Tus ventas de Mercado Libre y los cobros de Facturación Rápida se facturarán según la modalidad que elijas abajo (A, B o C según el comprador).
+            </p>
+            <p className="text-sm text-muted" style={{ marginTop: '0.5rem' }}>
+              ⚠ Mercado Pago solo nos avisa de los pagos que pasan por acá o por Mercado Libre — un cobro que generes vos directo desde la app de Mercado Pago (link, QR, Point) no nos llega, aunque la plata entre a la misma cuenta. Es una limitación de cómo funciona Mercado Pago para cualquier integración, no algo que podamos arreglar de nuestro lado.
             </p>
             <div className={styles.connectedActions}>
               <Link href="/dashboard/billing" className="btn btn-primary">Ver facturas →</Link>
@@ -123,12 +126,14 @@ export default function MercadoPagoPage() {
           <div className="card" style={{ padding: '1.5rem' }}>
             <h2 className={styles.sectionTitle}>¿Qué hace esta integración?</h2>
             <ul className={styles.featureList}>
-              <li>✓ Detecta pagos aprobados en tiempo real via webhook</li>
+              <li>✓ Detecta en tiempo real tus ventas de Mercado Libre y los cobros de Facturación Rápida</li>
               <li>✓ Emite Factura A si el comprador tiene CUIT (responsable inscripto)</li>
               <li>✓ Emite Factura B a consumidor final (DNI o sin datos)</li>
               <li>✓ Emite Factura C si el vendedor es monotributista</li>
-              <li>✓ Funciona con pagos por link, QR, checkout y suscripciones</li>
             </ul>
+            <p className="text-sm text-muted" style={{ marginTop: '0.75rem' }}>
+              No detecta cobros que generes vos directo desde la app de Mercado Pago (link, QR, Point) — Mercado Pago solo notifica pagos que pasan por Mercado Libre o por una integración como la nuestra.
+            </p>
           </div>
 
           {status === 'error' && (
@@ -138,7 +143,7 @@ export default function MercadoPagoPage() {
           <div className="card" style={{ padding: '1.5rem' }}>
             <h2 className={styles.sectionTitle}>Conectar cuenta</h2>
             <p className={styles.stepDesc}>
-              Autorizá a SimpleComm para recibir notificaciones de pago de tu cuenta de Mercado Pago.
+              Autorizá a SimpleComm para facturar tus ventas de Mercado Libre y los cobros que generés con Facturación Rápida.
             </p>
             <button
               onClick={() => window.location.href = '/api/integraciones/mercadopago/connect'}
