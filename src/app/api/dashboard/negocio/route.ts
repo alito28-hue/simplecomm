@@ -6,6 +6,13 @@ function firstDayOfMonth(year: number, month: number) {
   return new Date(year, month, 1).toISOString().slice(0, 10);
 }
 
+// Notas de Crédito/Débito no son facturas que se "cobren" — una NC directamente cancela una
+// factura anterior (no queda plata pendiente de cobrar por ella) y una ND es un cargo aparte.
+// Sin este filtro quedaban contadas como comprobantes "pendientes de cobro" en el KPI.
+const NC_TYPES = new Set([3, 8, 13]);
+const ND_TYPES = new Set([2, 7, 12]);
+const ADJUSTMENT_TYPES = new Set([...NC_TYPES, ...ND_TYPES]);
+
 export async function GET() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -15,7 +22,9 @@ export async function GET() {
   const fromMonth = firstDayOfMonth(now.getFullYear(), now.getMonth());
 
   const all = await getComprobantesUnificados(supabase, user.id);
-  const issuedThisMonth = all.filter(c => c.status === 'issued' && c.created_at.slice(0, 10) >= fromMonth);
+  const issuedThisMonth = all.filter(c =>
+    c.status === 'issued' && c.created_at.slice(0, 10) >= fromMonth && !ADJUSTMENT_TYPES.has(c.invoice_type ?? -1)
+  );
 
   const ids = issuedThisMonth.map(c => c.invoice_id);
   const { data: payments } = ids.length
