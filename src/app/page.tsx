@@ -349,7 +349,7 @@ export default async function Home() {
         </div>
         <div className={styles.footerBottom}>
           <span>© {new Date().getFullYear()} SimpleComm. Todos los derechos reservados.</span>
-          <span>Conectado con ARCA vía WSFE</span>
+          <span>Hecho en Argentina · Conectado con ARCA vía WSFE</span>
         </div>
       </footer>
     </main>
