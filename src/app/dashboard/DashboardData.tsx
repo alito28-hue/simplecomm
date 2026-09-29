@@ -116,13 +116,15 @@ export default function DashboardData() {
 
       <div className={styles.mainGrid}>
         <VentasPeriodoChart />
-        <VentasPorCanalCard />
-        <AttentionPanel
-          isResponsableInscripto={isResponsableInscripto}
-          isMonotributista={isMonotributista}
-          pendienteMes={pendienteMes}
-          cantidadPendientes={cantidadPendientes}
-        />
+        <div className={styles.sideColumn}>
+          <AttentionPanel
+            isResponsableInscripto={isResponsableInscripto}
+            isMonotributista={isMonotributista}
+            pendienteMes={pendienteMes}
+            cantidadPendientes={cantidadPendientes}
+          />
+          <VentasPorCanalCard />
+        </div>
       </div>
 
       <div className={styles.financeGrid}>

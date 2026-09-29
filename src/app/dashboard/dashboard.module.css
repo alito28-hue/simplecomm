@@ -184,12 +184,18 @@
 /* Grilla principal: gráfico de período + ventas por canal + atención */
 .mainGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(220px, 0.85fr) minmax(260px, 1fr);
+  grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr);
   gap: 1rem;
   align-items: start;
 }
-@media (max-width: 1200px) { .mainGrid { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 700px)  { .mainGrid { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .mainGrid { grid-template-columns: 1fr; } }
+
+/* Columna lateral del mainGrid: apila "Necesita tu atención" arriba de "Ventas por canal" */
+.sideColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
 
 /* Grilla de finanzas: IVA / Rentabilidad / Vencimientos, 3 columnas iguales */
 .financeGrid {
