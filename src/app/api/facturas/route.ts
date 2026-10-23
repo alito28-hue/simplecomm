@@ -9,7 +9,9 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const page   = Math.max(1, Number(searchParams.get('page') ?? '1'));
-  const limit  = Math.min(100, Math.max(1, Number(searchParams.get('limit') ?? '20')));
+  // El tope sube a 2000 porque el modal de detalle de IVA (/dashboard/organizacion/iva) pide
+  // el mes entero sin paginar en el servidor, para poder filtrar y paginar del lado del cliente.
+  const limit  = Math.min(2000, Math.max(1, Number(searchParams.get('limit') ?? '20')));
   const status = searchParams.get('status') ?? 'all'; // 'all' | 'issued' | 'error'
   const month  = searchParams.get('month'); // 'YYYY-MM', o ausente/'' = todos los meses
   const q      = searchParams.get('q')?.trim().toLowerCase(); // búsqueda por receptor o CUIT/DNI

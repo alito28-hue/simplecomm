@@ -74,42 +74,66 @@ interface CompraRow {
 interface Detalle { tipo: 'ventas' | 'compras'; year: number; month: number; monthLabel: string; ivaTotal: number }
 
 const DETALLE_LIMIT = 20;
-const EMPTY_META = { page: 1, limit: DETALLE_LIMIT, total: 0, pages: 1 };
 
 function IvaDetalleModal({ detalle, onClose }: { detalle: Detalle; onClose: () => void }) {
   const [loading, setLoading] = useState(true);
   const [ventas, setVentas] = useState<VentaRow[]>([]);
   const [compras, setCompras] = useState<CompraRow[]>([]);
   const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState(EMPTY_META);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+
+  // Búsqueda con debounce, igual que en Comprobantes y Compras.
+  useEffect(() => {
+    const handle = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
 
   useEffect(() => {
     const monthStr = `${detalle.year}-${String(detalle.month).padStart(2, '0')}`;
     setLoading(true);
+    // Se trae el mes entero (sin paginar en el servidor) y se pagina/filtra acá: la API de
+    // búsqueda ignora a propósito el mes cuando hay "q" (para poder buscar un cliente en
+    // cualquier período desde Comprobantes/Compras), pero acá el buscador tiene que quedarse
+    // dentro de ESTE mes, que es lo que arma el total de IVA que se muestra arriba.
     if (detalle.tipo === 'ventas') {
-      fetch(`/api/facturas?month=${monthStr}&status=issued&page=${page}&limit=${DETALLE_LIMIT}`)
+      fetch(`/api/facturas?month=${monthStr}&status=issued&limit=1000`)
         .then(r => r.json())
-        .then(d => { setVentas(d.data ?? []); setMeta(d.meta ?? EMPTY_META); })
-        .catch(() => { setVentas([]); setMeta(EMPTY_META); })
+        .then(d => setVentas(d.data ?? []))
+        .catch(() => setVentas([]))
         .finally(() => setLoading(false));
     } else {
       const lastDay = new Date(detalle.year, detalle.month, 0).getDate();
       const from = `${monthStr}-01`;
       const to = `${monthStr}-${String(lastDay).padStart(2, '0')}`;
-      fetch(`/api/organizacion/compras?from=${from}&to=${to}&page=${page}&limit=${DETALLE_LIMIT}`)
+      fetch(`/api/organizacion/compras?from=${from}&to=${to}`)
         .then(r => r.json())
-        .then(d => { setCompras(d.data ?? []); setMeta(d.meta ?? EMPTY_META); })
-        .catch(() => { setCompras([]); setMeta(EMPTY_META); })
+        .then(d => setCompras(d.data ?? []))
+        .catch(() => setCompras([]))
         .finally(() => setLoading(false));
     }
-  }, [detalle, page]);
+  }, [detalle]);
 
-  // Al abrir un mes/tipo distinto, siempre se vuelve a la página 1.
+  // Al abrir un mes/tipo distinto, o al tipear en el buscador, siempre se vuelve a la página 1.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setPage(1); }, [detalle.tipo, detalle.year, detalle.month]);
+  useEffect(() => { setPage(1); }, [detalle.tipo, detalle.year, detalle.month, search]);
 
   const isVentas = detalle.tipo === 'ventas';
-  const rows = isVentas ? ventas : compras;
+  const searchLower = search.toLowerCase();
+  const digits = search.replace(/\D/g, '');
+  const filteredVentas = search
+    ? ventas.filter(v => v.buyer_name?.toLowerCase().includes(searchLower) || (digits && v.invoice_number?.includes(digits)))
+    : ventas;
+  const filteredCompras = search
+    ? compras.filter(c => c.issuerName?.toLowerCase().includes(searchLower) || (digits && c.invoiceNumber?.includes(digits)))
+    : compras;
+  const filteredAll = isVentas ? filteredVentas : filteredCompras;
+  const total = filteredAll.length;
+  const pages = Math.max(1, Math.ceil(total / DETALLE_LIMIT));
+  const start = (page - 1) * DETALLE_LIMIT;
+  const ventasPage = filteredVentas.slice(start, start + DETALLE_LIMIT);
+  const comprasPage = filteredCompras.slice(start, start + DETALLE_LIMIT);
+  const rows = isVentas ? ventasPage : comprasPage;
 
   return (
     <div className={ivaStyles.overlay} onClick={onClose}>
@@ -123,8 +147,18 @@ function IvaDetalleModal({ detalle, onClose }: { detalle: Detalle; onClose: () =
         </div>
 
         <div className={ivaStyles.summary}>
-          <span>{meta.total} comprobante{meta.total === 1 ? '' : 's'}</span>
+          <span>{total} comprobante{total === 1 ? '' : 's'}</span>
           <span>IVA total del mes: <span className={ivaStyles.summaryTotal}>{money(detalle.ivaTotal)}</span></span>
+        </div>
+
+        <div className={ivaStyles.searchBar}>
+          <input
+            type="text"
+            className="input"
+            placeholder={isVentas ? 'Buscar por receptor o N° de comprobante...' : 'Buscar por emisor o N° de comprobante...'}
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+          />
         </div>
 
         <div className={ivaStyles.body}>
@@ -132,7 +166,9 @@ function IvaDetalleModal({ detalle, onClose }: { detalle: Detalle; onClose: () =
             <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '2.5rem' }}>Cargando...</p>
           ) : rows.length === 0 ? (
             <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '2.5rem' }}>
-              Sin comprobantes de {isVentas ? 'venta' : 'compra'} este mes.
+              {search
+                ? `Sin resultados para "${search}" en ${detalle.monthLabel} ${detalle.year}.`
+                : `Sin comprobantes de ${isVentas ? 'venta' : 'compra'} este mes.`}
             </p>
           ) : isVentas ? (
             // Al cambiar de página se mantienen las filas anteriores atenuadas mientras
@@ -142,7 +178,7 @@ function IvaDetalleModal({ detalle, onClose }: { detalle: Detalle; onClose: () =
               <table className="table">
                 <thead><tr><th>Fecha</th><th>N° Comprobante</th><th>Receptor</th><th>Origen</th><th>Monto</th></tr></thead>
                 <tbody>
-                  {ventas.map(v => (
+                  {ventasPage.map(v => (
                     <tr key={v.invoice_id}>
                       <td className="text-sm text-muted">{new Date(v.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}</td>
                       <td><span className="mono text-sm">{v.invoice_number ?? '—'}</span></td>
@@ -159,7 +195,7 @@ function IvaDetalleModal({ detalle, onClose }: { detalle: Detalle; onClose: () =
               <table className="table">
                 <thead><tr><th>Fecha</th><th>Emisor</th><th>Comprobante</th><th>Neto</th><th>IVA</th><th>Total</th></tr></thead>
                 <tbody>
-                  {compras.map(c => (
+                  {comprasPage.map(c => (
                     <tr key={c.id}>
                       <td className="text-sm text-muted">{c.issueDate ? c.issueDate.slice(8, 10) + '/' + c.issueDate.slice(5, 7) : '—'}</td>
                       <td>{c.issuerName || '(sin nombre)'}</td>
@@ -175,17 +211,17 @@ function IvaDetalleModal({ detalle, onClose }: { detalle: Detalle; onClose: () =
           )}
         </div>
 
-        {meta.pages > 1 && (
+        {pages > 1 && (
           <div className={dashStyles.tablePagination}>
             <span className="text-muted text-sm">
-              Mostrando {Math.min(page * DETALLE_LIMIT, meta.total)} de {meta.total}
+              Mostrando {Math.min(page * DETALLE_LIMIT, total)} de {total}
             </span>
             <div className={dashStyles.paginationBtns}>
               <button type="button" className={dashStyles.pageBtn} onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
                 ‹ Anterior
               </button>
-              <span className={dashStyles.pageIndicator}>Página {page} de {meta.pages}</span>
-              <button type="button" className={dashStyles.pageBtn} onClick={() => setPage(p => p + 1)} disabled={page >= meta.pages}>
+              <span className={dashStyles.pageIndicator}>Página {page} de {pages}</span>
+              <button type="button" className={dashStyles.pageBtn} onClick={() => setPage(p => p + 1)} disabled={page >= pages}>
                 Siguiente ›
               </button>
             </div>

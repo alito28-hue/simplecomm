@@ -85,3 +85,10 @@
   overflow-y: auto;
   min-height: 120px;
 }
+
+.searchBar {
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.searchBar input { max-width: 280px; }
