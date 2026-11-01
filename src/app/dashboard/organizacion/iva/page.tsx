@@ -66,9 +66,17 @@ interface CompraRow {
   issuerName: string;
   invoiceLetter: string;
   invoiceNumber: string;
+  puntoVenta: number | null;
   netAmount: string | number;
   ivaAmount: string | number;
   totalAmount: string | number;
+}
+
+// El número impreso completo es "punto de venta - número" (ej. "0004-00012345") — mostrar
+// solo el número (sin el punto de venta, que también se guarda) parece un número "cortado".
+function comprobanteNro(puntoVenta: number | null, invoiceNumber: string) {
+  if (!puntoVenta) return invoiceNumber;
+  return `${String(puntoVenta).padStart(4, '0')}-${invoiceNumber.padStart(8, '0')}`;
 }
 
 interface Detalle { tipo: 'ventas' | 'compras'; year: number; month: number; monthLabel: string; ivaTotal: number }
@@ -199,7 +207,7 @@ function IvaDetalleModal({ detalle, onClose }: { detalle: Detalle; onClose: () =
                     <tr key={c.id}>
                       <td className="text-sm text-muted">{c.issueDate ? c.issueDate.slice(8, 10) + '/' + c.issueDate.slice(5, 7) : '—'}</td>
                       <td>{c.issuerName || '(sin nombre)'}</td>
-                      <td className="text-sm">{c.invoiceLetter} {c.invoiceNumber}</td>
+                      <td className="text-sm">{c.invoiceLetter} {comprobanteNro(c.puntoVenta, c.invoiceNumber)}</td>
                       <td className="text-sm">{money(Number(c.netAmount))}</td>
                       <td className="text-sm">{money(Number(c.ivaAmount))}</td>
                       <td><strong>{money(Number(c.totalAmount))}</strong></td>

@@ -39,6 +39,7 @@ interface Purchase {
   issuerCuit: string;
   invoiceLetter: string;
   invoiceNumber: string;
+  puntoVenta: number | null;
   issueDate: string | null;
   netAmount: string | number;
   ivaAmount: string | number;
@@ -65,6 +66,13 @@ const LETTER_KIND_TO_TIPO: Record<string, Record<string, number>> = {
   C: { FACTURA: 11, NOTA_DEBITO: 12, NOTA_CREDITO: 13 },
   M: { FACTURA: 51, NOTA_DEBITO: 52, NOTA_CREDITO: 53 },
 };
+
+// El número impreso completo es "punto de venta - número" (ej. "0004-00012345"). Antes solo
+// se mostraba el número, sin el punto de venta (que sí se guarda) — parecía "cortado".
+function comprobanteNro(puntoVenta: number | null, invoiceNumber: string) {
+  if (!puntoVenta) return invoiceNumber;
+  return `${String(puntoVenta).padStart(4, '0')}-${invoiceNumber.padStart(8, '0')}`;
+}
 
 function money(n: number) {
   return `$${n.toLocaleString('es-AR', { minimumFractionDigits: 2 })}`;
@@ -412,9 +420,15 @@ export default function ComprasPage() {
                   <option value="NOTA_CREDITO">Nota de Crédito</option>
                 </select>
               </label>
+              <label className="text-sm">Punto de Venta
+                <input className="input" value={form.puntoVenta} placeholder="Ej: 0004"
+                  onChange={e => setForm(f => ({ ...f, puntoVenta: e.target.value.replace(/[^0-9]/g, '') }))} />
+                <span className="text-sm text-muted">La primera parte del número impreso, antes del guión (ej. 0004 en 0004-00012345).</span>
+              </label>
               <label className="text-sm">Número *
                 <input className="input" value={form.invoiceNumber}
                   onChange={e => setForm(f => ({ ...f, invoiceNumber: e.target.value.replace(/[^0-9]/g, '') }))} />
+                <span className="text-sm text-muted">Solo la segunda parte, sin el punto de venta (ej. 00012345 en 0004-00012345).</span>
               </label>
               <label className="text-sm">Fecha
                 <input type="date" className="input" value={form.issueDate} onChange={e => setForm(f => ({ ...f, issueDate: e.target.value }))} />
@@ -500,7 +514,7 @@ export default function ComprasPage() {
                   <td className="text-sm text-muted">{fechaCorta(p.issueDate)}</td>
                   <td>{p.signedUrl ? <a href={p.signedUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--blue)' }}>{p.issuerName || '(sin nombre)'}</a> : (p.issuerName || '(sin nombre)')}</td>
                   <td className="mono text-sm">{p.issuerCuit || '—'}</td>
-                  <td className="text-sm">{p.invoiceLetter} {p.invoiceNumber}</td>
+                  <td className="text-sm">{p.invoiceLetter} {comprobanteNro(p.puntoVenta, p.invoiceNumber)}</td>
                   <td className="text-sm">{money(Number(p.netAmount))}</td>
                   <td className="text-sm">{money(Number(p.ivaAmount))}</td>
                   <td className="text-sm">{Number(p.otherTaxesAmount ?? 0) > 0 ? money(Number(p.otherTaxesAmount)) : '—'}</td>
