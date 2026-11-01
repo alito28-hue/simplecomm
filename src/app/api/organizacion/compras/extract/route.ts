@@ -197,6 +197,22 @@ export async function POST(req: NextRequest) {
 
     const tipoComprobante = LETTER_KIND_TO_TIPO[extracted.invoice_letter]?.[extracted.comprobante_kind] ?? null;
 
+    // Chequeo de plausibilidad del año server-side: el modelo a veces confunde un dígito
+    // del año (ej. "2026" impreso bien claro leído como "2024") sin bajar su propia
+    // "confidence" — no hay que confiar en que el modelo se dé cuenta solo. Si el año queda
+    // afuera de un rango razonable, se fuerza confidence a "low" para que el usuario vea el
+    // cartel de advertencia y revise la fecha antes de guardar (si no, el comprobante queda
+    // guardado con una fecha de años atrás y "desaparece" sin aviso del mes en el que entró).
+    let confidence = extracted.confidence;
+    if (extracted.issue_date) {
+      const year = parseInt(extracted.issue_date.slice(0, 4), 10);
+      const currentYear = new Date().getFullYear();
+      if (Number.isFinite(year) && (year < currentYear - 1 || year > currentYear)) {
+        confidence = 'low';
+        notesExtra.push(`⚠ El año de la fecha extraída (${extracted.issue_date}) es inusual — fijate que esté bien antes de guardar.`);
+      }
+    }
+
     return NextResponse.json({
       issuer_name: extracted.issuer_name,
       issuer_cuit: extracted.issuer_cuit.replace(/[^0-9]/g, ''),
@@ -210,7 +226,7 @@ export async function POST(req: NextRequest) {
       iva_amount: ivaAmount,
       other_taxes_amount: otherTaxesAmount,
       total_amount: roundedTotal,
-      confidence: extracted.confidence,
+      confidence,
       notes: [extracted.notes, ...notesExtra].filter(Boolean).join(' '),
     });
   } catch (err) {
