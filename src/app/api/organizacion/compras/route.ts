@@ -19,21 +19,29 @@ export async function GET(req: NextRequest) {
   const limit = searchParams.has('limit') ? Math.min(200, Math.max(1, Number(searchParams.get('limit')))) : null;
 
   let query = supabase.from('purchase_invoices').select('*').eq('organizationId', user.id);
-  if (q) {
-    // Buscar un proveedor puede ser en cualquier mes — a propósito NO se acota por from/to
-    // cuando hay búsqueda, para no obligar a adivinar en qué mes está el comprobante.
-    const digits = q.replace(/\D/g, '');
-    query = query.or(
-      `issuerName.ilike.%${q}%${digits ? `,issuerCuit.ilike.%${digits}%` : ''}`
-    );
-  } else {
+  // Buscar un proveedor puede ser en cualquier mes — a propósito NO se acota por from/to
+  // cuando hay búsqueda, para no obligar a adivinar en qué mes está el comprobante.
+  if (!q) {
     if (from) query = query.gte('issueDate', from);
     if (to) query = query.lte('issueDate', to);
   }
   query = query.order('issueDate', { ascending: false, nullsFirst: false }).order('createdAt', { ascending: false });
 
-  const { data, error } = await query;
+  const { data: queried, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // El filtro de "q" se hace en JS, no con .or() de Supabase: un nombre de proveedor con
+  // coma o paréntesis (común en razones sociales argentinas) rompe la sintaxis del filtro de
+  // PostgREST y la búsqueda devolvía error en silencio (el front ignora el status y muestra
+  // "sin resultados" como si el comprobante no existiera).
+  let data = queried ?? [];
+  if (q) {
+    const qLower = q.toLowerCase();
+    const digits = q.replace(/\D/g, '');
+    data = data.filter(p =>
+      p.issuerName?.toLowerCase().includes(qLower) || (digits && p.issuerCuit?.includes(digits))
+    );
+  }
 
   const totals = (data ?? []).reduce((acc, p) => ({
     net: acc.net + Number(p.netAmount ?? 0),

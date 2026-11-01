@@ -10,13 +10,18 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const q = searchParams.get('q');
 
-  let query = supabase.from('products').select('*')
+  const { data, error } = await supabase.from('products').select('*')
     .eq('organizationId', user.id).order('code');
-  if (q) query = query.or(`code.ilike.%${q}%,description.ilike.%${q}%`);
-
-  const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data ?? []);
+
+  // Filtro en JS, no con .or() de Supabase: una descripción con coma o paréntesis rompe la
+  // sintaxis del filtro de PostgREST (ver mismo fix en /api/organizacion/compras).
+  let rows = data ?? [];
+  if (q) {
+    const qLower = q.toLowerCase();
+    rows = rows.filter(p => p.code?.toLowerCase().includes(qLower) || p.description?.toLowerCase().includes(qLower));
+  }
+  return NextResponse.json(rows);
 }
 
 export async function POST(req: NextRequest) {
